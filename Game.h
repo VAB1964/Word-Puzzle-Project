@@ -90,6 +90,11 @@ private:
 	std::vector< ScoreParticleAnim> bonusAnim; // For bonus word animations
     DecorLayer m_decor;
 
+    // --- Celebration Effect Storage ---
+    std::vector<ConfettiParticle> m_confetti;
+    std::vector<Balloon> m_balloons;
+    float m_celebrationEffectTimer;
+
     // Score animation
     float m_scoreFlourishTimer; // Timer for how long the score stays big
     const float SCORE_FLOURISH_DURATION = 0.4f; // How long flourish lasts (seconds)
@@ -191,6 +196,7 @@ private:
     sf::RectangleShape m_progressMeterFill;   // The filled part showing progress
     std::unique_ptr<sf::Text> m_progressMeterText; // Optional: Text overlay "X/Y"
 
+
     // --- Private Helper Methods (Declarations only) ---
     void m_loadResources();
     void m_processEvents();
@@ -214,6 +220,14 @@ private:
     void m_handlePlayingEvents(const sf::Event& event);
     void m_handleGameOverEvents(const sf::Event& event);
     void m_renderGameScreen(const sf::Vector2f& mousePos);
+
+    //celebration functions
+    void m_startCelebrationEffects(); 
+    void m_updateCelebrationEffects(float dt); 
+    void m_renderCelebrationEffects(sf::RenderTarget& target);
+    void m_renderSessionComplete(const sf::Vector2f& mousePos);
+
+    void m_handleSessionCompleteEvents(const sf::Event& event);
 };
 
 #endif // GAME_H

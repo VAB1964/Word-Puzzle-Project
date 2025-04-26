@@ -19,7 +19,7 @@
 #include <functional>
 #include <cmath>
 #include <numeric>
-#include <random>
+#include <random> // For std::mt19937, std::uniform_real_distribution, etc.
 #include <ctime>
 #include <memory> // For unique_ptr                  
 
@@ -34,6 +34,7 @@ Game::Game() :
     m_window(),                              // Default construct window
     m_font(),                                // Default construct font (will be loaded)
     m_clock(),
+    m_celebrationEffectTimer(0.f),
     m_currentScreen(GameScreen::MainMenu),
     m_gameState(GState::Playing),
     m_hintsAvailable(INITIAL_HINTS),         // Use constant directly here
@@ -433,6 +434,7 @@ void Game::m_processEvents() {
         if (m_window.isOpen()) {
             if (m_currentScreen == GameScreen::MainMenu) { m_handleMainMenuEvents(event); }
             else if (m_currentScreen == GameScreen::CasualMenu) { m_handleCasualMenuEvents(event); }
+            else if (m_currentScreen == GameScreen::SessionComplete) { m_handleSessionCompleteEvents(event); } 
             else if (m_currentScreen == GameScreen::Playing) { m_handlePlayingEvents(event); }
             else if (m_currentScreen == GameScreen::GameOver) { m_handleGameOverEvents(event); }
         }
@@ -464,9 +466,14 @@ void Game::m_update(sf::Time dt) {
     }
     // ---------------------------------
 
+    // Update game elements based on screen
     if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)
     {
         m_updateAnims(deltaSeconds);
+    }
+    else if (m_currentScreen == GameScreen::SessionComplete) // <<< ADD THIS
+    {
+        m_updateCelebrationEffects(deltaSeconds);
     }
 }
 
@@ -479,16 +486,11 @@ void Game::m_render() {
     sf::Vector2f mpos = m_window.mapPixelToCoords(sf::Mouse::getPosition(m_window));
 
     // --- Draw based on current screen ---
-    if (m_currentScreen == GameScreen::MainMenu) {
-        m_renderMainMenu(mpos);
-    }
-    else if (m_currentScreen == GameScreen::CasualMenu) { // *** ADD THIS BRANCH ***
-        m_renderCasualMenu(mpos);
-    }
-    // else if (m_currentScreen == GameScreen::CompetitiveMenu) { m_renderCompetitiveMenu(mpos); } // Keep commented
-    else { // Playing or GameOver uses the game screen renderer
-        m_renderGameScreen(mpos);
-    }
+    if (m_currentScreen == GameScreen::MainMenu) { m_renderMainMenu(mpos); }
+    else if (m_currentScreen == GameScreen::CasualMenu) { m_renderCasualMenu(mpos); }
+    else if (m_currentScreen == GameScreen::SessionComplete) { m_renderSessionComplete(mpos); } 
+    else { m_renderGameScreen(mpos); }
+    
 
     // TODO: Draw Pop-ups last if needed
 
@@ -1084,15 +1086,15 @@ void Game::m_handleCasualMenuEvents(const sf::Event& event) {
 
         if (m_easyButtonShape.getGlobalBounds().contains(mp)) {
             selected = DifficultyLevel::Easy;
-            puzzles = 10; // Or use a constant EASY_PUZZLE_COUNT
+            puzzles = EASY_PUZZLE_COUNT; // Or use a constant EASY_PUZZLE_COUNT
         }
         else if (m_mediumButtonShape.getGlobalBounds().contains(mp)) {
             selected = DifficultyLevel::Medium;
-            puzzles = 15; // MEDIUM_PUZZLE_COUNT
+            puzzles = MEDIUM_PUZZLE_COUNT; // MEDIUM_PUZZLE_COUNT
         }
         else if (m_hardButtonShape.getGlobalBounds().contains(mp)) {
             selected = DifficultyLevel::Hard;
-            puzzles = 20; // HARD_PUZZLE_COUNT
+            puzzles = HARD_PUZZLE_COUNT; // HARD_PUZZLE_COUNT
         }
         else if (m_returnButtonShape.getGlobalBounds().contains(mp)) {
             if (m_clickSound) m_clickSound->play();
@@ -1650,21 +1652,26 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
 
                     if (m_currentPuzzleIndex < m_puzzlesPerSession) {
                         // --- Go to Next Puzzle ---
-                        m_rebuild(); // Rebuild with new criteria for the next index
-                        m_currentScreen = GameScreen::Playing; // Go back to playing
-                        m_gameState = GState::Playing; // Ensure state is playing
-                    }
-                    else {
-                        // --- Session Finished ---
-                        m_isInSession = false; // End the session state
-                        m_selectedDifficulty = DifficultyLevel::None; // Reset difficulty
-                        // TODO: Maybe go to a "Session Complete" screen first?
-                        m_currentScreen = GameScreen::MainMenu; // Or CasualMenu
-                        // Reset internal game state if needed for menu
+                        std::cout << "DEBUG: Continuing Session - Calling m_rebuild for puzzle " << m_currentPuzzleIndex + 1 << std::endl;
+                        m_rebuild();
+                        m_currentScreen = GameScreen::Playing;
                         m_gameState = GState::Playing;
-                        std::cout << "Session Complete! Final Score: " << m_currentScore << std::endl;
-                        // Consider resetting score here IF you want score per session only
-                        // m_currentScore = 0;
+                    }
+                    else 
+                    {
+                        // --- Session Finished --- Transition to Celebration ---
+                        std::cout << "Session Complete! Final Score: " << m_currentScore << ". Starting celebration..." << std::endl;
+                        m_isInSession = false;
+                        m_selectedDifficulty = DifficultyLevel::None;
+                        m_gameState = GState::Playing; // Or maybe a dedicated GState::Celebrating? Using Playing for now.
+
+                        m_startCelebrationEffects(); // <<< Initialize effects
+                        m_currentScreen = GameScreen::SessionComplete; // <<< Change screen state
+                        // Don't reset score yet, display it on celebration screen
+
+                        // Consider stopping game music and playing victory music?
+                        m_backgroundMusic.stop();
+                        // if (m_victoryMusic.openFromFile("...")) { m_victoryMusic.play(); }
                     }
                 }
                 else {
@@ -1676,17 +1683,6 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
         }
     }
 
-    // --- Key Pressed (Optional: Enter to Continue) ---
-    // if (event.is<sf::Event::KeyPressed>()) {
-    //     if (event.getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scan::Enter ||
-    //         event.getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scan::NumpadEnter ||
-    //         event.getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scan::Space ) {
-    //
-    //          if (m_clickSound) m_clickSound->play();
-    //          m_currentScreen = GameScreen::MainMenu; // Or m_rebuild() etc.
-    //          m_gameState = GState::Playing;
-    //     }
-    // }
 
 } // End m_handleGameOverEvents
 
@@ -2111,4 +2107,269 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         m_window.draw(m_contBtn);
         m_window.draw(*m_contTxt);
     }
+}
+
+// --- Celebration Effects ---
+void Game::m_startCelebrationEffects() {
+    m_confetti.clear();
+    m_balloons.clear();
+    m_celebrationEffectTimer = 0.f; // Reset spawn timer
+
+    sf::Vector2u windowSize = m_window.getSize();
+    float w = static_cast<float>(windowSize.x);
+    float h = static_cast<float>(windowSize.y);
+
+    // --- Spawn Initial Confetti Burst ---
+    int confettiCount = 200; // Number of pieces
+    for (int i = 0; i < confettiCount; ++i) {
+        ConfettiParticle p;
+
+        // Start near bottom corners
+        float startX = (randRange(0, 1) == 0) ? randRange(-20.f, 60.f) : randRange(w - 60.f, w + 20.f);
+        float startY = randRange(h - 40.f, h + 20.f);
+
+        p.shape.setPosition({ startX, startY });
+        p.shape.setSize({ randRange(4.f, 8.f), randRange(6.f, 12.f) }); // Random small size
+        p.shape.setFillColor(sf::Color(randRange(100, 255), randRange(100, 255), randRange(100, 255))); // Random bright color
+        p.shape.setOrigin(p.shape.getSize() / 2.f); // Center origin for rotation
+
+        // Calculate velocity: upwards and outwards
+        float angle = (startX < w / 2.f) ? randRange(230.f, 310.f) : randRange(230.f, 310.f); // Angle upwards (degrees) - adjusted range
+        if (startX < w / 2.f) angle = randRange(230.f, 310.f); // Left side -> up-right
+        else angle = randRange(230.f, 310.f); // Right side -> up-left - THIS LOGIC IS WRONG, let's fix:
+
+        // Corrected Angle Logic:
+        if (startX < w / 2.f) { // From left corner, shoot up-right
+            angle = randRange(270.f + 10.f, 270.f + 80.f); // Angles between roughly 280-350
+        }
+        else { // From right corner, shoot up-left
+            angle = randRange(180.f + 10.f, 180.f + 80.f); // Angles between roughly 190-260
+        }
+
+
+        float speed = randRange(150.f, 450.f); // Random speed
+        float angleRad = angle * PI / 180.f;
+        p.velocity = { std::cos(angleRad) * speed, std::sin(angleRad) * speed }; // sin is negative for upwards
+
+        p.angularVelocity = randRange(-360.f, 360.f); // Degrees per second rotation
+        p.lifetime = randRange(2.0f, 5.0f);        // Seconds
+        p.initialLifetime = p.lifetime;
+
+        m_confetti.push_back(std::move(p)); // Use move
+    }
+
+    // --- Spawn Initial Balloons ---
+    int balloonCount = 7;
+    float balloonRadius = 30.f;
+    for (int i = 0; i < balloonCount; ++i) {
+        Balloon b;
+        b.position = { randRange(balloonRadius * 2.f, w - balloonRadius * 2.f), h + balloonRadius + randRange(10.f, 100.f) }; // Start below screen
+        b.shape.setRadius(balloonRadius);
+        b.shape.setFillColor(sf::Color(randRange(100, 255), randRange(100, 255), randRange(100, 255), 230)); // Bright, slightly transparent
+        b.shape.setOutlineColor(sf::Color::White);
+        b.shape.setOutlineThickness(1.f);
+        b.shape.setOrigin({ balloonRadius, balloonRadius }); // Center origin
+
+        b.stringShape.setSize({ 2.f, randRange(40.f, 70.f) }); // Thin string
+        b.stringShape.setFillColor(sf::Color(200, 200, 200));
+        b.stringShape.setOrigin({ 1.f, 0 }); // Top-center origin for string
+
+        b.riseSpeed = randRange(-25.f, -50.f); // Varying rise speeds
+        b.swaySpeed = randRange(1.0f, 2.5f);
+        b.swayTimer = randRange(0.f, 2.f * PI); // Start at random point in sway cycle
+        b.swayTargetX = b.position.x + randRange(-80.f, 80.f); // Initial sway target
+
+        b.timeToDisappear = randRange(6.0f, 10.0f); // How long they last
+
+        m_balloons.push_back(std::move(b));
+    }
+}
+
+void Game::m_updateCelebrationEffects(float dt) {
+    sf::Vector2u windowSize = m_window.getSize();
+    float h = static_cast<float>(windowSize.y);
+    float w = static_cast<float>(windowSize.x);
+    const float GRAVITY = 98.0f; // Pixels per second squared (adjust!)
+
+    // --- Update Confetti ---
+    // Use index-based loop for safe removal
+    for (size_t i = 0; i < m_confetti.size(); /* no increment here */) {
+        ConfettiParticle& p = m_confetti[i];
+
+        // Apply gravity
+        p.velocity.y += GRAVITY * dt;
+
+        // Update position
+        p.shape.move(p.velocity * dt);
+
+        // Update rotation
+        // *** Construct sf::Angle from degrees ***
+        float rotationDegrees = p.angularVelocity * dt;
+        p.shape.rotate(sf::degrees(rotationDegrees)); // Use sf::degrees() helper
+
+        // Decrease lifetime
+        p.lifetime -= dt;
+
+        // Fade out based on lifetime
+        float alphaRatio = std::max(0.f, p.lifetime / p.initialLifetime);
+        sf::Color color = p.shape.getFillColor();
+        color.a = static_cast<uint8_t>(255.f * alphaRatio);
+        p.shape.setFillColor(color);
+
+        // Check for removal
+        if (p.lifetime <= 0.f || p.shape.getPosition().y > h + 50.f) { // Remove if dead or way off bottom
+            // Efficiently remove by swapping with the last element and popping back
+            std::swap(m_confetti[i], m_confetti.back());
+            m_confetti.pop_back();
+            // Do NOT increment 'i' here, as the swapped element needs checking next
+        }
+        else {
+            ++i; // Only increment if no removal occurred
+        }
+    }
+
+    // --- Update Balloons ---
+    for (size_t i = 0; i < m_balloons.size(); /* no increment */) {
+        Balloon& b = m_balloons[i];
+
+        // Update vertical position
+        b.position.y += b.riseSpeed * dt;
+
+        // Update horizontal sway using sine wave
+        b.swayTimer += dt;
+        float currentSwayOffset = std::sin(b.swayTimer * b.swaySpeed) * b.swayAmount;
+        // Apply sway relative to initial spawn X (or a slowly drifting center?)
+        // Let's recalculate center based on current position for simplicity here
+        float centerX = b.position.x; // Or could use a fixed X if needed
+        b.shape.setPosition({ centerX + currentSwayOffset, b.position.y });
+
+        // Position string below the balloon shape
+        b.stringShape.setPosition(b.shape.getPosition() + sf::Vector2f(0, b.shape.getRadius()));
+
+        // Decrease lifetime
+        b.timeToDisappear -= dt;
+
+        // Check for removal
+        float topEdge = b.position.y - b.shape.getRadius();
+        if (b.timeToDisappear <= 0.f || topEdge < -100.f) { // Remove if dead or way off top
+            std::swap(m_balloons[i], m_balloons.back());
+            m_balloons.pop_back();
+        }
+        else {
+            ++i;
+        }
+    }
+
+    // --- Optional: Spawn more effects over time ---
+    m_celebrationEffectTimer += dt;
+    if (m_celebrationEffectTimer > 0.15f) { // Spawn every 0.15 seconds
+        m_celebrationEffectTimer = 0.f; // Reset timer
+
+        // Spawn a few more confetti from corners
+        for (int j = 0; j < 5; ++j) { /* Add logic similar to m_startCelebrationEffects to spawn 5 more */ }
+
+        // Spawn one more balloon randomly?
+        if (randRange(0, 10) < 2) { // 20% chance each spawn interval
+            /* Add logic similar to m_startCelebrationEffects to spawn 1 more */
+        }
+    }
+}
+
+void Game::m_renderCelebrationEffects(sf::RenderTarget& target) {
+    // Draw Confetti
+    for (const auto& p : m_confetti) {
+        target.draw(p.shape);
+    }
+
+    // Draw Balloons (Strings first, then shapes so shapes overlap strings slightly)
+    for (const auto& b : m_balloons) {
+        target.draw(b.stringShape);
+    }
+    for (const auto& b : m_balloons) {
+        target.draw(b.shape);
+    }
+}
+
+void Game::m_renderSessionComplete(const sf::Vector2f& mousePos) {
+    // Option 1: Draw previous screen dimly as background
+    // You might need to capture the last frame to a texture, which is complex.
+    // Easier option: Just clear normally or draw a specific background.
+    // m_window.clear(m_currentTheme.winBg); // Already done in m_render
+    // m_decor.draw(m_window);              // Already done in m_render
+
+    // Option 2: Draw game elements dimmed (requires modifying their colors)
+    // DrawGridDimmed(); DrawWheelDimmed(); etc.
+
+    // Option 3: Draw a simple overlay?
+    sf::RectangleShape overlay(sf::Vector2f(m_window.getSize()));
+    overlay.setFillColor(sf::Color(0, 0, 0, 150)); // Dark semi-transparent overlay
+    m_window.draw(overlay);
+
+
+    // --- Draw Final Score Prominently ---
+    if (m_scoreValueText) { // Reuse score text object maybe?
+        std::string finalScoreStr = "Final Score: " + std::to_string(m_currentScore);
+        m_scoreValueText->setString(finalScoreStr);
+        m_scoreValueText->setCharacterSize(48); // Make it bigger
+        m_scoreValueText->setFillColor(sf::Color::Yellow); // Highlight color
+        // Center it on screen
+        sf::FloatRect bounds = m_scoreValueText->getLocalBounds();
+        m_scoreValueText->setOrigin({ bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f });
+        m_scoreValueText->setPosition({ m_window.getSize().x / 2.f, m_window.getSize().y * 0.3f }); // Position near top-center
+        m_scoreValueText->setScale({ 1.f, 1.f }); // Ensure no flourish scale applied
+        m_window.draw(*m_scoreValueText);
+        // Reset size/color after drawing if needed elsewhere
+        m_scoreValueText->setCharacterSize(24);
+        m_scoreValueText->setFillColor(m_currentTheme.scoreTextValue);
+    }
+
+
+    // --- Draw Celebration Effects --- (On top of score/background)
+    m_renderCelebrationEffects(m_window);
+
+
+    // --- Draw Continue Button ---
+    // Reposition? Maybe center bottom?
+    sf::Vector2f buttonPos = { m_window.getSize().x / 2.f, m_window.getSize().y * 0.8f };
+    sf::Vector2f contBtnSize = m_contBtn.getSize();
+    m_contBtn.setOrigin({ contBtnSize.x / 2.f, contBtnSize.y / 2.f }); // Center origin
+    m_contBtn.setPosition(buttonPos);
+
+    if (m_contTxt) { // Position text on button
+        sf::FloatRect contTxtBounds = m_contTxt->getLocalBounds();
+        m_contTxt->setOrigin({ contTxtBounds.position.x + contTxtBounds.size.x / 2.f, contTxtBounds.position.y + contTxtBounds.size.y / 2.f });
+        m_contTxt->setPosition(m_contBtn.getPosition());
+    }
+
+    // Handle hover
+    bool contHover = m_contBtn.getGlobalBounds().contains(mousePos);
+    m_contBtn.setFillColor(contHover ? adjustColorBrightness(m_currentTheme.continueButton, 1.3f) : m_currentTheme.continueButton);
+
+    m_window.draw(m_contBtn);
+    if (m_contTxt) m_window.draw(*m_contTxt);
+
+}
+
+void Game::m_handleSessionCompleteEvents(const sf::Event& event) {
+    // Optional: Handle Close, Resize if not done globally
+
+    if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
+        if (mb->button == sf::Mouse::Button::Left) {
+            sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
+
+            // Use the button's current position (set in m_renderSessionComplete)
+            if (m_contBtn.getGlobalBounds().contains(mp)) {
+                if (m_clickSound) m_clickSound->play();
+
+                // Stop celebration effects & transition
+                m_confetti.clear();
+                m_balloons.clear();
+                m_currentScreen = GameScreen::MainMenu; // Or CasualMenu
+                // Reset score if desired
+                // m_currentScore = 0;
+                // Potentially stop victory music and restart background music
+            }
+        }
+    }
+    // Optional: Handle key press (Enter/Space) to continue?
 }

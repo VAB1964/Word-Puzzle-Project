@@ -40,4 +40,9 @@ const float PROGRESS_METER_HEIGHT = 20.0f;
 const float PROGRESS_METER_TOP_MARGIN = 15.0f; // Margin below top of window
 const float PROGRESS_METER_OUTLINE = 1.0f;
 
+// Difficulty Session Size
+const int EASY_PUZZLE_COUNT = 1;   // <<< SET TO 3 FOR TESTING (was 10)
+const int MEDIUM_PUZZLE_COUNT = 15;
+const int HARD_PUZZLE_COUNT = 20;
+
 #endif // CONSTANTS_H
