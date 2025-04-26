@@ -4,8 +4,14 @@
 
 #include <SFML/System/Vector2.hpp> // For sf::Vector2f
 #include <SFML/Graphics/CircleShape.hpp> // For ScoreParticleAnim particle
+#include <SFML/Graphics/Text.hpp> 
 #include <string>
 #include <vector>
+
+enum class AnimTarget {
+    Grid,
+    Score
+};
 
 //--------------------------------------------------------------------
 //  Word Data Structure
@@ -25,18 +31,20 @@ enum class GameScreen { MainMenu, CasualMenu, CompetitiveMenu, Playing, GameOver
 //  Animation Structures
 //--------------------------------------------------------------------
 struct LetterAnim {
-    char ch = ' ';
+    char ch = '?';
     sf::Vector2f start = { 0,0 };
     sf::Vector2f end = { 0,0 };
     float t = 0.f;
-    int wordIdx = -1; // Use -1 to indicate invalid initially
-    int charIdx = -1;
+    int wordIdx = -1;   
+    int charIdx = -1;   
+    AnimTarget target = AnimTarget::Grid; 
 };
 
+// Keep ScoreParticleAnim as is for now, maybe remove later if unused
 struct ScoreParticleAnim {
     sf::Vector2f startPos = { 0,0 };
     sf::Vector2f endPos = { 0,0 };
-    sf::CircleShape particle;
+    sf::Text particle;
     float t = 0.f;
     float speed = 3.0f;
     int points = 0;

@@ -31,6 +31,13 @@
 #include <optional>
 #include <memory> // For std::unique_ptr
 
+enum class DifficultyLevel {
+    None, // Default state or for modes without difficulty
+    Easy,
+    Medium,
+    Hard
+};
+
 
 //--------------------------------------------------------------------
 //  Game Class Declaration
@@ -41,6 +48,18 @@ public:
     void run(); // Main game loop function
 
 private:
+    bool m_needsLayoutUpdate;
+    sf::Vector2u m_lastKnownSize; // Store the last size used for layout
+
+    // --- Session and Difficulty State ---
+    DifficultyLevel m_selectedDifficulty;
+    int m_puzzlesPerSession;
+    int m_currentPuzzleIndex; 
+    bool m_isInSession;      
+
+    std::vector<WordInfo> m_allPotentialSolutions; // Stores ALL sub-words before filtering
+    std::set<std::string> m_foundBonusWords;      // Tracks found bonus words this puzzle
+
     // Core SFML Objects
     sf::RenderWindow m_window;
     sf::Font m_font;
@@ -68,7 +87,13 @@ private:
     // Animations & Effects
     std::vector<LetterAnim> m_anims;
     std::vector<ScoreParticleAnim> m_scoreAnims;
+	std::vector< ScoreParticleAnim> bonusAnim; // For bonus word animations
     DecorLayer m_decor;
+
+    // Score animation
+    float m_scoreFlourishTimer; // Timer for how long the score stays big
+    const float SCORE_FLOURISH_DURATION = 0.4f; // How long flourish lasts (seconds)
+    const float SCORE_FLOURISH_SCALE = 1.3f;    // How much to scale score text
 
     // Resources (Textures, Sound Buffers - loaded once)
     sf::Texture m_scrambleTex;
@@ -82,6 +107,7 @@ private:
     sf::SoundBuffer m_winBuffer;
     sf::SoundBuffer m_clickBuffer;
     sf::SoundBuffer m_hintUsedBuffer;
+    sf::SoundBuffer m_errorWordBuffer;
 
     std::vector<std::string> m_musicFiles;
     sf::Music m_backgroundMusic;
@@ -92,6 +118,7 @@ private:
     std::unique_ptr<sf::Sound> m_winSound;
     std::unique_ptr<sf::Sound> m_clickSound;
     std::unique_ptr<sf::Sound> m_hintUsedSound;
+    std::unique_ptr<sf::Sound> m_errorWordSound;
 
     // --- Sprites (Use unique_ptr) ---
     std::unique_ptr<sf::Sprite> m_scrambleSpr;
@@ -110,6 +137,8 @@ private:
     std::unique_ptr<sf::Text> m_scoreValueText; // Use unique_ptr
     std::unique_ptr<sf::Text> m_hintCountTxt; // Use unique_ptr
     sf::CircleShape m_wheelBg;
+    std::unique_ptr<sf::Text> m_guessDisplay_Text;   // Text object for the guess itself
+    RoundedRectangleShape     m_guessDisplay_Bg;     // Background shape for the guess
 
     // Main Menu Elements
     RoundedRectangleShape m_mainMenuBg;
@@ -150,6 +179,18 @@ private:
     std::vector<ColorTheme> m_themes;
     ColorTheme m_currentTheme;
 
+    // Helper to get criteria based on current state (optional but cleans up rebuild)
+    struct PuzzleCriteria {
+        std::vector<int> allowedLengths;
+        std::vector<int> allowedRarities;
+    };
+    PuzzleCriteria m_getCriteriaForCurrentPuzzle() const;
+
+    // Progress Meter Elements
+    sf::RectangleShape m_progressMeterBg;     // Background/border
+    sf::RectangleShape m_progressMeterFill;   // The filled part showing progress
+    std::unique_ptr<sf::Text> m_progressMeterText; // Optional: Text overlay "X/Y"
+
     // --- Private Helper Methods (Declarations only) ---
     void m_loadResources();
     void m_processEvents();
@@ -157,7 +198,7 @@ private:
     void m_render();
 
     void m_rebuild();
-    void m_updateLayout();
+    void m_updateLayout(sf::Vector2u windowSize);
     void m_updateAnims(float dt); // Takes dt
     void m_updateScoreAnims(float dt);
     sf::Vector2f m_tilePos(int wordIdx, int charIdx);

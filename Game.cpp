@@ -1,5 +1,8 @@
 #include "Theme.h"
+#include <utility>
+#include <cstdint>
 #include "ThemeData.h"
+#include "GameData.h"
 #include "Game.h" // Should ideally include everything needed by the Game class declaration
 #include "Words.h"
 #include "Utils.h"
@@ -36,13 +39,18 @@ Game::Game() :
     m_hintsAvailable(INITIAL_HINTS),         // Use constant directly here
     m_wordsSolvedSinceHint(0),
     m_currentScore(0),
+    m_scoreFlourishTimer(0.f),
     m_dragging(false),
     m_decor(10),                             // Initialize DecorLayer
+    m_selectedDifficulty(DifficultyLevel::None),
+    m_puzzlesPerSession(0),
+    m_currentPuzzleIndex(0),
+    m_isInSession(false),
     // Resource Handles (default construct textures/buffers - loaded later)
     m_scrambleTex(), m_hintTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
-    m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(),
+    m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), 
     // Sounds (default construct - buffer set later)
-    m_selectSound(), m_placeSound(), m_winSound(), m_clickSound(), m_hintUsedSound(),
+    m_selectSound(), m_placeSound(), m_winSound(), m_clickSound(), m_hintUsedSound(), m_errorWordSound(),
     // Music (default construct - file loaded later)
     m_backgroundMusic(),
     // Sprites (default construct - texture set later)
@@ -51,6 +59,10 @@ Game::Game() :
     m_contBtn({ 200.f, 50.f }, 10.f, 10),
     m_solvedOverlay(),
     m_scoreBar(),
+    m_guessDisplay_Text(),   
+    m_guessDisplay_Bg(),  
+    m_needsLayoutUpdate(false), 
+    m_lastKnownSize(0, 0),
     // Add Main Menu Shapes
     m_mainMenuBg(),
     m_casualButtonShape({ 250.f, 50.f }, 10.f, 10),
@@ -61,7 +73,10 @@ Game::Game() :
     m_easyButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_mediumButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_hardButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_returnButtonShape({ 250.f, 50.f }, 10.f, 10)
+    m_returnButtonShape({ 250.f, 50.f }, 10.f, 10),
+    m_progressMeterBg(),     
+    m_progressMeterFill(),   
+    m_progressMeterText()   
 { // --- Constructor Body Starts Here ---
 
     // Determine Initial Window Size
@@ -85,6 +100,7 @@ Game::Game() :
     m_winSound = std::make_unique<sf::Sound>(m_winBuffer);
     m_clickSound = std::make_unique<sf::Sound>(m_clickBuffer);
     m_hintUsedSound = std::make_unique<sf::Sound>(m_hintUsedBuffer);
+    m_errorWordSound = std::make_unique<sf::Sound>(m_errorWordBuffer);
 
     m_scrambleSpr = std::make_unique<sf::Sprite>(m_scrambleTex);
     m_hintSpr = std::make_unique<sf::Sprite>(m_hintTex);
@@ -121,22 +137,46 @@ void Game::run() {
     }
 }
 
-void Game::m_updateAnims(float dt) // No longer need to pass grid, font, window, sound etc.
+void Game::m_updateAnims(float dt)
 {
     m_anims.erase(std::remove_if(m_anims.begin(), m_anims.end(),
-        [&](LetterAnim& a) { // Capture 'this' implicitly or explicitly [&, this]
-            a.t += dt * 4.f;
+        [&](LetterAnim& a) {
+            a.t += dt * 3.0f; // Adjust speed if needed
             if (a.t >= 1.f) {
-                a.t = 1.f;
-                if (a.wordIdx >= 0 && a.wordIdx < m_grid.size() && // Use m_grid
-                    a.charIdx >= 0 && a.charIdx < m_grid[a.wordIdx].size())
-                {
-                    m_grid[a.wordIdx][a.charIdx] = a.ch; // Use m_grid
+                a.t = 1.f; // Clamp
+
+                // --- Action on Completion ---
+                if (a.target == AnimTarget::Grid) {
+                    // Update Grid
+                    if (a.wordIdx >= 0 && a.wordIdx < m_grid.size() &&
+                        a.charIdx >= 0 && a.charIdx < m_grid[a.wordIdx].size())
+                    {
+                        m_grid[a.wordIdx][a.charIdx] = a.ch;
+                    }
+                    else { /* Optional Error Log */ }
+
+                    if (m_placeSound) m_placeSound->play(); // Grid placement sound
+
                 }
-                if (m_placeSound) m_placeSound->play(); // Use m_placeSound->
-                return true;
+                else if (a.target == AnimTarget::Score) {
+                    bool isLastOfBatch = true;
+                    for (const auto& other_a : m_anims) {
+                        if (&other_a != &a && other_a.target == AnimTarget::Score && other_a.t < 1.0f) {
+                            isLastOfBatch = false;
+                            break;
+                        }
+                    }
+                    if (isLastOfBatch) {
+                        m_scoreFlourishTimer = SCORE_FLOURISH_DURATION;
+                        if (m_placeSound) m_placeSound->play();
+                        std::cout << "DEBUG: Score flourish triggered." << std::endl;
+                    }
+                }
+                // --- End Action ---
+
+                return true; // Mark for removal
             }
-            return false;
+            return false; // Keep animation active
         }),
         m_anims.end());
 }
@@ -156,7 +196,7 @@ void Game::m_updateScoreAnims(float dt) // No longer need to pass RenderTarget
 
             sf::Vector2f p = a.startPos + (a.endPos - a.startPos) * a.t;
             a.particle.setPosition(p);
-            m_window.draw(a.particle); // Use m_window
+            //m_window.draw(a.particle); // Use m_window
 
             return false;
         }),
@@ -182,6 +222,10 @@ void Game::m_loadResources() {
         m_scrambleTex.setSmooth(true);
     }
 
+	//Progess Meter Elements
+    m_progressMeterText = std::make_unique<sf::Text>(m_font, "", 16); // Smaller font size?
+    m_progressMeterText->setFillColor(sf::Color::White); // Default color
+
     // Load hint button texture (Example - adjust path as needed)
     if (!m_hintTex.loadFromFile("assets/hint_icon.png")) {
         std::cerr << "Error loading hint texture!" << std::endl;
@@ -190,6 +234,9 @@ void Game::m_loadResources() {
     else {
         m_hintTex.setSmooth(true);
     }
+
+    m_guessDisplay_Text = std::make_unique<sf::Text>(m_font, "", 30); 
+    m_guessDisplay_Text->setFillColor(sf::Color::White); 
 
     // *** ADD GEM TEXTURE LOADING HERE ***
     // Make sure these paths are correct relative to your executable
@@ -236,6 +283,9 @@ void Game::m_loadResources() {
     bool hintUsedLoaded = m_hintUsedBuffer.loadFromFile("assets/sounds/button_click.wav"); 
     if (!hintUsedLoaded) { std::cerr << "Error loading hint_used sound\n"; }
 
+    bool errorWordLoaded = m_errorWordBuffer.loadFromFile("assets/sounds/hint_used.mp3");
+    if (!errorWordLoaded) { std::cerr << "Error loading hint_used sound\n"; }
+
     // --- Create Sounds (Link Buffers) ---
     // --- Create Sounds (Link Buffers) ---
     // Only create sound object IF the corresponding MEMBER buffer loaded successfully
@@ -244,6 +294,7 @@ void Game::m_loadResources() {
     if (winLoaded) { m_winSound = std::make_unique<sf::Sound>(m_winBuffer); }
     if (clickLoaded) { m_clickSound = std::make_unique<sf::Sound>(m_clickBuffer); }
     if (hintUsedLoaded) { m_hintUsedSound = std::make_unique<sf::Sound>(m_hintUsedBuffer); }
+    if (errorWordLoaded) { m_errorWordSound = std::make_unique<sf::Sound>(m_errorWordBuffer); }
     // Note: If a buffer fails to load, the corresponding unique_ptr remains nullptr
 
 
@@ -296,11 +347,17 @@ void Game::m_loadResources() {
     // --- Load Word List ---
     m_fullWordList = Words::loadWordListWithRarity("words.csv");
     if (m_fullWordList.empty()) { std::cerr << "Failed to load word list or list is empty. Exiting." << std::endl; exit(1); }
-    m_roots = Words::withLength(m_fullWordList, WORD_LENGTH);
-    if (m_roots.empty()) m_roots = Words::withLength(m_fullWordList, 6);
-    if (m_roots.empty()) m_roots = Words::withLength(m_fullWordList, 5);
-    if (m_roots.empty()) m_roots = Words::withLength(m_fullWordList, 4);
+    m_roots.clear(); // Start with an empty list
+    std::vector<int> potentialBaseLengths = { 4, 5, 6, 7 }; // Define the lengths we might need
+
+    for (int len : potentialBaseLengths) {
+        std::vector<WordInfo> wordsOfLength = Words::withLength(m_fullWordList, len);
+        // Append these words to the main m_roots list
+        m_roots.insert(m_roots.end(), wordsOfLength.begin(), wordsOfLength.end());
+    }
     if (m_roots.empty()) { std::cerr << "No suitable root words found in list. Exiting." << std::endl; exit(1); }
+    std::cout << "DEBUG: Populated m_roots with " << m_roots.size() << " potential base words (lengths 4-7)." << std::endl;
+    // --- End m_roots creation ---
 
     // --- Load Color Themes ---
     // Clear any potential default theme added erroneously earlier if necessary
@@ -318,27 +375,78 @@ void Game::m_loadResources() {
 
 // --- Process Events (Placeholder) ---
 void Game::m_processEvents() {
-    // Will copy event loop logic here later
-    while (const std::optional optEvent = m_window.pollEvent()) {
+    // m_needsLayoutUpdate initialized to false in constructor
 
+    while (const std::optional optEvent = m_window.pollEvent()) {
         const sf::Event& event = *optEvent;
-        // --- Screen-Specific Events ---
-        if (m_currentScreen == GameScreen::MainMenu) {
-            m_handleMainMenuEvents(event);
-        }
-        else if (m_currentScreen == GameScreen::CasualMenu) { // *** ADD THIS BRANCH ***
-            m_handleCasualMenuEvents(event);
-        }
-        // else if (m_currentScreen == GameScreen::CompetitiveMenu) { m_handleCompetitiveMenuEvents(event); } // Keep commented
-        else if (m_currentScreen == GameScreen::Playing) {
-            m_handlePlayingEvents(event);
-        }
-        else if (m_currentScreen == GameScreen::GameOver) {
-            m_handleGameOverEvents(event);
-        }
+
+        // --- Global Event Handling ---
+
         if (event.is<sf::Event::Closed>()) {
             m_window.close();
+            return;
         }
+
+        if (const auto* rs = event.getIf<sf::Event::Resized>()) {
+            unsigned int currentWidth = rs->size.x;
+            unsigned int currentHeight = rs->size.y;
+
+            // Determine the target size based on minimums
+            unsigned int targetWidth = std::max(currentWidth, static_cast<unsigned int>(MIN_WINDOW_WIDTH));
+            unsigned int targetHeight = std::max(currentHeight, static_cast<unsigned int>(MIN_WINDOW_HEIGHT));
+            sf::Vector2u targetSize = { targetWidth, targetHeight }; // The size we WANT
+
+            bool wasClamped = (currentWidth < MIN_WINDOW_WIDTH || currentHeight < MIN_WINDOW_HEIGHT);
+
+            // --- Check if Internal State/View/Layout Needs Update ---
+            if (m_lastKnownSize != targetSize) {
+                std::cout << "DEBUG: Target size [" << targetSize.x << "," << targetSize.y
+                    << "] differs from last known [" << m_lastKnownSize.x << "," << m_lastKnownSize.y
+                    << "]. Updating internal state." << std::endl;
+
+                // *** Attempt visual resize ONLY if clamping occurred AND target changed ***
+                // This is the key change: Only call setSize when the *target* changes while clamping
+                if (wasClamped) {
+                    std::cout << "DEBUG: Window too small, attempting resize ONCE (for this target) to " << targetSize.x << "x" << targetSize.y << std::endl;
+                    m_window.setSize(targetSize);
+                    // Still don't rely on visual success immediately
+                }
+                // **********************************************************************
+
+
+                // Update the size we will use for view and layout
+                m_lastKnownSize = targetSize;
+                m_needsLayoutUpdate = true; // Mark for update after event loop
+
+                // Set the view immediately based on the *new* TARGET size
+                sf::FloatRect visibleArea({ 0.f, 0.f }, { static_cast<float>(m_lastKnownSize.x), static_cast<float>(m_lastKnownSize.y) });
+                m_window.setView(sf::View(visibleArea));
+                std::cout << "DEBUG: View updated to " << m_lastKnownSize.x << "x" << m_lastKnownSize.y << std::endl;
+
+            }
+            // --- End internal state update check ---
+
+        } // --- End Resized Handling ---
+
+
+        // --- Screen-Specific Event Handling ---
+        if (m_window.isOpen()) {
+            if (m_currentScreen == GameScreen::MainMenu) { m_handleMainMenuEvents(event); }
+            else if (m_currentScreen == GameScreen::CasualMenu) { m_handleCasualMenuEvents(event); }
+            else if (m_currentScreen == GameScreen::Playing) { m_handlePlayingEvents(event); }
+            else if (m_currentScreen == GameScreen::GameOver) { m_handleGameOverEvents(event); }
+        }
+
+    } // --- End while pollEvent ---
+
+    // --- Post-Event Updates ---
+
+    // Update layout IF needed, using the last known valid size
+    if (m_needsLayoutUpdate) {
+        std::cout << "DEBUG: Updating layout based on final size " << m_lastKnownSize.x << "x" << m_lastKnownSize.y << std::endl;
+        // View should have already been set correctly when m_needsLayoutUpdate was set true
+        m_updateLayout(m_lastKnownSize);
+        m_needsLayoutUpdate = false; // Reset the flag
     }
 }
 
@@ -347,10 +455,18 @@ void Game::m_update(sf::Time dt) {
     float deltaSeconds = dt.asSeconds();
     m_decor.update(deltaSeconds, m_window.getSize(), m_currentTheme);
 
+    // --- Update Score Flourish Timer ---
+    if (m_scoreFlourishTimer > 0.f) {
+        m_scoreFlourishTimer -= deltaSeconds;
+        if (m_scoreFlourishTimer < 0.f) {
+            m_scoreFlourishTimer = 0.f;
+        }
+    }
+    // ---------------------------------
+
     if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)
     {
-        m_updateAnims(deltaSeconds); // Call member function
-        m_updateScoreAnims(deltaSeconds); // Call member function
+        m_updateAnims(deltaSeconds);
     }
 }
 
@@ -381,58 +497,264 @@ void Game::m_render() {
 
 // --- Other Private Methods (Placeholders) ---
 void Game::m_rebuild() {
-    // Select Random Theme
-    if (!m_themes.empty()) {
-        m_currentTheme = m_themes[randRange<std::size_t>(0, m_themes.size() - 1)];
-    }
-    else {
-        m_currentTheme = {}; // Default constructor (fallback)
-        std::cerr << "Warning: No themes loaded, using default colors.\n";
-    }
+    // Select Random Theme (Keep this)
+    if (!m_themes.empty()) { /* ... */ }
+    else { /* ... */ }
 
-    // Setup Words
+    // --- Base Word Selection (Revised Logic) ---
+    std::string selectedBaseWord = "";
+    bool baseWordFound = false;
+    std::vector<WordInfo> preCalculatedFilteredSolutions; // To store results if ideal word found
+
     if (m_roots.empty()) {
-        m_base = "error"; // Handle error case
-        m_solutions.clear();
-        m_sorted.clear();
         std::cerr << "Error: No root words available for puzzle generation.\n";
+        m_base = "ERROR";
     }
     else {
-        const WordInfo& rootWordInfo = m_roots[randRange<std::size_t>(0, m_roots.size() - 1)];
-        m_base = rootWordInfo.text;
-        std::shuffle(m_base.begin(), m_base.end(), Rng()); // Use global Rng() from Utils.h
-        m_solutions = Words::subWords(m_base, m_fullWordList);
-        m_sorted = Words::sortForGrid(m_solutions);
+        // Get the specific base word criteria for this puzzle
+        PuzzleCriteria baseCriteria = m_getCriteriaForCurrentPuzzle();
+        // Get the sub-word filtering criteria for this difficulty
+        std::vector<int> allowedSubRarities;
+        int minSubLength = MIN_WORD_LENGTH;
+        int maxSolutions = 0; // We still need maxSolutions for final truncation
+        switch (m_selectedDifficulty) {
+        case DifficultyLevel::Easy:   allowedSubRarities = { 1, 2 }; maxSolutions = EASY_MAX_SOLUTIONS; minSubLength = MIN_WORD_LENGTH; break;
+        case DifficultyLevel::Medium: allowedSubRarities = { 1, 2, 3 }; maxSolutions = MEDIUM_MAX_SOLUTIONS; minSubLength = MIN_WORD_LENGTH; break;
+        case DifficultyLevel::Hard:   allowedSubRarities = { 2, 3, 4 }; maxSolutions = HARD_MAX_SOLUTIONS; minSubLength = HARD_MIN_WORD_LENGTH; break;
+        default:                      allowedSubRarities = { 1, 2, 3, 4 }; maxSolutions = 999; minSubLength = MIN_WORD_LENGTH; break;
+        }
+
+        std::cout << "Rebuilding Puzzle " << (m_currentPuzzleIndex + 1) << "/" << m_puzzlesPerSession
+            << " (Difficulty: " << static_cast<int>(m_selectedDifficulty) << ")" << std::endl;
+
+        // Shuffle roots for variety
+        std::shuffle(m_roots.begin(), m_roots.end(), Rng());
+
+        int bestFallbackIndex = -1; // Index of the first word meeting base criteria
+
+        // --- Attempt 1: Find IDEAL match (meets base criteria AND sub-word count) ---
+        std::cout << "DEBUG: Searching for IDEAL base word..." << std::endl;
+        for (std::size_t i = 0; i < m_roots.size(); ++i) {
+            const auto& rootInfo = m_roots[i];
+
+            // Check Base Length
+            bool lengthMatch = false;
+            for (int len : baseCriteria.allowedLengths) { if (rootInfo.text.length() == len) { lengthMatch = true; break; } }
+            if (!lengthMatch) continue;
+
+            // Check Base Rarity
+            bool rarityMatch = false;
+            for (int rarity : baseCriteria.allowedRarities) { if (rootInfo.rarity == rarity) { rarityMatch = true; break; } }
+            if (!rarityMatch) continue;
+
+            // --- Base Criteria Met ---
+            std::cout << "  -> Candidate '" << rootInfo.text << "' meets base criteria." << std::endl;
+
+            // Store as potential fallback if none better found yet
+            if (bestFallbackIndex == -1) {
+                bestFallbackIndex = static_cast<int>(i);
+                std::cout << "     (Storing as initial fallback candidate)" << std::endl;
+            }
+
+            // --- Check Sub-word Count (only if length is >= 5, or always for stricter control) ---
+            if (rootInfo.text.length() >= 5) { // Check sub-words for longer base words
+                std::cout << "     Checking sub-word count..." << std::endl;
+                std::vector<WordInfo> temp_sub_solutions = Words::subWords(rootInfo.text, m_fullWordList);
+                std::vector<WordInfo> filtered_sub_solutions;
+
+                // Filter these sub-words based on difficulty criteria
+                for (const auto& subInfo : temp_sub_solutions) {
+                    if (subInfo.text.length() < minSubLength) continue;
+                    bool subRarityMatch = false;
+                    for (int subRarity : allowedSubRarities) { if (subInfo.rarity == subRarity) { subRarityMatch = true; break; } }
+                    if (subRarityMatch) {
+                        filtered_sub_solutions.push_back(subInfo);
+                    }
+                }
+                std::cout << "     Generated " << filtered_sub_solutions.size() << " valid sub-words." << std::endl;
+
+                // Check if it meets the desired minimum count
+                if (filtered_sub_solutions.size() >= MIN_DESIRED_GRID_WORDS) {
+                    std::cout << "     >>> IDEAL Candidate Found! Selecting '" << rootInfo.text << "'" << std::endl;
+                    selectedBaseWord = rootInfo.text;
+                    baseWordFound = true;
+                    // Store the already filtered list (we'll still truncate it later)
+                    preCalculatedFilteredSolutions = std::move(filtered_sub_solutions);
+                    break; // Found ideal word, exit search loop
+                }
+                else {
+                    std::cout << "     (Not enough sub-words, continuing search for ideal)" << std::endl;
+                }
+            }
+            else {
+                std::cout << "     (Base word length < 5, not checking sub-word count for ideal criteria)" << std::endl;
+            }
+        } // --- End Ideal Search Loop ---
+
+
+        // --- Attempt 2: Use Best Fallback (if no ideal found) ---
+        if (!baseWordFound && bestFallbackIndex != -1) {
+            std::cout << "DEBUG: No IDEAL word found. Using best fallback candidate: '" << m_roots[bestFallbackIndex].text << "'" << std::endl;
+            selectedBaseWord = m_roots[bestFallbackIndex].text;
+            baseWordFound = true;
+            // Ensure preCalculated list is empty so sub-words are recalculated later
+            preCalculatedFilteredSolutions.clear();
+        }
+
+
+        // --- Attempt 3: Broad Fallback (if still no word found) ---
+        if (!baseWordFound) {
+            std::cerr << "Warning: No base word found matching strict or fallback criteria. Applying BROAD fallback." << std::endl;
+            PuzzleCriteria broadFallbackCriteria;
+            broadFallbackCriteria.allowedLengths = { 4, 5, 6, 7 }; // Any reasonable length
+            broadFallbackCriteria.allowedRarities = { 1, 2, 3, 4 }; // Any rarity
+            bestFallbackIndex = -1; // Reset for broad search
+
+            for (std::size_t i = 0; i < m_roots.size(); ++i) { // Iterate again
+                const auto& rootInfo = m_roots[i];
+                bool lengthMatch = false;
+                for (int len : broadFallbackCriteria.allowedLengths) { if (rootInfo.text.length() == len) { lengthMatch = true; break; } }
+                if (!lengthMatch) continue;
+                // Rarity always matches {1,2,3,4}
+                selectedBaseWord = rootInfo.text;
+                baseWordFound = true;
+                std::cout << "Found base word (Broad Fallback): " << selectedBaseWord << std::endl;
+                preCalculatedFilteredSolutions.clear(); // Ensure recalculation
+                break;
+            }
+        }
+
+
+        // Final Safety Net
+        if (!baseWordFound) {
+            std::cerr << "CRITICAL FALLBACK: Using first available root word." << std::endl;
+            if (!m_roots.empty()) {
+                selectedBaseWord = m_roots[0].text;
+                baseWordFound = true;
+                preCalculatedFilteredSolutions.clear(); // Ensure recalculation
+            }
+            else {
+                selectedBaseWord = "ERROR";
+            }
+        }
+        m_base = selectedBaseWord; // Set the final selected base word
+    }
+    // --- End Base Word Selection ---
+
+
+    // Scramble the selected base word letters
+    std::shuffle(m_base.begin(), m_base.end(), Rng());
+
+
+    // --- Sub-word Processing (using selected m_base) ---
+    std::vector<WordInfo> final_solutions; // This will become m_solutions
+
+    if (m_base != "ERROR") {
+        // Calculate *all* potential solutions for bonus checking later
+        m_allPotentialSolutions = Words::subWords(m_base, m_fullWordList);
+
+        // Did we already calculate filtered solutions during ideal word search?
+        if (!preCalculatedFilteredSolutions.empty()) {
+            std::cout << "DEBUG: Using pre-calculated filtered solutions." << std::endl;
+            final_solutions = std::move(preCalculatedFilteredSolutions); // Use the stored list
+        }
+        else {
+            std::cout << "DEBUG: Filtering all potential solutions now." << std::endl;
+            // Filter m_allPotentialSolutions based on sub-word criteria
+            std::vector<int> allowedSubRarities; // Recalculate criteria needed
+            int minSubLength = MIN_WORD_LENGTH;
+            switch (m_selectedDifficulty) {
+            case DifficultyLevel::Easy:   allowedSubRarities = { 1, 2 }; minSubLength = MIN_WORD_LENGTH; break;
+            case DifficultyLevel::Medium: allowedSubRarities = { 1, 2, 3 }; minSubLength = MIN_WORD_LENGTH; break;
+            case DifficultyLevel::Hard:   allowedSubRarities = { 2, 3, 4 }; minSubLength = HARD_MIN_WORD_LENGTH; break;
+            default:                      allowedSubRarities = { 1, 2, 3, 4 }; minSubLength = MIN_WORD_LENGTH; break;
+            }
+
+            for (const auto& subInfo : m_allPotentialSolutions) {
+                if (subInfo.text.length() < minSubLength) continue;
+                bool subRarityMatch = false;
+                for (int subRarity : allowedSubRarities) { if (subInfo.rarity == subRarity) { subRarityMatch = true; break; } }
+                if (subRarityMatch) {
+                    final_solutions.push_back(subInfo);
+                }
+            }
+        }
+
+        // Truncate the filtered list if necessary (get maxSolutions again)
+        int maxSolutions = 0;
+        switch (m_selectedDifficulty) {
+        case DifficultyLevel::Easy:   maxSolutions = EASY_MAX_SOLUTIONS; break;
+        case DifficultyLevel::Medium: maxSolutions = MEDIUM_MAX_SOLUTIONS; break;
+        case DifficultyLevel::Hard:   maxSolutions = HARD_MAX_SOLUTIONS; break;
+        default:                      maxSolutions = 999; break;
+        }
+
+        if (final_solutions.size() > maxSolutions) {
+            std::cout << "DEBUG: Truncating final solutions from " << final_solutions.size() << " to " << maxSolutions << std::endl;
+            // Sort before truncating
+            std::sort(final_solutions.begin(), final_solutions.end(),
+                [](const WordInfo& a, const WordInfo& b) {
+                    if (a.rarity != b.rarity) return a.rarity < b.rarity;
+                    return a.text.length() < b.text.length();
+                });
+            final_solutions.resize(maxSolutions);
+        }
+
+    }
+    else {
+        // Handle the case where m_base was "ERROR"
+        m_allPotentialSolutions.clear();
+        final_solutions.clear();
     }
 
-    // Setup Grid
+    m_solutions = final_solutions;
+    m_sorted = Words::sortForGrid(m_solutions); // Sort this final list for the grid
+    // --- END: Sub-word Filtering and Truncation ---
+
+    // Debug print after processing sub-words
+    std::cout << "DEBUG: m_rebuild - m_base: " << m_base << ", FINAL m_solutions count: " << m_solutions.size() << ", m_sorted count: " << m_sorted.size() << std::endl;
+    if (!m_sorted.empty()) {
+        std::cout << "DEBUG: m_rebuild - First sorted word after filter/truncate: '" << m_sorted[0].text << "'" << std::endl;
+    }
+
+    // Setup Grid (uses the final m_sorted)
     m_grid.assign(m_sorted.size(), {});
     for (std::size_t i = 0; i < m_sorted.size(); ++i) {
         if (!m_sorted[i].text.empty()) {
+            // Assuming m_grid is vector<string> or vector<vector<char>>
+            // Resize the inner string/vector and fill with '_'
             m_grid[i].assign(m_sorted[i].text.length(), '_');
         }
         else {
+            // Handle potential empty words in the sorted list (optional but safe)
             m_grid[i].clear();
         }
     }
 
-    // Reset Game State Variables
+
+    // Reset Game State Variables *for the puzzle* (Keep this)
     m_found.clear();
+    m_foundBonusWords.clear();
     m_anims.clear();
-    m_scoreAnims.clear(); // Clear score particles too
-    m_clearDragState(); // Use helper function
-    m_gameState = GState::Playing; // Set internal game state
-    // m_currentScreen should be set by the menu logic before calling rebuild
+    m_scoreAnims.clear();
+    m_clearDragState();
+    m_gameState = GState::Playing;
 
-    // Reset Score & Hints (Score reset removed for persistence)
-     // currentScore = 0; // Keep score persistent
-    m_hintsAvailable = INITIAL_HINTS;
-    m_wordsSolvedSinceHint = 0;
-    if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore)); // Update score display
+    // DO NOT reset score: m_currentScore persists across puzzles in a session
+    // DO NOT reset hints: m_hintsAvailable persists
+
+    // If it's the *first* puzzle of a session, reset hint counters
+    if (m_currentPuzzleIndex == 0 && m_isInSession) {
+        m_hintsAvailable = INITIAL_HINTS; // Reset hints at start of session
+        m_wordsSolvedSinceHint = 0;
+    }
+
+    // Update score display (score might be non-zero from previous puzzle)
+    if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
 
 
-    // IMPORTANT: Calculate layout based on the new data
-    m_updateLayout();
+    // IMPORTANT: Calculate layout based on the new data (Keep this)
+    m_updateLayout(m_window.getSize());
 
     // Start Background Music
     m_backgroundMusic.stop();
@@ -440,26 +762,49 @@ void Game::m_rebuild() {
         std::string musicPath = m_musicFiles[randRange<std::size_t>(0, m_musicFiles.size() - 1)];
         if (m_backgroundMusic.openFromFile(musicPath)) {
             m_backgroundMusic.setLooping(true);
-            m_backgroundMusic.play();
+            //m_backgroundMusic.play();
         }
         else {
             std::cerr << "Error loading music file: " << musicPath << std::endl;
         }
     }
-}
+} // End m_rebuild
 // In Game.cpp
 
-void Game::m_updateLayout() {
+void Game::m_updateLayout(sf::Vector2u windowSize) {
     // Get current window size from the member variable
-    sf::Vector2u winSize = m_window.getSize();
+    sf::Vector2u winSize = windowSize;
     sf::Vector2f windowCenter = sf::Vector2f(winSize) / 2.f;
+
+    // --- Progress Meter Positioning --- (Add this section near the top)
+    float meterX = windowCenter.x; // Center horizontally
+    float meterY = PROGRESS_METER_TOP_MARGIN + PROGRESS_METER_HEIGHT / 2.f; // Center vertically based on top margin
+
+    // Background
+    m_progressMeterBg.setSize({ PROGRESS_METER_WIDTH, PROGRESS_METER_HEIGHT });
+    m_progressMeterBg.setOrigin({ PROGRESS_METER_WIDTH / 2.f, PROGRESS_METER_HEIGHT / 2.f });
+    m_progressMeterBg.setPosition({ meterX, meterY });
+    // Outline/Fill colors will be set in render based on theme
+
+    // Fill (Position set relative to Bg in render, size calculated in render)
+    m_progressMeterFill.setOrigin({ 0.f, PROGRESS_METER_HEIGHT / 2.f }); // Origin at left-center
+    m_progressMeterFill.setPosition({ meterX - PROGRESS_METER_WIDTH / 2.f, meterY }); // Initial position at left edge of Bg
+
+    // Text (Optional - Position set relative to Bg in render)
+    if (m_progressMeterText) {
+        // Set origin for centering later in render
+        // Origin set dynamically in render based on text bounds
+    }
+    // --- End Progress Meter Positioning ---
+
 
     // --- Score Bar ---
     float scoreBarWidth = 250.f;
+    float scoreBarY = PROGRESS_METER_TOP_MARGIN + PROGRESS_METER_HEIGHT + SCORE_BAR_TOP_MARGIN + SCORE_BAR_HEIGHT / 2.f;
     m_scoreBar.setSize({ scoreBarWidth, SCORE_BAR_HEIGHT });
     m_scoreBar.setRadius(10.f);
     m_scoreBar.setOrigin({ scoreBarWidth / 2.f, SCORE_BAR_HEIGHT / 2.f });
-    m_scoreBar.setPosition({ windowCenter.x, SCORE_BAR_TOP_MARGIN + SCORE_BAR_HEIGHT / 2.f });
+    m_scoreBar.setPosition({ windowCenter.x, scoreBarY });
 
     // --- Score Text Positioning ---
     sf::Vector2f barCenter = m_scoreBar.getPosition();
@@ -476,7 +821,7 @@ void Game::m_updateLayout() {
 
     // --- Adjust Grid Start Position ---
     // NOTE: m_gridStartY is now a member variable
-    m_gridStartY = SCORE_BAR_TOP_MARGIN + SCORE_BAR_HEIGHT + GRID_TOP_MARGIN;
+    m_gridStartY = scoreBarY + SCORE_BAR_HEIGHT / 2.f + GRID_TOP_MARGIN;
 
     // --- Wheel & Game Elements ---
     m_wheelX = windowCenter.x;
@@ -497,7 +842,7 @@ void Game::m_updateLayout() {
         m_wordCol.clear(); m_wordRow.clear(); m_colMaxLen.clear(); m_colXOffset.clear();
     }
     else {
-        float gridMaxY = m_wheelY - WHEEL_R - LETTER_R - GRID_WHEEL_GAP;
+        float gridMaxY = m_wheelY - WHEEL_R - LETTER_R - GRID_WHEEL_GAP; // Uses m_wheelY
         float availableGridHeight = std::max(0.f, gridMaxY - m_gridStartY);
         float tileAndPadHeight = TILE_SIZE + TILE_PAD;
         if (tileAndPadHeight <= 0) tileAndPadHeight = 1.f;
@@ -554,6 +899,16 @@ void Game::m_updateLayout() {
         sf::FloatRect contTxtBounds = m_contTxt->getLocalBounds();
         m_contTxt->setOrigin({ contTxtBounds.position.x + contTxtBounds.size.x / 2.f, contTxtBounds.position.y + contTxtBounds.size.y / 2.f });
         m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, contBtnBounds.size.y / 2.f });
+    }
+
+    // --- Guess Display Positioning (Above Wheel) ---
+    if (m_guessDisplay_Text) {
+        // We'll set the exact position and background size in render based on text content
+        // For now, just note the general area
+        // float guessY = m_wheelY - WHEEL_R - LETTER_R - GUESS_DISPLAY_GAP; // Define GUESS_DISPLAY_GAP in Constants.h
+        // m_guessDisplay_Text->setPosition({ m_wheelX, guessY }); // Center X, Y above wheel
+        // m_guessDisplay_Bg.setPosition({ m_wheelX, guessY }); // Center X, Y above wheel
+        // Origins will be set in render
     }
 
 
@@ -724,29 +1079,91 @@ void Game::m_handleCasualMenuEvents(const sf::Event& event) {
         if (mb->button != sf::Mouse::Button::Left) return;
         sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
 
-        // TODO: Store selected difficulty later
+        DifficultyLevel selected = DifficultyLevel::None; // Temp variable
+        int puzzles = 0;
 
         if (m_easyButtonShape.getGlobalBounds().contains(mp)) {
-            m_clickSound->play();
-            m_rebuild(); // Rebuild game with selected settings (implicitly easy for now)
-            m_currentScreen = GameScreen::Playing;
+            selected = DifficultyLevel::Easy;
+            puzzles = 10; // Or use a constant EASY_PUZZLE_COUNT
         }
         else if (m_mediumButtonShape.getGlobalBounds().contains(mp)) {
-            m_clickSound->play();
-            m_rebuild(); // Rebuild game with selected settings (implicitly medium for now)
-            m_currentScreen = GameScreen::Playing;
+            selected = DifficultyLevel::Medium;
+            puzzles = 15; // MEDIUM_PUZZLE_COUNT
         }
         else if (m_hardButtonShape.getGlobalBounds().contains(mp)) {
-            m_clickSound->play();
-            m_rebuild(); // Rebuild game with selected settings (implicitly hard for now)
-            m_currentScreen = GameScreen::Playing;
+            selected = DifficultyLevel::Hard;
+            puzzles = 20; // HARD_PUZZLE_COUNT
         }
         else if (m_returnButtonShape.getGlobalBounds().contains(mp)) {
-            m_clickSound->play();
+            if (m_clickSound) m_clickSound->play();
             m_currentScreen = GameScreen::MainMenu; // Go back
+            return; // Exit early
+        }
+
+        // If a difficulty button was pressed:
+        if (selected != DifficultyLevel::None) {
+            if (m_clickSound) m_clickSound->play();
+
+            // --- Set Session State ---
+            m_selectedDifficulty = selected;
+            m_puzzlesPerSession = puzzles;
+            m_currentPuzzleIndex = 0; // Start at the first puzzle (index 0)
+            m_isInSession = true;
+            // ------------------------
+
+            m_rebuild(); // Rebuild game for the FIRST puzzle of the session
+            m_currentScreen = GameScreen::Playing; // Switch to playing screen
         }
     }
-    // TODO: Handle hover for pop-ups in MouseMoved later
+}
+
+// In Game.cpp (add this new function definition)
+
+Game::PuzzleCriteria Game::m_getCriteriaForCurrentPuzzle() const {
+    PuzzleCriteria criteria;
+    bool isLastPuzzle = (m_currentPuzzleIndex == m_puzzlesPerSession - 1);
+
+    switch (m_selectedDifficulty) {
+    case DifficultyLevel::Easy:
+        criteria.allowedRarities = { 1 }; // Primarily Rarity 1
+        if (isLastPuzzle) {
+            criteria.allowedLengths = { 6 }; // Last puzzle is 6 letters
+        }
+        else {
+            criteria.allowedLengths = { 4, 5 }; // Regular puzzles are 4 or 5
+        }
+        break;
+
+    case DifficultyLevel::Medium:
+        criteria.allowedRarities = { 1, 2, 3 }; // Rarity 1, 2, or 3
+        if (isLastPuzzle) {
+            criteria.allowedLengths = { 7 }; // Last puzzle is 7 letters
+            // Optional: Could tighten rarity for last word, e.g. {2, 3}
+        }
+        else {
+            criteria.allowedLengths = { 4, 5, 6 }; // Regular puzzles
+        }
+        break;
+
+    case DifficultyLevel::Hard:
+        if (isLastPuzzle) {
+            criteria.allowedLengths = { 7 };   // Last puzzle is 7 letters
+            criteria.allowedRarities = { 4 };  // Last puzzle is Rarity 4
+        }
+        else {
+            criteria.allowedLengths = { 5, 6, 7 }; // Regular puzzles
+            criteria.allowedRarities = { 3, 4 };   // Rarity 3 or 4
+        }
+        break;
+
+    case DifficultyLevel::None: // Fallback or other modes
+    default:
+        // Default criteria (e.g., allow a wide range if not in a session)
+        criteria.allowedLengths = { 4, 5, 6, 7 }; // Or use WORD_LENGTH constant range
+        criteria.allowedRarities = { 1, 2, 3, 4 }; // All rarities
+        break;
+    }
+    return criteria;
 }
 
 void Game::m_renderMainMenu(const sf::Vector2f& mousePos) {
@@ -813,17 +1230,32 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
         return;
     }
 
-    // --- Handle Window Resize ---
-    // (Redundant if handled globally in m_processEvents, but safe to keep)
+    // Window Resized
     if (const auto* rs = event.getIf<sf::Event::Resized>()) {
-        sf::FloatRect visibleArea(
-            { 0.f, 0.f }, // Top-left position as sf::Vector2f
-            { static_cast<float>(rs->size.x), static_cast<float>(rs->size.y) } // Size as sf::Vector2f
-        );
+        unsigned int newWidth = rs->size.x;
+        unsigned int newHeight = rs->size.y;
+        bool changed = false;
+
+        // Check against minimums
+        if (newWidth < MIN_WINDOW_WIDTH) { /* clamp width */ changed = true; }
+        if (newHeight < MIN_WINDOW_HEIGHT) { /* clamp height */ changed = true; }
+
+        if (changed) {
+            std::cout << "DEBUG: Window too small, resizing to " << newWidth << "x" << newHeight << std::endl;
+            m_window.setSize({ newWidth, newHeight });
+        }
+
+        // --- Update View and Layout using CLAMPED size ---
+        sf::Vector2u clampedSize = { newWidth, newHeight }; // Store the clamped size
+
+        sf::FloatRect visibleArea({ 0.f, 0.f }, { static_cast<float>(clampedSize.x), static_cast<float>(clampedSize.y) });
         m_window.setView(sf::View(visibleArea));
-        m_updateLayout(); // Recalculate positions based on new size
-        return;
-    }
+
+        // *** PASS the clamped size to m_updateLayout ***
+        m_updateLayout(clampedSize);
+        // ***********************************************
+
+    } // --- End Resized Handling ---
 
 
     // Only process game input if not solved (already checked by screen state, but double-check internal state)
@@ -840,7 +1272,7 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
             if (m_scrambleSpr && m_scrambleSpr->getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
                 std::shuffle(m_base.begin(), m_base.end(), Rng());
-                m_updateLayout(); // Update wheel letter positions graphically
+                m_updateLayout(m_window.getSize()); // Update wheel letter positions graphically
                 m_clearDragState(); // Stop any current drag
                 return; // Processed button click
             }
@@ -979,108 +1411,206 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
     } // End Mouse Moved Check
 
 
-    // --- Mouse Button Released ---
+// --- Mouse Button Released ---
     else if (const auto* mb = event.getIf<sf::Event::MouseButtonReleased>()) {
         if (m_dragging && mb->button == sf::Mouse::Button::Left) {
-            bool foundMatch = false;
-            int foundWordIdx = -1;
+            bool gridMatchFound = false;    // Did we find a NEW word for the grid this turn?
+            bool bonusMatchFound = false;   // Did we find a NEW bonus word this turn?
+            bool textMatchedExisting = false; // Did the text match a word already found (grid or bonus)?
+            int foundWordIdx = -1;        // Index *in m_sorted* if it's a new grid word
 
-            // m_currentGuess is already built in UPPERCASE by the drag logic
+            std::cout << "DEBUG: Mouse Released. Guess: '" << m_currentGuess << "'" << std::endl; // Start Debug
 
+            // --- Check 1: Does the guess match text of a GRID word? ---
             for (std::size_t w = 0; w < m_sorted.size(); ++w) {
-
-                // Get the solution word in its original case (likely lowercase)
                 const std::string& solutionOriginalCase = m_sorted[w].text;
-
-                // Check if this original case word is already in the found set
-                bool alreadyFound = (m_found.find(solutionOriginalCase) != m_found.end());
-
-                // --- Start of Changes ---
-
-                // Create an uppercase version of the solution word for comparison
                 std::string solutionUpper = solutionOriginalCase;
                 std::transform(solutionUpper.begin(), solutionUpper.end(), solutionUpper.begin(),
                     [](unsigned char c) { return std::toupper(c); });
 
-                // Compare the uppercase solution with the uppercase guess
-                bool textMatch = (solutionUpper == m_currentGuess);
+                if (solutionUpper == m_currentGuess) { // Text matches a grid word!
+                    bool alreadyFoundOnGrid = (m_found.find(solutionOriginalCase) != m_found.end());
 
-                // --- End of Changes ---
+                    if (!alreadyFoundOnGrid) {
+                        // --- Handle NEW Grid Word Found ---
+                        std::cout << "DEBUG: Found NEW match on GRID: '" << solutionOriginalCase << "'" << std::endl;
+                        gridMatchFound = true; // Mark that we found a new grid word this turn
+                        foundWordIdx = static_cast<int>(w);
+                        m_found.insert(solutionOriginalCase);         // Add to grid set
 
+                        // --- Handle scoring, hints, animations for GRID WORD --- Start Full Block ---
+                        int baseScore = static_cast<int>(m_currentGuess.length()) * 10;
+                        int rarityBonus = (m_sorted[w].rarity > 1) ? (m_sorted[w].rarity * 25) : 0;
+                        m_currentScore += baseScore + rarityBonus;
+                        if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
 
-                // Check if word not already found AND the uppercase versions match
-                if (!alreadyFound && textMatch) { // Use the new comparison result
-                    foundMatch = true;
-                    foundWordIdx = static_cast<int>(w);
-
-                    // *** IMPORTANT: Add the ORIGINAL case word to the found set ***
-                    m_found.insert(solutionOriginalCase);
-
-                    // Add score based on length and rarity (Example scoring)
-                    // Use m_currentGuess.length() as it reflects the length of the matched word
-                    int baseScore = static_cast<int>(m_currentGuess.length()) * 10;
-                    int rarityBonus = (m_sorted[w].rarity > 1) ? (m_sorted[w].rarity * 25) : 0;
-                    m_currentScore += baseScore + rarityBonus;
-
-                    // Update score display immediately (optional, render also does it)
-                    if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
-
-                    // Check for earning a hint
-                    m_wordsSolvedSinceHint++;
-                    if (m_wordsSolvedSinceHint >= WORDS_PER_HINT) {
-                        m_hintsAvailable++;
-                        m_wordsSolvedSinceHint = 0; // Reset counter
-                        if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable)); // Update display
-                        // TODO: Maybe add a small visual/audio cue for earning a hint?
-                    }
-
-
-                    // --- Create letter animations ---
-                    // Use m_currentGuess for the characters as they are uppercase and match the user input
-                    for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
-                        if (c < m_path.size()) { // Ensure path index is valid
-                            int pathNodeIdx = m_path[c];
-                            if (pathNodeIdx >= 0 && pathNodeIdx < m_wheelCentres.size()) {
-                                sf::Vector2f startPos = m_wheelCentres[pathNodeIdx];
-                                sf::Vector2f endPos = m_tilePos(foundWordIdx, static_cast<int>(c));
-                                endPos.x += TILE_SIZE / 2.f; // Center of tile
-                                endPos.y += TILE_SIZE / 2.f;
-
-                                // Animate the uppercase letter from the guess
-                                m_anims.push_back({
-                                    m_currentGuess[c],
-                                    startPos,
-                                    endPos,
-                                    0.f,
-                                    foundWordIdx,
-                                    static_cast<int>(c)
-                                    });
-                            }
+                        // Check for earning a hint
+                        m_wordsSolvedSinceHint++;
+                        if (m_wordsSolvedSinceHint >= WORDS_PER_HINT) {
+                            m_hintsAvailable++;
+                            m_wordsSolvedSinceHint = 0; // Reset counter
+                            if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
+                            // TODO: Maybe add a small visual/audio cue for earning a hint?
                         }
-                    }
-                    // --- End letter animations ---
-                    std::cout << "Word: " << m_currentGuess << " | Rarity: " << m_sorted[foundWordIdx].rarity << " | Len: " << m_currentGuess.length() << " | Rarity Bonus: " << rarityBonus << " | BasePts: " << baseScore << " | Total: " << m_currentScore << std::endl;
 
-                    // --- Check for Puzzle Solved ---
-                    // Compare count of found words (original case) with total solutions
-                    if (m_found.size() == m_solutions.size()) {
-                        if (m_winSound) m_winSound->play();
-                        m_gameState = GState::Solved; // Internal state
-                        m_currentScreen = GameScreen::GameOver; // Change screen state
+                        // --- Create letter animations TO GRID ---
+                        for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
+                            if (c < m_path.size()) { // Ensure path index is valid
+                                int pathNodeIdx = m_path[c];
+                                if (pathNodeIdx >= 0 && pathNodeIdx < m_wheelCentres.size()) {
+                                    sf::Vector2f startPos = m_wheelCentres[pathNodeIdx];
+                                    sf::Vector2f endPos = m_tilePos(foundWordIdx, static_cast<int>(c));
+                                    endPos.x += TILE_SIZE / 2.f; // Center of tile
+                                    endPos.y += TILE_SIZE / 2.f;
+                                    // Use aggregate initialization for LetterAnim
+                                    m_anims.push_back({
+                                        m_currentGuess[c],    // ch
+                                        startPos,             // start
+                                        endPos,               // end
+                                        0.f - (c * 0.03f),    // t (Slight delay based on index)
+                                        foundWordIdx,         // wordIdx
+                                        static_cast<int>(c),  // charIdx
+                                        AnimTarget::Grid      // target
+                                        });
+                                }
+                            }
+                        } // --- End letter animations ---
+
+                        std::cout << "GRID Word: " << m_currentGuess << " | Rarity: " << m_sorted[foundWordIdx].rarity << " | Len: " << m_currentGuess.length() << " | Rarity Bonus: " << rarityBonus << " | BasePts: " << baseScore << " | Total: " << m_currentScore << std::endl;
+
+                        // --- Check for Puzzle Solved ---
+                        // Compare count of found words (original case) with total solutions ON GRID
+                        if (m_found.size() == m_solutions.size()) {
+                            std::cout << "DEBUG: All grid words found! Puzzle solved." << std::endl;
+                            if (m_winSound) m_winSound->play();
+                            m_gameState = GState::Solved; // Internal state
+                            m_currentScreen = GameScreen::GameOver; // Change screen state
+                        }
+                        // --- Handle scoring, hints, animations for GRID WORD --- End Full Block ---
+
                     }
-                    break; // Found a match, stop checking other words
+                    else {
+                        // Text matched a grid word, but it was already found
+                        std::cout << "DEBUG: Matched GRID word '" << solutionOriginalCase << "', but already found." << std::endl;
+                        textMatchedExisting = true; // Mark that the text is valid but word already used
+                    }
+                    // Whether new or already found, if text matched a grid word, no need to check further
+                    goto end_word_checks; // Use goto to jump past bonus check cleanly
                 }
-            } // End for loop iterating through potential solution words
+            } // --- End Grid Check Loop ---
 
-            // If no match was found, maybe play a "buzz" or incorrect sound?
-            if (!foundMatch) {
-                // std::cout << "Word '" << m_currentGuess << "' not found or already solved.\n"; // Optional Debug
-                // Play incorrect sound if you have one
+
+// --- Check 2: Does the guess match text of a BONUS word? ---
+            if (!gridMatchFound && !textMatchedExisting) { // Only check if not a grid word (new or existing)
+                std::cout << "DEBUG: Checking for BONUS word..." << std::endl;
+                for (const auto& potentialWordInfo : m_allPotentialSolutions) {
+                    const std::string& bonusWordOriginalCase = potentialWordInfo.text;
+                    std::string bonusWordUpper = bonusWordOriginalCase;
+                    std::transform(bonusWordUpper.begin(), bonusWordUpper.end(), bonusWordUpper.begin(),
+                        [](unsigned char c) { return std::toupper(c); });
+
+                    if (bonusWordUpper == m_currentGuess) { // Text matches a potential bonus word!
+
+                        // *** NEW CHECK: Is this word already found ON THE GRID? ***
+                        bool alreadyFoundOnGrid = (m_found.find(bonusWordOriginalCase) != m_found.end());
+                        if (alreadyFoundOnGrid) {
+                            std::cout << "DEBUG: Matched bonus text '" << bonusWordOriginalCase << "', but it's already on the grid." << std::endl;
+                            textMatchedExisting = true; // Mark that the text is valid but word used on grid
+                            goto end_word_checks; // Don't treat as bonus or invalid
+                        }
+                        // **********************************************************
+
+
+                        // Is this specific word already found *as a bonus word*?
+                        bool alreadyFoundBonus = (m_foundBonusWords.find(bonusWordOriginalCase) != m_foundBonusWords.end());
+
+                        if (!alreadyFoundBonus) { // Note: alreadyFoundOnGrid check above ensures it's not a grid word either
+                            // --- Handle NEW Bonus Word Found --- START FULL BLOCK ---
+                            std::cout << "DEBUG: Found NEW match for BONUS: '" << bonusWordOriginalCase << "'" << std::endl;
+                            bonusMatchFound = true; // Mark that we found a new bonus word this turn
+                            m_foundBonusWords.insert(bonusWordOriginalCase); // Add to bonus found set ONLY
+
+                            // --- Handle scoring ---
+                            int bonusScore = 25; // Or base on length/rarity if desired
+                            m_currentScore += bonusScore;
+                            if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
+                            std::cout << "BONUS Word: " << m_currentGuess << " | Points: " << bonusScore << " | Total: " << m_currentScore << std::endl;
+                            // Note: Bonus words usually don't affect hint earning
+
+                            // --- Trigger Bonus Letter Animations TO SCORE ---
+                            std::cout << "DEBUG: Preparing bonus animations..." << std::endl;
+                            if (m_scoreValueText) {
+                                sf::FloatRect scoreBounds = m_scoreValueText->getGlobalBounds();
+                                sf::Vector2f scoreCenterPos = {
+                                    scoreBounds.position.x + scoreBounds.size.x / 2.f,
+                                    scoreBounds.position.y + scoreBounds.size.y / 2.f
+                                };
+                                std::cout << "DEBUG: Animating bonus letters to score center: (" << scoreCenterPos.x << "," << scoreCenterPos.y << ")" << std::endl;
+
+                                for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
+                                    if (c < m_path.size()) {
+                                        int pathNodeIdx = m_path[c];
+                                        if (pathNodeIdx >= 0 && pathNodeIdx < m_wheelCentres.size()) {
+                                            sf::Vector2f startPos = m_wheelCentres[pathNodeIdx];
+                                            sf::Vector2f endPos = scoreCenterPos;
+                                            // Use aggregate initialization for LetterAnim
+                                            m_anims.push_back({
+                                                m_currentGuess[c],    // ch
+                                                startPos,             // start
+                                                endPos,               // end
+                                                0.f - (c * 0.05f),    // t (Slight delay)
+                                                -1,                   // wordIdx (Not used)
+                                                -1,                   // charIdx (Not used)
+                                                AnimTarget::Score     // target
+                                                });
+                                        }
+                                    }
+                                }
+                                std::cout << "DEBUG: Bonus animations CREATED." << std::endl;
+                            }
+                            else {
+                                std::cerr << "Warning: Cannot animate bonus to score - m_scoreValueText is null." << std::endl;
+                            }
+                            // --- End Bonus Animations ---
+
+                            // Optional: Play bonus sound
+                            // if(m_bonusSound) m_bonusSound->play();
+
+                            // --- Handle NEW Bonus Word Found --- END FULL BLOCK ---
+
+                        }
+                        else {
+                            // Text matched a potential bonus word, but it was already found *as bonus*
+                            std::cout << "DEBUG: Matched BONUS word '" << bonusWordOriginalCase << "', but already found AS BONUS." << std::endl;
+                            textMatchedExisting = true; // Mark that the text is valid but word already used
+                        }
+                        // Whether new or already found bonus, if text matched, stop checking
+                        goto end_word_checks;
+                    }
+                } // --- End Bonus Check Loop ---
+            } // --- End if (!gridMatchFound && !textMatchedExisting) ---
+
+        end_word_checks:; // Label for goto jump target
+
+            // --- Check 3: Incorrect/Already Found Word Handling ---
+            if (!gridMatchFound && !bonusMatchFound) { // If no NEW word was found this turn
+                if (textMatchedExisting) {
+                    // Text matched a word, but it was already found (grid or bonus)
+                    std::cout << "Word '" << m_currentGuess << "' already found." << std::endl;
+                    // Play "already found" sound?
+                    // if (m_alreadyFoundSound) m_alreadyFoundSound->play();
+                }
+                else {
+                    // Text did not match any grid word or any potential bonus word
+                    std::cout << "Word '" << m_currentGuess << "' is not valid for this puzzle." << std::endl;
+                    // Play incorrect sound?
+                    if (m_errorWordSound) m_errorWordSound->play();
+                }
             }
 
-            m_clearDragState(); // Clear path and guess regardless of match
+            m_clearDragState(); // Clear path and guess regardless of outcome
         }
-    }
+        } // --- End Mouse Button Released ---
 
 } // End m_handlePlayingEvents
 
@@ -1101,7 +1631,7 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
             { static_cast<float>(rs->size.x), static_cast<float>(rs->size.y) } // Size as sf::Vector2f
         );
         m_window.setView(sf::View(visibleArea));
-        m_updateLayout(); // Recalculate layout for the game over screen too
+        m_updateLayout(m_window.getSize()); // Recalculate layout for the game over screen too
         return;
     }
 
@@ -1113,15 +1643,35 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
             // Check Continue Button Click
             if (m_contBtn.getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
-                // Option 1: Go back to the main menu
-                m_currentScreen = GameScreen::MainMenu;
 
-                // Option 2: Start a new game immediately (if desired)
-                // m_rebuild(); // Generate new puzzle
-                // m_currentScreen = GameScreen::Playing; // Switch back to playing
+                // --- Session Handling ---
+                if (m_isInSession) {
+                    m_currentPuzzleIndex++; // Move to the next puzzle index
 
-                // Reset internal state if necessary (rebuild does some of this)
-                m_gameState = GState::Playing; // Reset internal state for next game
+                    if (m_currentPuzzleIndex < m_puzzlesPerSession) {
+                        // --- Go to Next Puzzle ---
+                        m_rebuild(); // Rebuild with new criteria for the next index
+                        m_currentScreen = GameScreen::Playing; // Go back to playing
+                        m_gameState = GState::Playing; // Ensure state is playing
+                    }
+                    else {
+                        // --- Session Finished ---
+                        m_isInSession = false; // End the session state
+                        m_selectedDifficulty = DifficultyLevel::None; // Reset difficulty
+                        // TODO: Maybe go to a "Session Complete" screen first?
+                        m_currentScreen = GameScreen::MainMenu; // Or CasualMenu
+                        // Reset internal game state if needed for menu
+                        m_gameState = GState::Playing;
+                        std::cout << "Session Complete! Final Score: " << m_currentScore << std::endl;
+                        // Consider resetting score here IF you want score per session only
+                        // m_currentScore = 0;
+                    }
+                }
+                else {
+                    // Not in a session (e.g., maybe a future single puzzle mode ended)
+                    m_currentScreen = GameScreen::MainMenu;
+                    m_gameState = GState::Playing; // Reset internal state for menu
+                }
             }
         }
     }
@@ -1142,6 +1692,45 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
 
 // --- Render Game Screen ---
 void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
+
+    //------------------------------------------------------------
+    //  Draw Progress Meter (If in session)
+    //------------------------------------------------------------
+    if (m_isInSession) {
+        // Apply theme colors
+        m_progressMeterBg.setFillColor(sf::Color(50, 50, 50, 150)); // Dark semi-transparent bg (or use theme)
+        m_progressMeterBg.setOutlineColor(sf::Color(150, 150, 150)); // Light outline (or use theme)
+        m_progressMeterBg.setOutlineThickness(PROGRESS_METER_OUTLINE);
+        m_progressMeterFill.setFillColor(sf::Color(0, 180, 0, 200)); // Green fill (or use theme)
+
+        // Calculate fill width
+        float progressRatio = 0.f;
+        if (m_puzzlesPerSession > 0) { // Avoid division by zero
+            // Add 1 to index because it's 0-based
+            progressRatio = static_cast<float>(m_currentPuzzleIndex + 1) / static_cast<float>(m_puzzlesPerSession);
+        }
+        float fillWidth = PROGRESS_METER_WIDTH * progressRatio;
+        m_progressMeterFill.setSize({ fillWidth, PROGRESS_METER_HEIGHT });
+
+        // Draw elements
+        m_window.draw(m_progressMeterBg);
+        m_window.draw(m_progressMeterFill);
+
+        // Draw optional text overlay
+        if (m_progressMeterText) {
+            std::string progressStr = std::to_string(m_currentPuzzleIndex + 1) + "/" + std::to_string(m_puzzlesPerSession);
+            m_progressMeterText->setString(progressStr);
+            m_progressMeterText->setFillColor(sf::Color::White); // Or theme color
+
+            // Center text on the meter background
+            sf::FloatRect textBounds = m_progressMeterText->getLocalBounds();
+            m_progressMeterText->setOrigin({ textBounds.position.x + textBounds.size.x / 2.f,
+                                            textBounds.position.y + textBounds.size.y / 2.f });
+            m_progressMeterText->setPosition(m_progressMeterBg.getPosition()); // Position at Bg center
+            m_window.draw(*m_progressMeterText);
+        }
+    }
+
     //------------------------------------------------------------
     //  Draw Score Bar
     //------------------------------------------------------------
@@ -1149,6 +1738,26 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
     m_scoreLabelText->setFillColor(m_currentTheme.scoreTextLabel);
     m_scoreValueText->setFillColor(m_currentTheme.scoreTextValue);
     m_scoreValueText->setString(std::to_string(m_currentScore));
+
+    // --- Apply Score Flourish ---
+    float currentScale = 1.0f;
+    if (m_scoreFlourishTimer > 0.f) {
+        // Optional: Make scale pulse based on timer (e.g., sine wave)
+        float pulse = 1.0f + (SCORE_FLOURISH_SCALE - 1.0f) * (std::sin( (SCORE_FLOURISH_DURATION - m_scoreFlourishTimer) * PI * 2.f / SCORE_FLOURISH_DURATION ) * 0.5f + 0.5f) ;
+        currentScale = pulse;
+
+        // Simpler: Just scale up while timer is active
+        //currentScale = SCORE_FLOURISH_SCALE;
+        // Maybe change color too?
+        // m_scoreValueText->setFillColor(sf::Color::Yellow);
+    }
+    else {
+        // Reset color if changed during flourish
+        // m_scoreValueText->setFillColor(m_currentTheme.scoreTextValue);
+    }
+    m_scoreValueText->setScale({ currentScale, currentScale }); // Apply scale
+    // --- End Flourish ---
+
     // Re-center score value text
     sf::FloatRect valueBounds = m_scoreValueText->getLocalBounds();
     m_scoreValueText->setOrigin({ 0.f, valueBounds.position.y + valueBounds.size.y / 2.f });
@@ -1157,6 +1766,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
     m_window.draw(m_scoreBar);
     m_window.draw(*m_scoreLabelText);
     m_window.draw(*m_scoreValueText);
+    m_scoreValueText->setScale({ 1.f, 1.f });
 
     //------------------------------------------------------------
     //  Draw letter grid (Gems visible before solving)
@@ -1233,17 +1843,21 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
      // --- DRAW FLYING LETTER ANIMATIONS --- <<<<<<<<< ADD THIS SECTION
     // (Draw these AFTER the static grid so they appear on top)
-    sf::Text flyingLetterText(m_font, "", 20); // Create a reusable Text object
-    flyingLetterText.setFillColor(m_currentTheme.gridLetter); // Use theme color
+    sf::Text flyingLetterText(m_font, "", 20);
+    flyingLetterText.setFillColor(m_currentTheme.gridLetter); // Default color
 
     for (const auto& a : m_anims) {
-        // Only draw animations that are currently in progress (t < 1.0)
-        if (a.t >= 1.f) continue;
+        if (a.t >= 1.f || a.t < 0.f) continue; // Skip finished or delayed animations
 
-        // Calculate interpolated position
-        // Use easing function for smoother animation (optional but nice)
-        float eased_t = a.t * a.t * (3.f - 2.f * a.t); // Smoothstep easing
-        // float eased_t = a.t; // Linear (original)
+        // Change color if targeting score?
+        if (a.target == AnimTarget::Score) {
+            flyingLetterText.setFillColor(sf::Color::Yellow); // Make bonus letters yellow
+        }
+        else {
+            flyingLetterText.setFillColor(m_currentTheme.gridLetter); // Reset to default for grid
+        }
+
+        float eased_t = a.t * a.t * (3.f - 2.f * a.t);
         sf::Vector2f p = a.start + (a.end - a.start) * eased_t;
 
         flyingLetterText.setString(std::string(1, a.ch));
@@ -1251,7 +1865,8 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         flyingLetterText.setOrigin({ bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f });
         flyingLetterText.setPosition(p);
         m_window.draw(flyingLetterText);
-    }
+    } // --- END OF DRAWING FLYING LETTERS ---
+
 
     //------------------------------------------------------------
     //  Draw Path lines (BEFORE Wheel Letters)
@@ -1308,7 +1923,42 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         m_window.draw(rubberBandStrip);
     }
 
+    // --- START: Draw Guess Display (Above Wheel) ---
+    if (m_gameState == GState::Playing && !m_currentGuess.empty() && m_guessDisplay_Text) {
+        m_guessDisplay_Text->setString(m_currentGuess); // Set current guess text
 
+        // Calculate bounds and position
+        sf::FloatRect textBounds = m_guessDisplay_Text->getLocalBounds();
+        // Add padding for the background
+        const float bgPaddingX = 15.f;
+        const float bgPaddingY = 5.f;
+        sf::Vector2f bgSize = { textBounds.position.x + textBounds.size.x + 2 * bgPaddingX,
+                                textBounds.position.y + textBounds.size.y + 2 * bgPaddingY };
+
+        // Position above the wheel (adjust GAP as needed)
+        const float GUESS_DISPLAY_GAP = 20.f;
+        float guessY = m_wheelY - (WHEEL_R + 30.f) - (bgSize.y / 2.f) - GUESS_DISPLAY_GAP; // Center Y of bg above wheel radius + padding
+
+        // Setup background
+        m_guessDisplay_Bg.setSize(bgSize);
+        m_guessDisplay_Bg.setRadius(8.f);
+        m_guessDisplay_Bg.setFillColor(sf::Color(50, 50, 50, 200));
+        m_guessDisplay_Bg.setOutlineColor(sf::Color(150, 150, 150, 200));
+        m_guessDisplay_Bg.setOutlineThickness(1.f);
+        m_guessDisplay_Bg.setOrigin({ bgSize.x / 2.f, bgSize.y / 2.f });
+        m_guessDisplay_Bg.setPosition({ m_wheelX, guessY }); // Pass {x, y}
+
+        // Setup text origin and position (centered within background)
+        // Center text origin using local bounds
+        m_guessDisplay_Text->setOrigin({ textBounds.position.x + textBounds.size.x / 2.f,
+                                        textBounds.position.y + textBounds.size.y / 2.f }); // Pass {x, y}
+        m_guessDisplay_Text->setPosition({ m_wheelX, guessY }); // Pass {x, y}
+        m_guessDisplay_Text->setFillColor(m_currentTheme.hudTextGuess); // Use theme color
+
+        // Draw
+        m_window.draw(m_guessDisplay_Bg);
+        m_window.draw(*m_guessDisplay_Text);
+    }  // --- END: Draw Guess Display (Above Wheel) ---
 
     for (std::size_t i = 0; i < m_base.size(); ++i) {
         if (i >= m_wheelCentres.size()) continue;
@@ -1348,7 +1998,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
     //------------------------------------------------------------
     float hudY = m_wheelY + WHEEL_R + HUD_TEXT_OFFSET_Y;
     // Guess Text
-    if (m_gameState == GState::Playing && !m_currentGuess.empty()) {
+    /*if (m_gameState == GState::Playing && !m_currentGuess.empty()) {
         sf::Text guessTxt(m_font, "Guess: " + m_currentGuess, 20); // Create locally
         guessTxt.setFillColor(m_currentTheme.hudTextGuess);
         sf::FloatRect guessBounds = guessTxt.getLocalBounds();
@@ -1356,15 +2006,40 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         guessTxt.setPosition({ m_wheelX, hudY });
         m_window.draw(guessTxt);
         hudY += HUD_LINE_SPACING;
-    }
+    }*/
+
     // Found Text
+    float bottomHudStartY = m_wheelY + (WHEEL_R + 5.f) + HUD_TEXT_OFFSET_Y; // Start below wheel radius + padding
+    float currentBottomHudY = bottomHudStartY; // Use a runner variable
     std::string foundCountStr = "Found: " + std::to_string(m_found.size()) + "/" + std::to_string(m_solutions.size());
-    sf::Text foundTxt(m_font, foundCountStr, 20); // Create locally
+    sf::Text foundTxt(m_font, foundCountStr, 20);
     foundTxt.setFillColor(m_currentTheme.hudTextFound);
     sf::FloatRect foundBounds = foundTxt.getLocalBounds();
-    foundTxt.setOrigin({ foundBounds.position.x + foundBounds.size.x / 2.f, foundBounds.position.y });
-    foundTxt.setPosition({ m_wheelX, hudY });
+    foundTxt.setOrigin({ foundBounds.position.x + foundBounds.size.x / 2.f,
+                        foundBounds.position.y + foundBounds.size.y / 2.f });
+    foundTxt.setPosition({ m_wheelX, currentBottomHudY }); // Use runner Y
     m_window.draw(foundTxt);
+    currentBottomHudY += foundTxt.getCharacterSize() + HUD_LINE_SPACING * 0.5f; // Move Y down (adjust spacing)
+
+    // Bonus Word Counter (Position using currentBottomHudY)
+    if (!m_allPotentialSolutions.empty() || !m_foundBonusWords.empty()) {
+        int totalPossibleBonus = 0;
+        for (const auto& pWord : m_allPotentialSolutions) {
+            bool isOnGrid = false;
+            for (const auto& gWord : m_solutions) { if (pWord.text == gWord.text) { isOnGrid = true; break; } }
+            if (!isOnGrid) totalPossibleBonus++;
+        }
+        // ---
+        std::string bonusCountStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
+        sf::Text bonusFoundTxt(m_font, bonusCountStr, 18);
+        bonusFoundTxt.setFillColor(sf::Color::Yellow);
+        sf::FloatRect bonusBounds = bonusFoundTxt.getLocalBounds();
+        bonusFoundTxt.setOrigin({ bonusBounds.position.x + bonusBounds.size.x / 2.f,
+                                 bonusBounds.position.y + bonusBounds.size.y / 2.f });
+        bonusFoundTxt.setPosition({ m_wheelX, currentBottomHudY }); // Use runner Y
+        m_window.draw(bonusFoundTxt);
+        currentBottomHudY += bonusFoundTxt.getCharacterSize() + HUD_LINE_SPACING * 0.5f; // Move Y down
+    }
 
     // Hint Count Text
     m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable)); // Use member text object
@@ -1416,6 +2091,19 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         bool contHover = m_contBtn.getGlobalBounds().contains(mousePos);
         sf::Color continueHoverColor = adjustColorBrightness(m_currentTheme.continueButton, 1.2f);
         m_contBtn.setFillColor(contHover ? continueHoverColor : m_currentTheme.continueButton);
+
+        // --- Draw Score/Bonus Particles ---
+        for (auto& scoreAnim : m_scoreAnims) { // Iterate by non-const ref if modifying color
+            if (scoreAnim.t < 1.0f) { // Only draw active particles
+                // Optional: Apply alpha fade-out based on t?
+                sf::Color col = scoreAnim.particle.getFillColor();
+                col.a = static_cast<uint8_t>(255.f * (1.f - scoreAnim.t)); // Fade out alpha
+                scoreAnim.particle.setFillColor(col);
+                // The particle position is set in m_updateScoreAnims
+                m_window.draw(scoreAnim.particle);
+            }
+        }
+
 
         // Draw the overlay elements
         m_window.draw(m_solvedOverlay);
