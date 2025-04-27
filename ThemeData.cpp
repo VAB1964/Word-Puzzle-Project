@@ -165,6 +165,134 @@ std::vector<ColorTheme> loadThemes() {
         sf::Color::White             // menuButtonText
     };
     m_themes.push_back(theme6);
+
+    // --- Theme 7: "Spring Meadow" (Light Greens/Blues) ---
+    ColorTheme theme7 = {
+        sf::Color(210, 240, 225),      // winBg (Very light minty green/blue)
+        sf::Color(170, 210, 180),      // decorBase (Soft green)
+        sf::Color(130, 190, 140),      // decorAccent1 (Slightly darker green)
+        sf::Color(255, 255, 200),      // decorAccent2 (Pale yellow)
+        sf::Color(190, 205, 195, 180), // gridEmptyTile (Light greenish gray)
+        sf::Color(90, 170, 100),       // gridFilledTile (Leafy green)
+        sf::Color(40, 70, 45),         // gridLetter (Dark forest green)
+        sf::Color(180, 220, 190, 150), // wheelBg (Light green, semi-transparent)
+        sf::Color(110, 160, 120),      // wheelOutline (Medium green)
+        sf::Color(240, 255, 245, 220), // letterCircleNormal (Off-white)
+        sf::Color(255, 190, 200, 230), // letterCircleHighlight (Soft pink/peach)
+        sf::Color(40, 70, 45),         // letterTextNormal (Dark forest green)
+        sf::Color(40, 70, 45),         // letterTextHighlight (Dark forest green)
+        sf::Color(80, 180, 90, 200),   // dragLine (Bright green)
+        sf::Color(90, 170, 100),       // continueButton (Leafy green)
+        sf::Color(50, 100, 55),        // hudTextGuess (Darker green)
+        sf::Color(50, 100, 55),        // hudTextFound (Darker green)
+        sf::Color(0, 180, 0),          // hudTextSolved (Bright green)
+        sf::Color(180, 220, 190, 210), // solvedOverlayBg (Light green overlay)
+        sf::Color(170, 210, 180, 230), // scoreBarBg (Soft green)
+        sf::Color(70, 110, 75),        // scoreTextLabel (Medium dark green)
+        sf::Color(40, 70, 45),         // scoreTextValue (Dark forest green)
+        sf::Color(180, 220, 190, 220), // menuBg
+        sf::Color(40, 70, 45),         // menuTitleText
+        sf::Color(140, 190, 150),      // menuButtonNormal
+        sf::Color(110, 160, 120),      // menuButtonHover
+        sf::Color(40, 70, 45)          // menuButtonText
+    };
+    m_themes.push_back(theme7);
+
+    // --- Theme 8: "Deep Ocean" (Dark Blues/Teal) ---
+    ColorTheme theme8 = {
+        sf::Color(15, 25, 45),         // winBg (Deep midnight blue)
+        sf::Color(20, 35, 60),         // decorBase (Darker blue)
+        sf::Color(35, 55, 85),         // decorAccent1 (Medium dark blue)
+        sf::Color(0, 130, 140),        // decorAccent2 (Teal)
+        sf::Color(50, 60, 80, 180),    // gridEmptyTile (Dark blue-gray)
+        sf::Color(0, 180, 170),        // gridFilledTile (Bright Aqua/Turquoise)
+        sf::Color(210, 245, 255),      // gridLetter (Very light cyan/white)
+        sf::Color(40, 60, 90, 150),    // wheelBg (Medium blue, semi-transparent)
+        sf::Color(80, 120, 180),       // wheelOutline (Lighter dusty blue)
+        sf::Color(190, 210, 225, 220), // letterCircleNormal (Light blue-gray)
+        sf::Color(0, 180, 170, 230),   // letterCircleHighlight (Aqua highlight)
+        sf::Color(15, 25, 45),         // letterTextNormal (Matches background)
+        sf::Color(15, 25, 45),         // letterTextHighlight (Matches background)
+        sf::Color(0, 200, 190, 200),   // dragLine (Aqua)
+        sf::Color(0, 150, 130),        // continueButton (Teal)
+        sf::Color(180, 230, 240),      // hudTextGuess (Light cyan)
+        sf::Color(180, 230, 240),      // hudTextFound (Light cyan)
+        sf::Color(50, 220, 210),       // hudTextSolved (Bright Aqua)
+        sf::Color(25, 40, 65, 210),    // solvedOverlayBg (Dark blue overlay)
+        sf::Color(35, 55, 85, 230),    // scoreBarBg (Medium dark blue)
+        sf::Color(150, 190, 220),      // scoreTextLabel (Light dusty blue)
+        sf::Color(210, 245, 255),      // scoreTextValue (Light cyan/white)
+        sf::Color(25, 40, 65, 220),    // menuBg
+        sf::Color(210, 245, 255),      // menuTitleText
+        sf::Color(50, 80, 120),        // menuButtonNormal
+        sf::Color(80, 120, 180),       // menuButtonHover
+        sf::Color(210, 245, 255)       // menuButtonText
+    };
+    m_themes.push_back(theme8);
+
+    // --- Theme 9: "Paper & Ink" (Cream/Black/Gray) ---
+    ColorTheme theme9 = {
+        sf::Color(248, 248, 240),      // winBg (Creamy off-white)
+        sf::Color(225, 225, 215),      // decorBase (Very light gray)
+        sf::Color(205, 205, 195),      // decorAccent1 (Slightly darker gray)
+        sf::Color(185, 185, 175),      // decorAccent2 (Medium light gray)
+        sf::Color(200, 200, 190, 180), // gridEmptyTile (Light warm gray)
+        sf::Color(70, 70, 70),         // gridFilledTile (Dark gray)
+        sf::Color::Black,              // gridLetter
+        sf::Color(215, 215, 205, 150), // wheelBg (Light gray, semi-transparent)
+        sf::Color(140, 140, 130),      // wheelOutline (Medium gray)
+        sf::Color(255, 255, 255, 220), // letterCircleNormal (White)
+        sf::Color(190, 210, 240, 230), // letterCircleHighlight (Subtle light blue)
+        sf::Color::Black,              // letterTextNormal
+        sf::Color::Black,              // letterTextHighlight
+        sf::Color(80, 80, 80, 200),    // dragLine (Dark gray)
+        sf::Color(90, 90, 90),         // continueButton (Dark gray)
+        sf::Color(40, 40, 40),         // hudTextGuess (Near black)
+        sf::Color(40, 40, 40),         // hudTextFound (Near black)
+        sf::Color(0, 100, 0),          // hudTextSolved (Dark green for contrast)
+        sf::Color(215, 215, 205, 210), // solvedOverlayBg (Light gray overlay)
+        sf::Color(205, 205, 195, 230), // scoreBarBg (Slightly darker gray)
+        sf::Color(80, 80, 80),         // scoreTextLabel (Dark gray)
+        sf::Color(20, 20, 20),         // scoreTextValue (Near black)
+        sf::Color(215, 215, 205, 220), // menuBg
+        sf::Color(20, 20, 20),         // menuTitleText
+        sf::Color(170, 170, 160),      // menuButtonNormal
+        sf::Color(140, 140, 130),      // menuButtonHover
+        sf::Color(20, 20, 20)          // menuButtonText
+    };
+    m_themes.push_back(theme9);
+
+    // --- Theme 10: "Autumn Forest" (Browns/Oranges/Reds) ---
+    ColorTheme theme10 = {
+        sf::Color(55, 30, 15),         // winBg (Deep brown)
+        sf::Color(85, 50, 25),         // decorBase (Medium brown)
+        sf::Color(125, 70, 35),        // decorAccent1 (Lighter wood brown)
+        sf::Color(190, 80, 30),        // decorAccent2 (Burnt orange)
+        sf::Color(100, 70, 45, 180),   // gridEmptyTile (Medium brown, transparent)
+        sf::Color(200, 100, 30),       // gridFilledTile (Burnt orange)
+        sf::Color(255, 245, 210),      // gridLetter (Pale yellow/cream)
+        sf::Color(75, 45, 20, 150),    // wheelBg (Darker brown, semi-transparent)
+        sf::Color(140, 90, 50),        // wheelOutline (Lighter wood brown)
+        sf::Color(240, 230, 200, 220), // letterCircleNormal (Cream)
+        sf::Color(230, 130, 40, 230),  // letterCircleHighlight (Vibrant orange)
+        sf::Color(55, 30, 15),         // letterTextNormal (Deep brown)
+        sf::Color(55, 30, 15),         // letterTextHighlight (Deep brown)
+        sf::Color(230, 130, 40, 200),  // dragLine (Vibrant orange)
+        sf::Color(180, 90, 25),        // continueButton (Dark orange/brown)
+        sf::Color(255, 225, 180),      // hudTextGuess (Light cream/peach)
+        sf::Color(255, 225, 180),      // hudTextFound (Light cream/peach)
+        sf::Color(255, 150, 0),        // hudTextSolved (Bright orange)
+        sf::Color(85, 50, 25, 210),    // solvedOverlayBg (Medium brown overlay)
+        sf::Color(85, 50, 25, 230),    // scoreBarBg (Medium brown)
+        sf::Color(200, 180, 150),      // scoreTextLabel (Light brown/beige)
+        sf::Color(255, 245, 210),      // scoreTextValue (Pale yellow/cream)
+        sf::Color(85, 50, 25, 220),    // menuBg
+        sf::Color(255, 245, 210),      // menuTitleText
+        sf::Color(125, 70, 35),        // menuButtonNormal
+        sf::Color(155, 90, 45),        // menuButtonHover
+        sf::Color(255, 245, 210)       // menuButtonText
+    };
+    m_themes.push_back(theme10);
     // ... add others ...
 
     return m_themes;

@@ -42,7 +42,7 @@ const float PROGRESS_METER_OUTLINE = 1.0f;
 
 // Difficulty Session Size
 const int EASY_PUZZLE_COUNT = 1;   // <<< SET TO 3 FOR TESTING (was 10)
-const int MEDIUM_PUZZLE_COUNT = 15;
-const int HARD_PUZZLE_COUNT = 20;
+const int MEDIUM_PUZZLE_COUNT = 7;
+const int HARD_PUZZLE_COUNT = 10;
 
 #endif // CONSTANTS_H

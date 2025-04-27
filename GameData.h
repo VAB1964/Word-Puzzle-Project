@@ -29,6 +29,7 @@ struct Balloon {
     sf::RectangleShape stringShape;
     sf::Vector2f position = { 0.f, 0.f };
     // sf::Vector2f velocity = {0.f, 0.f}; // We'll use riseSpeed and handle sway separately
+    float initialX; 
     float swayAmount = 50.f;     // <<< Kept from original plan
     float swaySpeed = 1.5f;      // <<< Kept from original plan
     float swayTimer = 0.f;       // <<< Kept from original plan

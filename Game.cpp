@@ -500,8 +500,14 @@ void Game::m_render() {
 // --- Other Private Methods (Placeholders) ---
 void Game::m_rebuild() {
     // Select Random Theme (Keep this)
-    if (!m_themes.empty()) { /* ... */ }
-    else { /* ... */ }
+    if (!m_themes.empty()) {
+        m_currentTheme = m_themes[randRange<std::size_t>(0, m_themes.size() - 1)];
+	}
+	else {
+		std::cerr << "CRITICAL Error: No themes available. Exiting.\n";
+		exit(1);
+	}
+   
 
     // --- Base Word Selection (Revised Logic) ---
     std::string selectedBaseWord = "";
@@ -2113,75 +2119,69 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 void Game::m_startCelebrationEffects() {
     m_confetti.clear();
     m_balloons.clear();
-    m_celebrationEffectTimer = 0.f; // Reset spawn timer
+    m_celebrationEffectTimer = 0.f;
 
     sf::Vector2u windowSize = m_window.getSize();
     float w = static_cast<float>(windowSize.x);
     float h = static_cast<float>(windowSize.y);
 
     // --- Spawn Initial Confetti Burst ---
-    int confettiCount = 200; // Number of pieces
+    int confettiCount = 200;
     for (int i = 0; i < confettiCount; ++i) {
         ConfettiParticle p;
-
-        // Start near bottom corners
-        float startX = (randRange(0, 1) == 0) ? randRange(-20.f, 60.f) : randRange(w - 60.f, w + 20.f);
-        float startY = randRange(h - 40.f, h + 20.f);
-
-        p.shape.setPosition({ startX, startY });
-        p.shape.setSize({ randRange(4.f, 8.f), randRange(6.f, 12.f) }); // Random small size
-        p.shape.setFillColor(sf::Color(randRange(100, 255), randRange(100, 255), randRange(100, 255))); // Random bright color
-        p.shape.setOrigin(p.shape.getSize() / 2.f); // Center origin for rotation
-
-        // Calculate velocity: upwards and outwards
-        float angle = (startX < w / 2.f) ? randRange(230.f, 310.f) : randRange(230.f, 310.f); // Angle upwards (degrees) - adjusted range
-        if (startX < w / 2.f) angle = randRange(230.f, 310.f); // Left side -> up-right
-        else angle = randRange(230.f, 310.f); // Right side -> up-left - THIS LOGIC IS WRONG, let's fix:
-
-        // Corrected Angle Logic:
-        if (startX < w / 2.f) { // From left corner, shoot up-right
-            angle = randRange(270.f + 10.f, 270.f + 80.f); // Angles between roughly 280-350
-        }
-        else { // From right corner, shoot up-left
-            angle = randRange(180.f + 10.f, 180.f + 80.f); // Angles between roughly 190-260
-        }
-
-
-        float speed = randRange(150.f, 450.f); // Random speed
+        // ... (Confetti initialization logic - keep as is) ...
+         // Start near bottom corners
+        float startXConfetti = (randRange(0, 1) == 0) ? randRange(-20.f, 60.f) : randRange(w - 60.f, w + 20.f);
+        float startYConfetti = randRange(h - 40.f, h + 20.f);
+        p.shape.setPosition({ startXConfetti, startYConfetti });
+        p.shape.setSize({ randRange(4.f, 8.f), randRange(6.f, 12.f) });
+        p.shape.setFillColor(sf::Color(randRange(100, 255), randRange(100, 255), randRange(100, 255)));
+        p.shape.setOrigin(p.shape.getSize() / 2.f);
+        float angle = 0;
+        if (startXConfetti < w / 2.f) { angle = randRange(270.f + 10.f, 270.f + 80.f); }
+        else { angle = randRange(180.f + 10.f, 180.f + 80.f); }
+        float speed = randRange(150.f, 450.f);
         float angleRad = angle * PI / 180.f;
-        p.velocity = { std::cos(angleRad) * speed, std::sin(angleRad) * speed }; // sin is negative for upwards
-
-        p.angularVelocity = randRange(-360.f, 360.f); // Degrees per second rotation
-        p.lifetime = randRange(2.0f, 5.0f);        // Seconds
+        p.velocity = { std::cos(angleRad) * speed, std::sin(angleRad) * speed };
+        p.angularVelocity = randRange(-360.f, 360.f);
+        p.lifetime = randRange(2.0f, 5.0f);
         p.initialLifetime = p.lifetime;
-
-        m_confetti.push_back(std::move(p)); // Use move
+        m_confetti.push_back(std::move(p));
     }
 
     // --- Spawn Initial Balloons ---
     int balloonCount = 7;
-    float balloonRadius = 30.f;
+    // *** Define balloonRadius OUTSIDE the loop if it's constant ***
+    const float balloonRadius = 30.f;
+    // *************************************************************
+
     for (int i = 0; i < balloonCount; ++i) {
-        Balloon b;
-        b.position = { randRange(balloonRadius * 2.f, w - balloonRadius * 2.f), h + balloonRadius + randRange(10.f, 100.f) }; // Start below screen
-        b.shape.setRadius(balloonRadius);
-        b.shape.setFillColor(sf::Color(randRange(100, 255), randRange(100, 255), randRange(100, 255), 230)); // Bright, slightly transparent
+        Balloon b; // Declare 'b' INSIDE the loop scope
+
+        // *** Now use balloonRadius ***
+        float startX = randRange(balloonRadius * 2.f, w - balloonRadius * 2.f);
+        b.position = { startX, h + balloonRadius + randRange(10.f, 100.f) }; // Start below screen
+        b.initialX = startX; // Store the starting X
+        // ****************************
+
+        b.shape.setRadius(balloonRadius); // Use constant radius
+        b.shape.setFillColor(sf::Color(randRange(100, 255), randRange(100, 255), randRange(100, 255), 230));
         b.shape.setOutlineColor(sf::Color::White);
         b.shape.setOutlineThickness(1.f);
-        b.shape.setOrigin({ balloonRadius, balloonRadius }); // Center origin
+        b.shape.setOrigin({ balloonRadius, balloonRadius }); // Use constant radius
 
-        b.stringShape.setSize({ 2.f, randRange(40.f, 70.f) }); // Thin string
+        b.stringShape.setSize({ 2.f, randRange(40.f, 70.f) });
         b.stringShape.setFillColor(sf::Color(200, 200, 200));
-        b.stringShape.setOrigin({ 1.f, 0 }); // Top-center origin for string
+        b.stringShape.setOrigin({ 1.f, 0 });
 
-        b.riseSpeed = randRange(-25.f, -50.f); // Varying rise speeds
-        b.swaySpeed = randRange(1.0f, 2.5f);
-        b.swayTimer = randRange(0.f, 2.f * PI); // Start at random point in sway cycle
-        b.swayTargetX = b.position.x + randRange(-80.f, 80.f); // Initial sway target
+        // Set movement parameters using members of 'b'
+        b.riseSpeed = randRange(-100.f, -50.f); // Use the adjusted range
+        b.swaySpeed = randRange(0.8f, 1.8f);  // Use potentially adjusted range
+        b.swayAmount = randRange(30.f, 60.f); // Use potentially adjusted range
+        b.swayTimer = randRange(0.f, 2.f * PI);
+        b.timeToDisappear = randRange(6.0f, 15.0f);
 
-        b.timeToDisappear = randRange(6.0f, 10.0f); // How long they last
-
-        m_balloons.push_back(std::move(b));
+        m_balloons.push_back(std::move(b)); // Move the fully initialized 'b'
     }
 }
 
@@ -2241,7 +2241,7 @@ void Game::m_updateCelebrationEffects(float dt) {
         // Apply sway relative to initial spawn X (or a slowly drifting center?)
         // Let's recalculate center based on current position for simplicity here
         float centerX = b.position.x; // Or could use a fixed X if needed
-        b.shape.setPosition({ centerX + currentSwayOffset, b.position.y });
+        b.shape.setPosition({ b.initialX + currentSwayOffset, b.position.y });
 
         // Position string below the balloon shape
         b.stringShape.setPosition(b.shape.getPosition() + sf::Vector2f(0, b.shape.getRadius()));
