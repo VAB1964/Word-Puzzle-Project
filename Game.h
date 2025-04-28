@@ -51,6 +51,8 @@ private:
     bool m_needsLayoutUpdate;
     sf::Vector2u m_lastKnownSize; // Store the last size used for layout
 
+    std::set<std::string> m_usedBaseWordsThisSession;
+
     // --- Session and Difficulty State ---
     DifficultyLevel m_selectedDifficulty;
     int m_puzzlesPerSession;

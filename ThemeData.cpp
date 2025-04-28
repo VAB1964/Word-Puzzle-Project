@@ -142,7 +142,7 @@ std::vector<ColorTheme> loadThemes() {
         sf::Color(220, 220, 220),    // decorAccent2
         sf::Color(100, 100, 100, 180),// gridEmptyTile
         sf::Color(180, 180, 180),    // gridFilledTile 
-        sf::Color::Black,            // gridLetter
+        sf::Color::White,            // gridLetter
         sf::Color(60, 60, 60, 150),  // wheelBg
         sf::Color(180, 180, 180),    // wheelOutline
         sf::Color(190, 190, 190, 220),// letterCircleNormal
@@ -168,13 +168,13 @@ std::vector<ColorTheme> loadThemes() {
 
     // --- Theme 7: "Spring Meadow" (Light Greens/Blues) ---
     ColorTheme theme7 = {
-        sf::Color(210, 240, 225),      // winBg (Very light minty green/blue)
-        sf::Color(170, 210, 180),      // decorBase (Soft green)
-        sf::Color(130, 190, 140),      // decorAccent1 (Slightly darker green)
+        sf::Color(105, 184, 110),      // winBg (Very light minty green/blue)
+        sf::Color(245, 247, 22),      // decorBase (Soft green)
+        sf::Color(255, 190, 200, 230),      // decorAccent1 (Slightly darker green)
         sf::Color(255, 255, 200),      // decorAccent2 (Pale yellow)
         sf::Color(190, 205, 195, 180), // gridEmptyTile (Light greenish gray)
         sf::Color(90, 170, 100),       // gridFilledTile (Leafy green)
-        sf::Color(40, 70, 45),         // gridLetter (Dark forest green)
+        sf::Color(190, 205, 195),         // gridLetter (Dark forest green)
         sf::Color(180, 220, 190, 150), // wheelBg (Light green, semi-transparent)
         sf::Color(110, 160, 120),      // wheelOutline (Medium green)
         sf::Color(240, 255, 245, 220), // letterCircleNormal (Off-white)
@@ -232,12 +232,12 @@ std::vector<ColorTheme> loadThemes() {
 
     // --- Theme 9: "Paper & Ink" (Cream/Black/Gray) ---
     ColorTheme theme9 = {
-        sf::Color(248, 248, 240),      // winBg (Creamy off-white)
+        sf::Color(78, 156, 199),      // winBg 
         sf::Color(225, 225, 215),      // decorBase (Very light gray)
         sf::Color(205, 205, 195),      // decorAccent1 (Slightly darker gray)
         sf::Color(185, 185, 175),      // decorAccent2 (Medium light gray)
-        sf::Color(200, 200, 190, 180), // gridEmptyTile (Light warm gray)
-        sf::Color(70, 70, 70),         // gridFilledTile (Dark gray)
+        sf::Color(154, 199, 198, 180), // gridEmptyTile (Light warm gray)
+        sf::Color::White,              // gridFilledTile (Dark gray)
         sf::Color::Black,              // gridLetter
         sf::Color(215, 215, 205, 150), // wheelBg (Light gray, semi-transparent)
         sf::Color(140, 140, 130),      // wheelOutline (Medium gray)
@@ -247,7 +247,7 @@ std::vector<ColorTheme> loadThemes() {
         sf::Color::Black,              // letterTextHighlight
         sf::Color(80, 80, 80, 200),    // dragLine (Dark gray)
         sf::Color(90, 90, 90),         // continueButton (Dark gray)
-        sf::Color(40, 40, 40),         // hudTextGuess (Near black)
+        sf::Color(181, 179, 152),         // hudTextGuess (Near black)
         sf::Color(40, 40, 40),         // hudTextFound (Near black)
         sf::Color(0, 100, 0),          // hudTextSolved (Dark green for contrast)
         sf::Color(215, 215, 205, 210), // solvedOverlayBg (Light gray overlay)
