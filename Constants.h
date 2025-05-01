@@ -57,7 +57,7 @@ const float PROGRESS_METER_TOP_MARGIN = 15.0f;
 const float PROGRESS_METER_OUTLINE = 1.0f;
 
 // Difficulty Session Size
-const int EASY_PUZZLE_COUNT = 1;
+const int EASY_PUZZLE_COUNT = 5;
 const int MEDIUM_PUZZLE_COUNT = 7;
 const int HARD_PUZZLE_COUNT = 10;
 

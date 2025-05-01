@@ -807,8 +807,7 @@ void Game::m_rebuild() {
 } // End m_rebuild
 
 
-// --- START OF REVISED m_updateLayout FUNCTION ---
-// Replace the entire existing m_updateLayout function in Game.cpp with this code
+// --- START OF FULL m_updateLayout FUNCTION (Simplified 5-row limit) ---
 
 void Game::m_updateLayout(sf::Vector2u windowSize) {
 
@@ -826,24 +825,19 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
     // --- Define Vertical Section Boundaries (DESIGN UNITS) ---
     const float topSectionHeight = designH * 0.15f;
-    const float wheelSectionHeight = designH * 0.35f;
-    const float gridSectionHeight = designH - topSectionHeight - wheelSectionHeight;
+    const float wheelSectionHeight = designH * 0.35f; // This is more of a desired minimum space
+    const float gridSectionHeight = designH - topSectionHeight - wheelSectionHeight; // Available space for grid
 
     const float topSectionBottomY = designTopEdge + topSectionHeight;
     const float gridSectionTopY = topSectionBottomY;
     const float gridSectionBottomY = gridSectionTopY + gridSectionHeight;
-    const float wheelSectionTopY = gridSectionBottomY;
-    const float wheelSectionBottomY = designBottomEdge;
+    const float wheelSectionTopY = gridSectionBottomY; // Where wheel section *starts*
+    const float wheelSectionBottomY = designBottomEdge; // Where wheel section *ends*
 
     // --- Start Logging ---
     std::cout << "--- Layout Update (" << windowSize.x << "x" << windowSize.y << ") ---" << std::endl;
     std::cout << "UI Scale (m_uiScale): " << m_uiScale << std::endl;
     std::cout << "Design Space: " << designW << "x" << designH << " (Center: " << designCenter.x << "," << designCenter.y << ")" << std::endl;
-    //std::cout << "--- Section Definitions (Design Units) ---" << std::endl; // Less verbose
-    //std::cout << "  Top:    Y=" << designTopEdge << " H=" << topSectionHeight << " (Ends Y=" << topSectionBottomY << ")" << std::endl;
-    //std::cout << "  Grid:   Y=" << gridSectionTopY << " H=" << gridSectionHeight << " (Ends Y=" << gridSectionBottomY << ")" << std::endl;
-    //std::cout << "  Wheel:  Y=" << wheelSectionTopY << " H=" << wheelSectionHeight << " (Ends Y=" << wheelSectionBottomY << ")" << std::endl;
-    //std::cout << "--------------------------------------" << std::endl;
 
 
     // 3. Position Top Elements (Progress, Score) within Top Section ---------------
@@ -861,47 +855,193 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
 
     // 4. Calculate Grid Layout within Grid Section ---------------
-    m_gridStartY = gridSectionTopY; const float availableGridHeight = gridSectionHeight;
-    int numCols = 1; int maxRowsPerCol = m_sorted.empty() ? 1 : (int)m_sorted.size(); m_totalGridW = 0; float actualGridHeight = 0;
-    m_wordCol.clear(); m_wordRow.clear(); m_colMaxLen.clear(); m_colXOffset.clear();
+    m_gridStartY = gridSectionTopY; // Keep this line
+    const float availableGridHeight = gridSectionHeight; // Keep this line
+
+    // --- Reset grid calculation variables ---
+    int numCols = 1;
+    int maxRowsPerCol = m_sorted.empty() ? 1 : (int)m_sorted.size();
+    m_totalGridW = 0;
+    float actualGridHeight = 0;
+    m_wordCol.clear();
+    m_wordRow.clear();
+    m_colMaxLen.clear();
+    m_colXOffset.clear();
+
     if (!m_sorted.empty()) {
-        // Grid calculation heuristic (simplified logging)
-        const float st = S(this, TILE_SIZE); const float sp = S(this, TILE_PAD); const float sc = S(this, COL_PAD); const float stph = st + sp; const float stpw = st + sp;
-        int bestFitCols = 1; int bestFitRows = (int)m_sorted.size(); float minWidthVertFit = std::numeric_limits<float>::max(); bool foundVerticalFit = false;
-        int narrowestOverallCols = 1; int narrowestOverallRows = (int)m_sorted.size(); float minWidthOverall = std::numeric_limits<float>::max();
+        // --- Grid calculation heuristic ---
+        const float st = S(this, TILE_SIZE);
+        const float sp = S(this, TILE_PAD);
+        const float sc = S(this, COL_PAD);
+        const float stph = st + sp; // Scaled Tile + Pad Height
+        const float stpw = st + sp; // Scaled Tile + Pad Width
+
+        int bestFitCols = 1;
+        int bestFitRows = (int)m_sorted.size();
+        float minWidthVertFit = std::numeric_limits<float>::max();
+        bool foundVerticalFit = false;
+
+        int narrowestOverallCols = 1;
+        int narrowestOverallRows = (int)m_sorted.size();
+        float minWidthOverall = std::numeric_limits<float>::max();
+
+        // Limit maximum columns slightly to prevent excessively wide layouts
         int maxPossibleCols = std::min(8, std::max(1, (int)m_sorted.size()));
+
+        // --- Loop to find best layout ---
         for (int tryCols = 1; tryCols <= maxPossibleCols; ++tryCols) {
-            int rowsNeeded = ((int)m_sorted.size() + tryCols - 1) / tryCols; if (rowsNeeded <= 0) rowsNeeded = 1;
-            std::vector<int> currentTryColMaxLen(tryCols, 0); float currentTryWidth = 0;
-            for (size_t w = 0; w < m_sorted.size(); ++w) { int c = (int)w / rowsNeeded; if (c >= 0 && c < tryCols) currentTryColMaxLen[c] = std::max<int>(currentTryColMaxLen[c], (int)m_sorted[w].text.length()); }
-            for (int len : currentTryColMaxLen) currentTryWidth += (float)len * stpw - (len > 0 ? sp : 0.f);
-            currentTryWidth += (float)std::max(0, tryCols - 1) * sc; if (currentTryWidth < 0) currentTryWidth = 0;
-            float currentTryHeight = (float)rowsNeeded * stph - (rowsNeeded > 0 ? sp : 0.f); if (currentTryHeight < 0) currentTryHeight = 0;
-            if (currentTryWidth < minWidthOverall) { minWidthOverall = currentTryWidth; narrowestOverallCols = tryCols; narrowestOverallRows = rowsNeeded; }
-            if (currentTryHeight <= availableGridHeight) { if (!foundVerticalFit || currentTryWidth < minWidthVertFit) { minWidthVertFit = currentTryWidth; bestFitCols = tryCols; bestFitRows = rowsNeeded; foundVerticalFit = true; } }
+            int rowsNeeded = ((int)m_sorted.size() + tryCols - 1) / tryCols;
+            if (rowsNeeded <= 0) rowsNeeded = 1;
+
+            std::vector<int> currentTryColMaxLen(tryCols, 0);
+            float currentTryWidth = 0;
+            // Calculate max word length per column for this 'tryCols' layout
+            for (size_t w = 0; w < m_sorted.size(); ++w) {
+                int c = (int)w / rowsNeeded; // Determine column index for word w
+                if (c >= 0 && c < tryCols) { // Check bounds
+                    currentTryColMaxLen[c] = std::max<int>(currentTryColMaxLen[c], (int)m_sorted[w].text.length());
+                }
+            }
+            // Calculate total width for this layout
+            for (int len : currentTryColMaxLen) {
+                currentTryWidth += (float)len * stpw - (len > 0 ? sp : 0.f); // Subtract trailing pad if len > 0
+            }
+            currentTryWidth += (float)std::max(0, tryCols - 1) * sc; // Add column padding
+            if (currentTryWidth < 0) currentTryWidth = 0;
+
+            // Calculate total height for this layout
+            float currentTryHeight = (float)rowsNeeded * stph - (rowsNeeded > 0 ? sp : 0.f); // Subtract trailing pad
+            if (currentTryHeight < 0) currentTryHeight = 0;
+
+
+            // Track narrowest overall layout
+            if (currentTryWidth < minWidthOverall) {
+                minWidthOverall = currentTryWidth;
+                narrowestOverallCols = tryCols;
+                narrowestOverallRows = rowsNeeded;
+            }
+
+            // Track best layout that fits vertically
+            if (currentTryHeight <= availableGridHeight) {
+                if (!foundVerticalFit || currentTryWidth < minWidthVertFit) {
+                    minWidthVertFit = currentTryWidth;
+                    bestFitCols = tryCols;
+                    bestFitRows = rowsNeeded;
+                    foundVerticalFit = true;
+                }
+            }
+        } // --- End loop to find best layout ---
+
+
+        // --- Determine initial chosen layout ---
+        int chosenCols = narrowestOverallCols;
+        int chosenRows = narrowestOverallRows;
+        if (foundVerticalFit) {
+            chosenCols = bestFitCols;
+            chosenRows = bestFitRows;
+            std::cout << "  GRID INIT: Found Vertical Fit: Cols=" << chosenCols << ", RowsPerCol=" << chosenRows << std::endl;
         }
-        if (foundVerticalFit) { numCols = bestFitCols; maxRowsPerCol = bestFitRows; }
-        else { numCols = narrowestOverallCols; maxRowsPerCol = narrowestOverallRows; }
-        std::cout << "  GRID FINAL: Chosen Layout: Cols=" << numCols << ", RowsPerCol=" << maxRowsPerCol << (foundVerticalFit ? " (Vertical Fit)" : " (Narrowest Overall)") << std::endl;
-        actualGridHeight = (float)maxRowsPerCol * stph - (maxRowsPerCol > 0 ? sp : 0.f); if (actualGridHeight < 0) actualGridHeight = 0;
-        std::cout << "  GRID H/W: Actual Grid Height = " << actualGridHeight << std::endl;
-        if (m_gridStartY + actualGridHeight > gridSectionBottomY) { std::cout << "  GRID WARNING: Grid bottom exceeds section." << std::endl; }
-        m_wordCol.resize(m_sorted.size()); m_wordRow.resize(m_sorted.size()); m_colMaxLen.assign(numCols, 0);
-        for (size_t w = 0; w < m_sorted.size(); ++w) { int c = (int)w / maxRowsPerCol, r = (int)w % maxRowsPerCol; if (c >= numCols)c = numCols - 1; m_wordCol[w] = c; m_wordRow[w] = r; if (c >= 0 && c < m_colMaxLen.size()) m_colMaxLen[c] = std::max<int>(m_colMaxLen[c], (int)m_sorted[w].text.length()); }
-        m_colXOffset.resize(numCols); float currentX = 0;
-        for (int c = 0; c < numCols; ++c) { m_colXOffset[c] = currentX; float colWidth = 0.f; if (c >= 0 && c < m_colMaxLen.size()) { int len = m_colMaxLen[c]; colWidth = (float)len * stpw - (len > 0 ? sp : 0.f); } if (colWidth < 0)colWidth = 0; currentX += colWidth + sc; }
-        m_totalGridW = currentX - (numCols > 0 ? sc : 0.f); if (m_totalGridW < 0) m_totalGridW = 0;
+        else {
+            std::cout << "  GRID INIT: Using Narrowest Overall: Cols=" << chosenCols << ", RowsPerCol=" << chosenRows << std::endl;
+        }
+
+
+        // --- ***** APPLY 5-ROW LIMIT (SIMPLIFIED) ***** ---
+        const int MAX_ROWS_LIMIT = 5; // The row limit
+
+        if (chosenRows > MAX_ROWS_LIMIT) { // Apply limit if initial calculation needs more than 5 rows
+            std::cout << "  GRID OVERRIDE: Initial calculation needs " << chosenRows << " rows." << std::endl;
+            std::cout << "                 Forcing Max Rows to " << MAX_ROWS_LIMIT << "." << std::endl;
+
+            chosenRows = MAX_ROWS_LIMIT; // Apply the limit
+            // Recalculate the number of columns needed for this fixed row count
+            chosenCols = ((int)m_sorted.size() + chosenRows - 1) / chosenRows;
+            if (chosenCols <= 0) chosenCols = 1; // Ensure at least one column
+
+            std::cout << "                 Recalculated Columns Needed: " << chosenCols << std::endl;
+        }
+        // --- ***** END OF SIMPLIFIED ROW LIMIT LOGIC ***** ---
+
+
+        // --- Finalize grid dimensions based on CHOSEN (potentially overridden) rows/cols ---
+        numCols = chosenCols;
+        maxRowsPerCol = chosenRows;
+
+        // Calculate actual grid height based on final maxRowsPerCol
+        actualGridHeight = (float)maxRowsPerCol * stph - (maxRowsPerCol > 0 ? sp : 0.f); // Subtract trailing pad
+        if (actualGridHeight < 0) actualGridHeight = 0;
+
+        // Log final grid dimensions
+        std::cout << "  GRID FINAL: Using Layout: Cols=" << numCols << ", RowsPerCol=" << maxRowsPerCol << std::endl;
+        std::cout << "  GRID H/W: Final Grid Height = " << actualGridHeight << std::endl;
+        // Add warning if grid bottom still exceeds section (can happen if MAX_ROWS is still too many for the available height)
+        if (m_gridStartY + actualGridHeight > gridSectionBottomY + 1.0f) { // Added tolerance
+            std::cout << "  GRID WARNING: Grid bottom (Y=" << (m_gridStartY + actualGridHeight)
+                << ") still exceeds section bottom (Y=" << gridSectionBottomY << ")!" << std::endl;
+        }
+
+
+        // --- Calculate grid word positions and column offsets using FINAL numCols/maxRowsPerCol ---
+        m_wordCol.resize(m_sorted.size());
+        m_wordRow.resize(m_sorted.size());
+        m_colMaxLen.assign(numCols, 0); // Use final numCols
+
+        // Assign words to columns/rows and find max length per column *based on the final layout*
+        for (size_t w = 0; w < m_sorted.size(); ++w) {
+            int c = (int)w / maxRowsPerCol; // Use final maxRowsPerCol
+            int r = (int)w % maxRowsPerCol;
+            if (c >= numCols) c = numCols - 1; // Safety clamp to final numCols
+            m_wordCol[w] = c;
+            m_wordRow[w] = r;
+            if (c >= 0 && c < m_colMaxLen.size()) { // Check bounds using final numCols size
+                m_colMaxLen[c] = std::max<int>(m_colMaxLen[c], (int)m_sorted[w].text.length());
+            }
+        }
+
+        // Calculate column X offsets and total grid width based on m_colMaxLen (now using final layout)
+        m_colXOffset.resize(numCols); // Use final numCols
+        float currentX = 0;
+        for (int c = 0; c < numCols; ++c) { // Use final numCols
+            m_colXOffset[c] = currentX;
+            float colWidth = 0.f;
+            if (c >= 0 && c < m_colMaxLen.size()) { // Check bounds
+                int len = m_colMaxLen[c];
+                colWidth = (float)len * stpw - (len > 0 ? sp : 0.f); // Subtract trailing pad
+            }
+            if (colWidth < 0) colWidth = 0;
+            currentX += colWidth + sc; // Add width and column padding
+        }
+        // Calculate final total width
+        m_totalGridW = currentX - (numCols > 0 ? sc : 0.f); // Subtract trailing column pad
+        if (m_totalGridW < 0) m_totalGridW = 0;
+
+        // Calculate final starting X position for centering
         m_gridStartX = designCenter.x - m_totalGridW / 2.f;
-        for (int c = 0; c < numCols; ++c) { if (c < m_colXOffset.size()) { m_colXOffset[c] += m_gridStartX; } }
+
+        // Adjust column offsets by the starting X position
+        for (int c = 0; c < numCols; ++c) {
+            if (c < m_colXOffset.size()) { // Check bounds
+                m_colXOffset[c] += m_gridStartX;
+            }
+        }
+
     }
-    else { m_gridStartX = designCenter.x; m_totalGridW = 0; actualGridHeight = 0; std::cout << "  GRID LAYOUT: Grid empty." << std::endl; }
+    else {
+        // Grid is empty, set defaults
+        m_gridStartX = designCenter.x;
+        m_totalGridW = 0;
+        actualGridHeight = 0;
+        std::cout << "  GRID LAYOUT: Grid empty." << std::endl;
+    }
+    // --- End Grid Calculation Section ---
+
 
     // 5. Determine Final Wheel Size & Position ---------------
     const float scaledGridWheelGap = S(this, GRID_WHEEL_GAP);
     const float scaledWheelBottomMargin = S(this, WHEEL_BOTTOM_MARGIN);
     const float scaledLetterRadius = S(this, LETTER_R); // Design letter radius
     const float scaledHudMinHeight = S(this, HUD_AREA_MIN_HEIGHT);
-    float gridActualBottomY = m_gridStartY + actualGridHeight;
+    float gridActualBottomY = m_gridStartY + actualGridHeight; // Uses the potentially adjusted grid height
     float gridAreaLimitY = gridActualBottomY + scaledGridWheelGap; // Y below which wheel path *should* start
     float wheelCenterBottomLimit = designBottomEdge - scaledWheelBottomMargin - scaledHudMinHeight; // Y above which wheel center must be to leave HUD space
     std::cout << "--- WHEEL LAYOUT: Start Calculation ---" << std::endl;
@@ -962,7 +1102,9 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     std::cout << "  WHEEL FINAL: Assigned m_wheelX = " << m_wheelX << ", m_wheelY = " << m_wheelY << ", m_currentWheelRadius = " << m_currentWheelRadius << std::endl;
     std::cout << "--- WHEEL LAYOUT: End Calculation ---" << std::endl;
 
+
     // 6. Calculate Final Wheel Letter Positions (Original m_wheelCentres loop)-----
+    // --> NOTE: m_wheelCentres are the LOGICAL centers for path detection
     m_wheelCentres.resize(m_base.size());
     if (!m_base.empty()) {
         float angleStep = (2.f * PI) / (float)m_base.size();
@@ -973,34 +1115,36 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         }
     }
 
-
-    const float scaledWheelPadding = S(this, 30.f);
     // 6b. Calculate Final Wheel Letter RENDER Positions and Radius
+    // --> NOTE: m_wheelLetterRenderPos are for DRAWING and HIT DETECTION
     m_wheelLetterRenderPos.resize(m_base.size());
     const float baseWheelRadius = S(this, WHEEL_R); // Scaled default radius
-
+    const float scaledWheelPadding = S(this, 30.f); // Dynamic scaling
     const float visualBgRadius = m_currentWheelRadius + scaledWheelPadding;
 
-    // Calculate scaling factor for letter circles/fonts
+    // Calculate scaling factor for letter circles/fonts based on final wheel size vs default
     float wheelRadiusRatio = 1.0f;
     if (baseWheelRadius > 1.0f && m_currentWheelRadius > 0.0f) {
         wheelRadiusRatio = m_currentWheelRadius / baseWheelRadius;
     }
-    wheelRadiusRatio = std::clamp(wheelRadiusRatio, 0.7f, 1.0f); // Clamp scaling
+    wheelRadiusRatio = std::clamp(wheelRadiusRatio, 0.7f, 1.0f); // Clamp scaling factor
 
     // Calculate and store the final radius used for RENDERING and HIT DETECTION
     m_currentLetterRenderRadius = S(this, LETTER_R) * wheelRadiusRatio;
 
-    // Calculate the radius for LETTER POSITIONING
-    const float letterPositionGap = S(this, 5.f); // Small gap from visual edge
+    // Calculate the radius for LETTER POSITIONING on the wheel
+    // This determines *where* the center of the letter circles are placed.
+    const float letterPositionGap = S(this, 5.f); // Small gap from visual edge (scaled)
+    // Calculate the radius where letters should be placed - slightly inside the visual BG edge
     float letterPositionRadius = visualBgRadius - m_currentLetterRenderRadius - letterPositionGap;
+    // Ensure the letter position radius isn't too small (e.g., less than half the logical radius or less than the render radius itself)
     letterPositionRadius = std::max(letterPositionRadius, m_currentWheelRadius * 0.5f);
     letterPositionRadius = std::max(letterPositionRadius, m_currentLetterRenderRadius);
 
     std::cout << "  LAYOUT INFO: LetterRenderRadius=" << m_currentLetterRenderRadius
         << ", LetterPositionRadius=" << letterPositionRadius << std::endl;
 
-    // Calculate and store the final render position for each letter
+    // Calculate and store the final render position for each letter using letterPositionRadius
     if (!m_base.empty()) {
         float angleStep = (2.f * PI) / (float)m_base.size();
         for (size_t i = 0; i < m_base.size(); ++i) {
@@ -1011,21 +1155,42 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
             };
         }
     }
-    // --- END OF ADDED BLOCK ---
-    
+    // --- END OF WHEEL LETTER RENDER POSITION CALCULATION ---
+
+
     // 7. Other UI Element Positions ---------------
-    
-    if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) { float h = S(this, SCRAMBLE_BTN_HEIGHT); float s = h / m_scrambleTex.getSize().y; m_scrambleSpr->setScale({ s,s }); m_scrambleSpr->setOrigin({ 0.f,m_scrambleTex.getSize().y / 2.f }); m_scrambleSpr->setPosition({ m_wheelX + m_currentWheelRadius + scaledWheelPadding + S(this,SCRAMBLE_BTN_OFFSET_X), m_wheelY + S(this,SCRAMBLE_BTN_OFFSET_Y) }); }
-    if (m_hintSpr && m_hintTex.getSize().y > 0) { float h = S(this, HINT_BTN_HEIGHT); float s = h / m_hintTex.getSize().y; m_hintSpr->setScale({ s,s }); m_hintSpr->setOrigin({ (float)m_hintTex.getSize().x, m_hintTex.getSize().y / 2.f }); m_hintSpr->setPosition({ m_wheelX - m_currentWheelRadius - scaledWheelPadding - S(this,HINT_BTN_OFFSET_X), m_wheelY + S(this,HINT_BTN_OFFSET_Y) }); }
+    // Buttons relative to wheel's visual edge (visualBgRadius)
+    if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) { float h = S(this, SCRAMBLE_BTN_HEIGHT); float s = h / m_scrambleTex.getSize().y; m_scrambleSpr->setScale({ s,s }); m_scrambleSpr->setOrigin({ 0.f,m_scrambleTex.getSize().y / 2.f }); m_scrambleSpr->setPosition({ m_wheelX + visualBgRadius + S(this,SCRAMBLE_BTN_OFFSET_X), m_wheelY + S(this,SCRAMBLE_BTN_OFFSET_Y) }); }
+    if (m_hintSpr && m_hintTex.getSize().y > 0) { float h = S(this, HINT_BTN_HEIGHT); float s = h / m_hintTex.getSize().y; m_hintSpr->setScale({ s,s }); m_hintSpr->setOrigin({ (float)m_hintTex.getSize().x, m_hintTex.getSize().y / 2.f }); m_hintSpr->setPosition({ m_wheelX - visualBgRadius - S(this,HINT_BTN_OFFSET_X), m_wheelY + S(this,HINT_BTN_OFFSET_Y) }); }
     if (m_hintCountTxt) { const unsigned int bf = 20; unsigned int sf = (unsigned int)std::max(8.0f, S(this, (float)bf)); m_hintCountTxt->setCharacterSize(sf); }
-    if (m_contTxt && m_contBtn.getPointCount() > 0) { sf::Vector2f s = { S(this,200.f),S(this,50.f) }; m_contBtn.setSize(s); m_contBtn.setRadius(S(this, 10.f)); m_contBtn.setOrigin({ s.x / 2.f,0.f }); m_contBtn.setPosition({ m_wheelX, m_wheelY + m_currentWheelRadius + scaledWheelPadding + S(this,CONTINUE_BTN_OFFSET_Y) }); const unsigned int bf = 24; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_contTxt->setCharacterSize(sf); sf::FloatRect tb = m_contTxt->getLocalBounds(); m_contTxt->setOrigin({ tb.position.x + tb.size.x / 2.f,tb.position.y + tb.size.y / 2.f }); m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f,s.y / 2.f }); }
+
+    // Continue Button positioning (relative to wheel's visual edge)
+    if (m_contTxt && m_contBtn.getPointCount() > 0) {
+        sf::Vector2f s = { S(this,200.f),S(this,50.f) }; // Scaled button size
+        m_contBtn.setSize(s);
+        m_contBtn.setRadius(S(this, 10.f)); // Scaled radius
+        m_contBtn.setOrigin({ s.x / 2.f, 0.f }); // Origin: Top-Center
+        // Position below the visual bottom edge of the wheel background
+        m_contBtn.setPosition({ m_wheelX, m_wheelY + visualBgRadius + S(this,CONTINUE_BTN_OFFSET_Y) }); // Use visualBgRadius
+
+        // Position Continue Text centered on the button
+        const unsigned int bf = 24;
+        unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf));
+        m_contTxt->setCharacterSize(sf);
+        sf::FloatRect tb = m_contTxt->getLocalBounds();
+        m_contTxt->setOrigin({ tb.position.x + tb.size.x / 2.f, tb.position.y + tb.size.y / 2.f }); // Center origin
+        m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, s.y / 2.f }); // Position relative to button's origin
+    }
+
+    // Guess Display positioning (done dynamically in render, but set properties here)
     if (m_guessDisplay_Text) { const unsigned int bf = 30; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_guessDisplay_Text->setCharacterSize(sf); }
     if (m_guessDisplay_Bg.getPointCount() > 0) { m_guessDisplay_Bg.setRadius(S(this, 8.f)); m_guessDisplay_Bg.setOutlineThickness(S(this, 1.f)); }
 
     // --- Log Calculated HUD Start Position & Visual Wheel Top ---
     const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y);
-    float calculatedHudStartY = m_wheelY + m_currentWheelRadius + scaledWheelPadding + scaledHudOffsetY;
-    float visualWheelTopEdgeY = m_wheelY - (m_currentWheelRadius + scaledWheelPadding); // Top of wheel BG
+    // Calculate where HUD starts based on visual wheel bottom edge
+    float calculatedHudStartY = m_wheelY + visualBgRadius + scaledHudOffsetY;
+    float visualWheelTopEdgeY = m_wheelY - visualBgRadius; // Top of wheel BG
     std::cout << "  WHEEL/HUD INFO: Visual Wheel BG Top Edge Y = " << visualWheelTopEdgeY << std::endl;
     std::cout << "  WHEEL/HUD INFO: Calculated HUD Start Y = " << calculatedHudStartY << std::endl;
     if (visualWheelTopEdgeY < gridActualBottomY - 0.1f) { std::cout << "  WHEEL/HUD WARNING: Visual Wheel BG (Y=" << visualWheelTopEdgeY << ") overlaps Grid Bottom (Y=" << gridActualBottomY << ")!" << std::endl; }
@@ -1039,17 +1204,17 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     if (m_mainMenuTitle && m_casualButtonShape.getPointCount() > 0) { m_mainMenuTitle->setCharacterSize(scaledTitleSize); m_casualButtonText->setCharacterSize(scaledButtonFontSize); m_competitiveButtonText->setCharacterSize(scaledButtonFontSize); m_quitButtonText->setCharacterSize(scaledButtonFontSize); m_casualButtonShape.setSize(scaledButtonSize); m_competitiveButtonShape.setSize(scaledButtonSize); m_quitButtonShape.setSize(scaledButtonSize); m_casualButtonShape.setRadius(scaledButtonRadius); m_competitiveButtonShape.setRadius(scaledButtonRadius); m_quitButtonShape.setRadius(scaledButtonRadius); sf::FloatRect titleBounds = m_mainMenuTitle->getLocalBounds(); float sths = titleBounds.size.y + titleBounds.position.y + scaledButtonSpacing; float tbh = 3 * scaledButtonSize.y + 2 * scaledButtonSpacing; float smmh = scaledMenuPadding + sths + tbh + scaledMenuPadding; float smmw = std::max(scaledButtonSize.x, titleBounds.size.x + titleBounds.position.x) + 2 * scaledMenuPadding; m_mainMenuBg.setSize({ smmw,smmh }); m_mainMenuBg.setRadius(scaledMenuRadius); m_mainMenuBg.setOrigin({ smmw / 2.f,smmh / 2.f }); m_mainMenuBg.setPosition(mappedWindowCenter); sf::Vector2f mbp = m_mainMenuBg.getPosition(); float mty = mbp.y - smmh / 2.f; m_mainMenuTitle->setOrigin({ titleBounds.position.x + titleBounds.size.x / 2.f,titleBounds.position.y }); m_mainMenuTitle->setPosition({ mbp.x,mty + scaledMenuPadding }); float currentY = mty + scaledMenuPadding + sths; m_casualButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_casualButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_casualButtonText, m_casualButtonShape); currentY += scaledButtonSize.y + scaledButtonSpacing; m_competitiveButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_competitiveButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_competitiveButtonText, m_competitiveButtonShape); currentY += scaledButtonSize.y + scaledButtonSpacing; m_quitButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_quitButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_quitButtonText, m_quitButtonShape); }
     if (m_casualMenuTitle && m_easyButtonShape.getPointCount() > 0) { m_casualMenuTitle->setCharacterSize(scaledTitleSize); m_easyButtonText->setCharacterSize(scaledButtonFontSize); m_mediumButtonText->setCharacterSize(scaledButtonFontSize); m_hardButtonText->setCharacterSize(scaledButtonFontSize); m_returnButtonText->setCharacterSize(scaledButtonFontSize); m_easyButtonShape.setSize(scaledButtonSize); m_mediumButtonShape.setSize(scaledButtonSize); m_hardButtonShape.setSize(scaledButtonSize); m_returnButtonShape.setSize(scaledButtonSize); m_easyButtonShape.setRadius(scaledButtonRadius); m_mediumButtonShape.setRadius(scaledButtonRadius); m_hardButtonShape.setRadius(scaledButtonRadius); m_returnButtonShape.setRadius(scaledButtonRadius); sf::FloatRect ctb = m_casualMenuTitle->getLocalBounds(); float sths = ctb.size.y + ctb.position.y + scaledButtonSpacing; float tbh = 4 * scaledButtonSize.y + 3 * scaledButtonSpacing; float scmh = scaledMenuPadding + sths + tbh + scaledMenuPadding; float scmw = std::max(scaledButtonSize.x, ctb.size.x + ctb.position.x) + 2 * scaledMenuPadding; m_casualMenuBg.setSize({ scmw,scmh }); m_casualMenuBg.setRadius(scaledMenuRadius); m_casualMenuBg.setOrigin({ scmw / 2.f,scmh / 2.f }); m_casualMenuBg.setPosition(mappedWindowCenter); sf::Vector2f cmbp = m_casualMenuBg.getPosition(); float cmty = cmbp.y - scmh / 2.f; m_casualMenuTitle->setOrigin({ ctb.position.x + ctb.size.x / 2.f,ctb.position.y }); m_casualMenuTitle->setPosition({ cmbp.x,cmty + scaledMenuPadding }); float ccy = cmty + scaledMenuPadding + sths; m_easyButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_easyButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_easyButtonText, m_easyButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_mediumButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_mediumButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_mediumButtonText, m_mediumButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_hardButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_hardButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_hardButtonText, m_hardButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_returnButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_returnButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_returnButtonText, m_returnButtonShape); }
 
+
     // --- Final Summary Log ---
     std::cout << "--- Overall Layout Summary (Design Coords) ---" << std::endl;
     std::cout << "Grid: StartY=" << m_gridStartY << " ActualH=" << actualGridHeight << " BottomY=" << gridActualBottomY << std::endl;
     std::cout << "Wheel: CenterY=" << m_wheelY << " Radius=" << m_currentWheelRadius << " VisualTopY=" << visualWheelTopEdgeY << std::endl;
     std::cout << "HUD: StartY=" << calculatedHudStartY << std::endl;
     std::cout << "---------------------------------------------" << std::endl;
-    tempCount = 0; //for debug
 
 } // End of m_updateLayout implementation
 
-// --- END OF REVISED m_updateLayout FUNCTION ---
+// --- END OF FULL m_updateLayout FUNCTION ---
 
 sf::Vector2f Game::m_tilePos(int wordIdx, int charIdx) {
     sf::Vector2f result = { -1000.f, -1000.f }; // Default off-screen
@@ -1873,13 +2038,13 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                     // Determine which gem sprite to use based on word rarity
                     sf::Sprite* gemSprite = nullptr; // Pointer to the sprite to draw
                     switch (wordRarity) {
-                    case 1: // Common - Sapphire/Emerald
+                    case 1: // Common - none
                         break;
-                    case 2: // Uncommon - Ruby
+					case 2: // Uncommon - Emerald(Sapphire)
+                        if (m_sapphireSpr) gemSprite = m_sapphireSpr.get();
+                        break;
+                    case 3: // Rare - Ruby
                         if (m_rubySpr) gemSprite = m_rubySpr.get();
-                        break;
-                    case 3: // Rare - Diamond
-                        if (m_diamondSpr) gemSprite = m_diamondSpr.get();
                         break;
                     case 4: // Very Rare - Also Diamond or another distinct gem if you add one
                         if (m_diamondSpr) gemSprite = m_diamondSpr.get();
