@@ -44,10 +44,17 @@ enum class DifficultyLevel {
 //--------------------------------------------------------------------
 class Game {
 public:
+    void m_updateView(sf::Vector2u win);
     Game(); // Constructor
     void run(); // Main game loop function
+    friend float S(const Game* g, float du);
 
 private:
+
+    // --- Debugging ---
+    bool m_debugDrawCircleMode;
+
+    float m_uiScale = 1.f;
     bool m_needsLayoutUpdate;
     sf::Vector2u m_lastKnownSize; // Store the last size used for layout
 
@@ -73,6 +80,10 @@ private:
     unsigned int m_hintsAvailable;
     unsigned int m_wordsSolvedSinceHint;
     unsigned int m_currentScore;
+    // Calculated layout properties for wheel letters
+    std::vector<sf::Vector2f> m_wheelLetterRenderPos; // Final screen position for each letter circle
+    float m_currentLetterRenderRadius; // Final scaled radius for letter circles
+
     bool m_dragging;
     std::vector<int> m_path;
     std::string m_currentGuess;
@@ -181,6 +192,8 @@ private:
     float m_gridStartX = 0.f;
     float m_gridStartY = GRID_TOP_MARGIN; // Use constant for initial default
     float m_totalGridW = 0.f;
+    float m_currentWheelRadius;
+    int tempCount = 0; // For debugging
 
     // Themes
     std::vector<ColorTheme> m_themes;
@@ -194,8 +207,8 @@ private:
     PuzzleCriteria m_getCriteriaForCurrentPuzzle() const;
 
     // Progress Meter Elements
-    sf::RectangleShape m_progressMeterBg;     // Background/border
-    sf::RectangleShape m_progressMeterFill;   // The filled part showing progress
+    RoundedRectangleShape m_progressMeterBg;     // Background/border
+    RoundedRectangleShape m_progressMeterFill;   // The filled part showing progress
     std::unique_ptr<sf::Text> m_progressMeterText; // Optional: Text overlay "X/Y"
 
 
@@ -230,6 +243,7 @@ private:
     void m_renderSessionComplete(const sf::Vector2f& mousePos);
 
     void m_handleSessionCompleteEvents(const sf::Event& event);
+    void m_renderDebugCircle();
 };
 
 #endif // GAME_H

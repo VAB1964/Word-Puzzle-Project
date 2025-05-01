@@ -13,8 +13,8 @@ std::vector<ColorTheme> loadThemes() {
         sf::Color(208, 232, 242),    // decorAccent1
         sf::Color(155, 211, 255),    // decorAccent2
         sf::Color(100, 110, 120, 180),// gridEmptyTile (Adjusted example slightly for clarity)
-        sf::Color(34, 161, 57),      // gridFilledTile
-        sf::Color::White,            // gridLetter
+        sf::Color(155, 211, 255),      // gridFilledTile
+        sf::Color::Black,            // gridLetter
         sf::Color(45, 52, 67, 150),  // wheelBg (Adjusted example slightly for clarity)
         sf::Color(155, 211, 255),    // wheelOutline (Adjusted example slightly for clarity)
         sf::Color(240, 240, 240, 220),// letterCircleNormal
@@ -23,9 +23,9 @@ std::vector<ColorTheme> loadThemes() {
         sf::Color::White,            // letterTextHighlight
         sf::Color(0, 105, 255, 200), // dragLine
         sf::Color(100, 200, 100),    // continueButton
-        sf::Color(255, 100, 0),      // hudTextGuess
+        sf::Color(155, 211, 255),      // hudTextGuess
         sf::Color(255, 100, 0),      // hudTextFound
-        sf::Color::Green,            // hudTextSolved
+        sf::Color(155, 211, 255),    // hudTextSolved
         sf::Color(40, 50, 70, 210),  // solvedOverlayBg
         sf::Color(45, 52, 67, 230),  // scoreBarBg
         sf::Color(200, 200, 200),    // scoreTextLabel
