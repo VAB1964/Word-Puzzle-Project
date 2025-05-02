@@ -17,6 +17,7 @@ constexpr float PI = (float)M_PI;
 
 constexpr float DEG2RAD(float d) { return d * PI / 180.f; }
 
+
 // Function to get the random number generator
 std::mt19937& Rng();
 

@@ -114,15 +114,17 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>SFML_STATIC</PreprocessorDefinitions>
+      <PreprocessorDefinitions>
+      </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Libraries\SFML\SFML-3.0.0\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>sfml-graphics-s-d.lib;sfml-audio-s-d.lib;sfml-window-s-d.lib;sfml-system-s-d.lib;sfml-main-s-d.lib;sfml-network-s-d.lib;opengl32.lib;freetype.lib;winmm.lib;gdi32.lib;advapi32.lib;user32.lib;ole32.lib;shell32.lib;ogg.lib;vorbis.lib;vorbisenc.lib;vorbisfile.lib;flac.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Libraries\64BitSFML\SFML-3.0.0\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-graphics-d.lib;sfml-audio-d.lib;sfml-window-d.lib;sfml-system-d.lib;sfml-network-d.lib;opengl32.lib;freetype.lib;winmm.lib;gdi32.lib;advapi32.lib;user32.lib;ole32.lib;shell32.lib;ogg.lib;vorbis.lib;vorbisenc.lib;vorbisfile.lib;flac.lib</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>

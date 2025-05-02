@@ -45,9 +45,29 @@ struct Balloon {
 //--------------------------------------------------------------------
 //  Word Data Structure
 //--------------------------------------------------------------------
+// Structure to hold word data including rarity and pre-calculated metrics
 struct WordInfo {
-    std::string text;
-    int rarity = 4; // Default to Very Rare if not found or error
+    std::string text = "";
+    int rarity = 0;
+
+    // --- NEW Pre-calculated Metrics ---
+    float avgSubLen = 0.0f;         // Average length of sub-words (>= MIN_SUB_WORD_LEN)
+    int countGE3 = 0;               // Count of sub-words with length >= 3
+    int countGE4 = 0;               // Count of sub-words with length >= 4
+    int countGE5 = 0;               // Count of sub-words with length >= 5
+    int easyValidCount = 0;         // Count valid for Easy difficulty criteria
+    int mediumValidCount = 0;       // Count valid for Medium difficulty criteria
+    int hardValidCount = 0;         // Count valid for Hard difficulty criteria
+
+    // Optional: Constructor for easier initialization if needed
+    WordInfo() = default; // Keep default constructor
+
+    // Example constructor if you want to set everything at once
+    WordInfo(std::string t, int r, float avgSL = 0.0f, int c3 = 0, int c4 = 0, int c5 = 0, int ec = 0, int mc = 0, int hc = 0)
+        : text(std::move(t)), rarity(r), avgSubLen(avgSL), countGE3(c3), countGE4(c4),
+        countGE5(c5), easyValidCount(ec), mediumValidCount(mc), hardValidCount(hc) {
+    }
+
 };
 
 //--------------------------------------------------------------------

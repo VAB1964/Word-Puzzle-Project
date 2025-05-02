@@ -1,133 +1,219 @@
-#include "Words.h" // Include the header file with declarations
+#include "Words.h"
+#include "GameData.h" // Ensure WordInfo definition is available
 
-#include <fstream>
-#include <string>
-#include <vector>
-#include <unordered_set>
-#include <algorithm> // For std::sort, std::all_of, std::remove, std::transform, std::clamp
-#include <iostream>  // For std::cerr
-#include <stdexcept> // For std::invalid_argument, std::out_of_range
+// *** Standard Includes ***
+#include <fstream>      // For std::ifstream
+#include <sstream>      // For std::stringstream
+#include <iostream>     // For std::cerr, std::cout
+#include <string>       // For std::string, std::getline, std::stoi, std::stof
+#include <vector>       // For std::vector
+#include <stdexcept>    // For std::invalid_argument, std::out_of_range
+#include <algorithm>    // For std::sort, std::all_of
+#include <map>  
+// ***********************************
 
-//--------------------------------------------------------------------
-//  Word logic helpers (Definitions)
-//--------------------------------------------------------------------
+
 namespace Words {
 
-    // Function to load words AND rarity from CSV
-    std::vector<WordInfo> loadWordListWithRarity(const std::string& file) {
+    // Function to load the pre-processed word list
+    std::vector<WordInfo> loadProcessedWordList(const std::string& filename) {
         std::vector<WordInfo> wordList;
-        std::ifstream in(file);
-        if (!in) {
-            std::cerr << "Error opening word list file: " << file << std::endl;
-            return wordList; // Return empty list on error
-        }
-
+        std::ifstream file(filename);
         std::string line;
-        // Skip header line if your CSV has one (e.g., "word,rarity")
-        // std::getline(in, line); // Uncomment if you have a header
 
-        while (std::getline(in, line)) {
-            // Basic check for empty lines or lines starting with non-alpha
-            if (line.empty() || !std::isalpha(static_cast<unsigned char>(line[0]))) { // Added cast for safety
-                continue;
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not open processed word list file: " << filename << std::endl;
+            return wordList; // Return empty list on failure
+        }
+
+        // Optional: Skip header row if your CSV has one
+        std::getline(file, line);
+
+        int lineNum = 1; // For error reporting
+        while (std::getline(file, line)) {
+            lineNum++;
+            std::stringstream ss(line);
+            std::string field;
+            WordInfo info;
+            int fieldIndex = 0;
+
+            try {
+                // Expecting 9 fields based on Python script output order
+                while (std::getline(ss, field, ',')) {
+                    // Trim whitespace
+                    size_t first = field.find_first_not_of(" \t\n\r\f\v");
+                    if (std::string::npos == first) {
+                        field = "";
+                    }
+                    else {
+                        size_t last = field.find_last_not_of(" \t\n\r\f\v");
+                        field = field.substr(first, (last - first + 1));
+                    }
+
+                    // Process the field
+                    switch (fieldIndex) {
+                    case 0: info.text = field; break;
+                    case 1: info.rarity = field.empty() ? 0 : std::stoi(field); break;
+                    case 2: info.avgSubLen = field.empty() ? 0.0f : std::stof(field); break;
+                    case 3: info.countGE3 = field.empty() ? 0 : std::stoi(field); break;
+                    case 4: info.countGE4 = field.empty() ? 0 : std::stoi(field); break;
+                    case 5: info.countGE5 = field.empty() ? 0 : std::stoi(field); break;
+                    case 6: info.easyValidCount = field.empty() ? 0 : std::stoi(field); break;
+                    case 7: info.mediumValidCount = field.empty() ? 0 : std::stoi(field); break;
+                    case 8: info.hardValidCount = field.empty() ? 0 : std::stoi(field); break;
+                    default: /* Ignore extra fields */ break;
+                    }
+                    fieldIndex++;
+                }
+
+                // Basic validation
+                if (fieldIndex >= 2 && !info.text.empty()) {
+                    wordList.push_back(info);
+                }
+                else if (!line.empty()) {
+                    std::cerr << "Warning: Skipping malformed line " << lineNum << " in " << filename << " (parsed " << fieldIndex << " fields)" << std::endl;
+                }
+
             }
-
-            std::size_t commaPos = line.find(',');
-            if (commaPos != std::string::npos && commaPos > 0) {
-                WordInfo info;
-                info.text = line.substr(0, commaPos);
-                // Clean up word
-                info.text.erase(std::remove(info.text.begin(), info.text.end(), '\"'), info.text.end());
-                info.text.erase(std::remove(info.text.begin(), info.text.end(), ' '), info.text.end());
-                info.text.erase(std::remove(info.text.begin(), info.text.end(), '\r'), info.text.end()); // Remove potential carriage returns
-                std::transform(info.text.begin(), info.text.end(), info.text.begin(), ::tolower);
-
-                if (info.text.empty() || !std::all_of(info.text.begin(), info.text.end(), ::isalpha)) {
-                    // std::cerr << "Warning: Skipping non-alphabetic word after cleaning: '" << info.text << "' from line: " << line << std::endl;
-                    continue;
-                }
-                if (info.text.length() < 3 || info.text.length() > 7) {
-                    // std::cerr << "Skipping word due to length: " << info.text << std::endl;
-                    continue;
-                }
-
-                try {
-                    std::string rarityStr = line.substr(commaPos + 1);
-                    rarityStr.erase(std::remove(rarityStr.begin(), rarityStr.end(), '\"'), rarityStr.end());
-                    rarityStr.erase(std::remove(rarityStr.begin(), rarityStr.end(), ' '), rarityStr.end());
-                    rarityStr.erase(std::remove(rarityStr.begin(), rarityStr.end(), '\r'), rarityStr.end());
-
-                    info.rarity = std::stoi(rarityStr);
-                    info.rarity = std::clamp(info.rarity, 1, 4);
-                }
-                catch (const std::invalid_argument& e) {
-                    std::cerr << "Warning: Invalid rarity format for word '" << info.text << "'. Defaulting to 4. Error: " << e.what() << std::endl;
-                    info.rarity = 4;
-                }
-                catch (const std::out_of_range& e) {
-                    std::cerr << "Warning: Rarity value out of range for word '" << info.text << "'. Defaulting to 4. Error: " << e.what() << std::endl;
-                    info.rarity = 4;
-                }
-                wordList.push_back(info);
+            catch (const std::invalid_argument& ia) {
+                std::cerr << "Warning: Invalid number format on line " << lineNum << " in " << filename << ". Field content: [" << field << "]. Skipping line. Error: " << ia.what() << std::endl;
             }
-            else {
-                std::cerr << "Warning: Skipping invalid CSV line (no comma?): " << line << std::endl;
+            catch (const std::out_of_range& oor) {
+                std::cerr << "Warning: Number out of range on line " << lineNum << " in " << filename << ". Field content: [" << field << "]. Skipping line. Error: " << oor.what() << std::endl;
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Warning: Unexpected error parsing line " << lineNum << " in " << filename << ". Skipping line. Error: " << e.what() << std::endl;
             }
         }
-        std::cout << "Loaded " << wordList.size() << " valid words with rarity from " << file << std::endl;
+
+        file.close();
+        std::cout << "Successfully loaded " << wordList.size() << " words from processed file: " << filename << std::endl;
         return wordList;
     }
 
-    // Get words of a specific length
+
+    // *** DEFINITION for withLength ***
     std::vector<WordInfo> withLength(const std::vector<WordInfo>& wordList, std::size_t len) {
-        std::vector<WordInfo> out;
-        if (len == 0) return out;
-        for (const auto& wi : wordList) {
-            if (wi.text.size() == len) {
-                out.push_back(wi);
+        std::vector<WordInfo> result;
+        for (const auto& info : wordList) {
+            if (info.text.length() == len) {
+                result.push_back(info);
             }
         }
-        return out;
+        return result;
     }
 
-    // Check if 'sub' can be formed from letters in 'base'
+
+    // *** DEFINITION for isSubWord (Helper) ***
+    // Checks if 'sub' can be formed using only letters from 'base'
+    // Case-insensitive comparison
     bool isSubWord(const std::string& sub, const std::string& base) {
-        if (sub.empty()) return true;
-        if (sub.size() > base.size()) return false;
-        std::string tempBase = base;
-        for (char subChar : sub) {
-            auto pos = tempBase.find(subChar);
-            if (pos == std::string::npos) {
-                return false;
-            }
-            tempBase.erase(pos, 1);
+        if (sub.empty() || sub.length() > base.length()) {
+            return false; // Cannot be sub-word if empty or longer
         }
-        return true;
+        if (sub == base) {
+            return false; // A word isn't its own sub-word in this context
+        }
+
+        // Use frequency maps for efficient checking
+        std::map<char, int> baseFreq;
+        for (char c : base) {
+            baseFreq[std::tolower(c)]++;
+        }
+
+        std::map<char, int> subFreq;
+        for (char c : sub) {
+            subFreq[std::tolower(c)]++;
+        }
+
+        // Check if every character in 'sub' is present in 'base' with sufficient frequency
+        for (const auto& pair : subFreq) {
+            char subChar = pair.first;
+            int subCount = pair.second;
+            if (baseFreq.find(subChar) == baseFreq.end() || baseFreq[subChar] < subCount) {
+                return false; // Character not found in base or not enough occurrences
+            }
+        }
+
+        return true; // All characters in 'sub' are accounted for in 'base'
     }
 
-    // Find all sub-words
+
+    // *** CORRECTED DEFINITION for subWords ***
+    // Finds all words in the dictionary that can be formed from the letters of 'base'
+    // (excluding the base word itself).
     std::vector<WordInfo> subWords(const std::string& base, const std::vector<WordInfo>& wordList) {
-        std::vector<WordInfo> out;
-        if (base.empty()) return out;
-        std::string lowerBase = base; // Work with lowercase base
-        std::transform(lowerBase.begin(), lowerBase.end(), lowerBase.begin(), ::tolower);
+        std::vector<WordInfo> result;
+        if (base.empty()) { // Handle empty base case
+            return result;
+        }
 
-        for (const auto& wi : wordList) {
-            // Ensure wi.text is also lowercase for comparison if needed, though load function does it
-            if (wi.text.size() <= lowerBase.size() && isSubWord(wi.text, lowerBase)) {
-                out.push_back(wi);
+        std::string lowerBase = base;
+        std::transform(lowerBase.begin(), lowerBase.end(), lowerBase.begin(),
+            [](unsigned char c) { return std::tolower(c); }); // Use lambda for safety
+
+        std::map<char, int> baseFreq;
+        for (char c : lowerBase) {
+            baseFreq[c]++;
+        }
+
+        for (const auto& info : wordList) { // Iterate through the entire dictionary
+            const std::string& potentialWord = info.text;
+
+            // Skip empty words or words longer than the base
+            if (potentialWord.empty() || potentialWord.length() > base.length()) {
+                continue;
+            }
+
+            std::string lowerWord = potentialWord;
+            std::transform(lowerWord.begin(), lowerWord.end(), lowerWord.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+
+            // Check if it's the base word itself (case-insensitive) - skip if it is
+            if (lowerWord == lowerBase) {
+                continue;
+            }
+
+            // Check using frequency map method
+            std::map<char, int> wordFreq;
+            bool possible = true;
+            for (char c : lowerWord) {
+                wordFreq[c]++;
+                // Early exit: If char not in base, or count exceeds base count, impossible.
+                auto it = baseFreq.find(c);
+                if (it == baseFreq.end() || wordFreq[c] > it->second) {
+                    possible = false;
+                    break;
+                }
+            }
+
+            if (possible) {
+                result.push_back(info); // Add the original WordInfo object
             }
         }
-        return out;
+        std::cout << "DEBUG: Words::subWords found " << result.size() << " valid sub-words for base '" << base << "' (excluding base)." << std::endl; // Add debug output
+        return result;
     }
 
-    // Sort words for grid display
-    std::vector<WordInfo> sortForGrid(std::vector<WordInfo> v) {
+
+    // *** DEFINITION for sortForGrid ***
+    // Sorts by length ascending, then alphabetically
+    std::vector<WordInfo> sortForGrid(std::vector<WordInfo> v) { // Pass by value ok
         std::sort(v.begin(), v.end(), [](const WordInfo& a, const WordInfo& b) {
-            if (a.text.size() != b.text.size()) return a.text.size() < b.text.size();
-            return a.text < b.text;
+            if (a.text.length() != b.text.length()) {
+                return a.text.length() < b.text.length(); // Shorter first
+            }
+            return a.text < b.text; // Alphabetical for same length
             });
-        return v;
+        return v; // Return the sorted vector
     }
 
-} // End namespace Words
+
+    // Optional: Definition for the original loadWordListWithRarity if still needed
+    /*
+    std::vector<WordInfo> loadWordListWithRarity(const std::string& file) {
+        // ... implementation to read simple "word,rarity" CSV ...
+    }
+    */
+
+} // namespace Words

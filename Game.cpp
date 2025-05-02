@@ -12,7 +12,12 @@
 #include <SFML/Window/VideoMode.hpp>
 #include <SFML/System/Time.hpp>
 #include <SFML/Window/Mouse.hpp>
-#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <iostream> // For error messages
+#include <stdexcept> // For std::stof, std::stoi exceptions
 #include <algorithm>
 #include <string>
 #include <vector> // Ensure needed standard headers are here
@@ -22,13 +27,32 @@
 #include <numeric>
 #include <random> // For std::mt19937, std::uniform_real_distribution, etc.
 #include <ctime>
-#include <memory> // For unique_ptr                  
+#include <memory> // For unique_ptr    
+#include <limits>
+#include <cctype>
+#include <map>
 
 //--------------------------------------------------------------------
 //  Game Class Implementation
 //--------------------------------------------------------------------
 
 inline float S(const Game* g, float du) { return du * g->m_uiScale; }
+
+// --- START: Anonymous Namespace for Helper Function ---
+namespace { // Anonymous namespace for local helper
+    // Helper function to get sorted, lowercase letters of a word
+    std::string getCanonicalLetters(const std::string& word) {
+        std::string temp = word;
+        // Convert to lowercase
+        std::transform(temp.begin(), temp.end(), temp.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+        // Sort alphabetically
+        std::sort(temp.begin(), temp.end());
+        return temp;
+    }
+} // end anonymous namespace
+// --- END: Anonymous Namespace for Helper Function ---
+
 
 //--------------------------------------------------------------------
 //  ★ SCALE BLOCK 2 –  view that letter‑boxes (no brace‑init lists)
@@ -398,7 +422,7 @@ void Game::m_loadResources() {
 
 
     // --- Load Word List ---
-    m_fullWordList = Words::loadWordListWithRarity("words.csv");
+    m_fullWordList = Words::loadProcessedWordList("words_processed.csv");
     if (m_fullWordList.empty()) { std::cerr << "Failed to load word list or list is empty. Exiting." << std::endl; exit(1); }
     m_roots.clear(); // Start with an empty list
     std::vector<int> potentialBaseLengths = { 4, 5, 6, 7 }; // Define the lengths we might need
@@ -515,297 +539,281 @@ void Game::m_render() {
     m_window.display(); // Display everything drawn
 }
 
-// --- Other Private Methods (Placeholders) ---
+// --- START OF SIMPLIFIED m_rebuild ---
+
+// --- START OF COMPLETE m_rebuild (Attempt 3 - Verified Fix Location) ---
 void Game::m_rebuild() {
+
+    int maxSolutionsForDifficulty = 0;
+    int minSubLengthForDifficulty = MIN_WORD_LENGTH;
+
     // Select Random Theme
     if (!m_themes.empty()) {
         m_currentTheme = m_themes[0]; //forcing to test colors
         //m_currentTheme = m_themes[randRange<std::size_t>(0, m_themes.size() - 1)];
     }
     else {
-        m_currentTheme = {};
-        std::cerr << "Warning: No themes loaded, using default colors.\n";
+        m_currentTheme = {}; std::cerr << "Warning: No themes loaded, using default colors.\n";
     }
 
-    // --- Base Word Selection (Revised Logic with Used Word Check) ---
+    // --- Base Word Selection (Collect Candidates, Pick Randomly) ---
     std::string selectedBaseWord = "";
     bool baseWordFound = false;
-    std::vector<WordInfo> preCalculatedFilteredSolutions; // To store results if ideal word found
 
     if (m_roots.empty()) {
         std::cerr << "Error: No root words available for puzzle generation.\n";
-        m_base = "ERROR"; // Set error state
+        m_base = "ERROR";
     }
     else {
-        // Get the specific base word criteria for this puzzle
         PuzzleCriteria baseCriteria = m_getCriteriaForCurrentPuzzle();
-        // Get the sub-word filtering criteria for this difficulty
-        std::vector<int> allowedSubRarities;
-        int minSubLength = MIN_WORD_LENGTH;
-        int maxSolutions = 0;
         switch (m_selectedDifficulty) {
-        case DifficultyLevel::Easy:   allowedSubRarities = { 1, 2 }; maxSolutions = EASY_MAX_SOLUTIONS; minSubLength = MIN_WORD_LENGTH; break;
-        case DifficultyLevel::Medium: allowedSubRarities = { 1, 2, 3 }; maxSolutions = MEDIUM_MAX_SOLUTIONS; minSubLength = MIN_WORD_LENGTH; break;
-        case DifficultyLevel::Hard:   allowedSubRarities = { 2, 3, 4 }; maxSolutions = HARD_MAX_SOLUTIONS; minSubLength = HARD_MIN_WORD_LENGTH; break;
-        default:                      allowedSubRarities = { 1, 2, 3, 4 }; maxSolutions = 999; minSubLength = MIN_WORD_LENGTH; break;
+        case DifficultyLevel::Easy:   maxSolutionsForDifficulty = EASY_MAX_SOLUTIONS; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+        case DifficultyLevel::Medium: maxSolutionsForDifficulty = MEDIUM_MAX_SOLUTIONS; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+        case DifficultyLevel::Hard:   maxSolutionsForDifficulty = HARD_MAX_SOLUTIONS; minSubLengthForDifficulty = HARD_MIN_WORD_LENGTH; break;
+        default: maxSolutionsForDifficulty = 999; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
         }
 
+        // --- Print Status ---
         std::cout << "Rebuilding Puzzle " << (m_currentPuzzleIndex + 1) << "/" << m_puzzlesPerSession
-            << " (Difficulty: " << static_cast<int>(m_selectedDifficulty) << ")" << std::endl;
+            << " (Difficulty: " << static_cast<int>(m_selectedDifficulty) << ") using pre-calculated metrics." << std::endl;
+        std::cout << "  Base Criteria: Lengths="; for (int l : baseCriteria.allowedLengths) std::cout << l << ","; std::cout << " Rarities="; for (int r : baseCriteria.allowedRarities) std::cout << r << ","; std::cout << std::endl;
+        std::cout << "  Sub Criteria for Final Filter: MinLen=" << minSubLengthForDifficulty << " MaxSol=" << maxSolutionsForDifficulty << std::endl;
+        std::cout << "  DEBUG: Current m_usedBaseWordsThisSession size: " << m_usedBaseWordsThisSession.size() << std::endl;
+        std::cout << "  DEBUG: Current m_usedLetterSetsThisSession size: " << m_usedLetterSetsThisSession.size() << std::endl;
 
-        // Shuffle roots for variety
+        // --- Shuffle & Prepare Candidate Lists ---
         std::shuffle(m_roots.begin(), m_roots.end(), Rng());
+        std::vector<int> idealCandidateIndices;     // Indices of words meeting score/count criteria
+        std::vector<int> fallbackCandidateIndices;  // Indices of words meeting basic criteria but not ideal
+        std::vector<int> broadFallbackIndices;    // Indices for broadest fallback if others fail
 
-        int bestFallbackIndex = -1; // Index of the first word meeting base criteria AND is unused
-
-        // --- Attempt 1: Find IDEAL match (meets base criteria, sub-word count, AND is unused) ---
-        std::cout << "DEBUG: Searching for IDEAL base word..." << std::endl;
+        std::cout << "DEBUG: Searching for candidate base words..." << std::endl;
+        // --- Loop 1: Find Ideal and Fallback Candidates matching session criteria ---
         for (std::size_t i = 0; i < m_roots.size(); ++i) {
-            const auto& rootInfo = m_roots[i];
-            const std::string& candidateWord = rootInfo.text; // Get candidate text
+            const auto& rootInfo = m_roots[i]; const std::string& candidateWord = rootInfo.text;
 
-            // *** Check if already used this session ***
-            if (m_usedBaseWordsThisSession.count(candidateWord)) {
-                // std::cout << "  -> Candidate '" << candidateWord << "' skipped (already used)." << std::endl; // Optional verbose debug
-                continue; // Skip if already used
-            }
-            // ****************************************
+            // Check 1: Basic Word Criteria (Length, Rarity)
+            bool lengthMatch = false; for (int len : baseCriteria.allowedLengths) { if (candidateWord.length() == len) { lengthMatch = true; break; } } if (!lengthMatch) continue;
+            bool rarityMatch = false; for (int rarity : baseCriteria.allowedRarities) { if (rootInfo.rarity == rarity) { rarityMatch = true; break; } } if (!rarityMatch) continue;
 
-            // Check Base Length
-            bool lengthMatch = false;
-            for (int len : baseCriteria.allowedLengths) { if (rootInfo.text.length() == len) { lengthMatch = true; break; } }
-            if (!lengthMatch) continue;
+            // Check 2: Already used this exact word string?
+            if (m_usedBaseWordsThisSession.count(candidateWord)) { continue; }
 
-            // Check Base Rarity
-            bool rarityMatch = false;
-            for (int rarity : baseCriteria.allowedRarities) { if (rootInfo.rarity == rarity) { rarityMatch = true; break; } }
-            if (!rarityMatch) continue;
-
-            // --- Base Criteria Met & Not Used Yet ---
-            std::cout << "  -> Candidate '" << candidateWord << "' meets base criteria and is unused." << std::endl;
-
-            // Store as potential fallback if none better found yet
-            if (bestFallbackIndex == -1) {
-                bestFallbackIndex = static_cast<int>(i);
-                std::cout << "     (Storing as initial fallback candidate)" << std::endl;
+            // Check 3: Already used this set of letters (anagram)?
+            std::string canonicalCandidate = getCanonicalLetters(candidateWord);
+            if (m_usedLetterSetsThisSession.count(canonicalCandidate)) {
+                // std::cout << "DEBUG: Skipping candidate '" << candidateWord << "' (anagram of used word - canonical: " << canonicalCandidate << ")." << std::endl; // Verbose log
+                continue;
             }
 
-            // --- Check Sub-word Count (only if length >= 5 or always?) ---
-            if (rootInfo.text.length() >= 5) {
-                std::cout << "     Checking sub-word count..." << std::endl;
-                std::vector<WordInfo> temp_sub_solutions = Words::subWords(candidateWord, m_fullWordList);
-                std::vector<WordInfo> filtered_sub_solutions;
-
-                for (const auto& subInfo : temp_sub_solutions) {
-                    if (subInfo.text.length() < minSubLength) continue;
-                    bool subRarityMatch = false;
-                    for (int subRarity : allowedSubRarities) { if (subInfo.rarity == subRarity) { subRarityMatch = true; break; } }
-                    if (subRarityMatch) { filtered_sub_solutions.push_back(subInfo); }
-                }
-                std::cout << "     Generated " << filtered_sub_solutions.size() << " valid sub-words." << std::endl;
-
-                if (filtered_sub_solutions.size() >= MIN_DESIRED_GRID_WORDS) {
-                    std::cout << "     >>> IDEAL Candidate Found! Selecting '" << candidateWord << "'" << std::endl;
-                    selectedBaseWord = candidateWord;
-                    baseWordFound = true;
-                    preCalculatedFilteredSolutions = std::move(filtered_sub_solutions);
-                    m_usedBaseWordsThisSession.insert(selectedBaseWord); // Mark as used
-                    break; // Found ideal word
-                }
-                else { std::cout << "     (Not enough sub-words, continuing search)" << std::endl; }
+            // --- If checks passed, classify candidate ---
+            bool isIdeal = false;
+            int validSubCount = 0;
+            switch (m_selectedDifficulty) {
+            case DifficultyLevel::Easy:   validSubCount = rootInfo.easyValidCount; break;
+            case DifficultyLevel::Medium: validSubCount = rootInfo.mediumValidCount; break;
+            case DifficultyLevel::Hard:   validSubCount = rootInfo.hardValidCount; break;
+            default:                      validSubCount = rootInfo.countGE4;
             }
-            else { std::cout << "     (Base word length < 5, skipping sub-word count check for ideal)" << std::endl; }
-        } // --- End Ideal Search Loop ---
+            // Check if it meets the "ideal" threshold (good sub-word count and quality score)
+            if (validSubCount >= MIN_DESIRED_GRID_WORDS && rootInfo.avgSubLen > 0) {
+                idealCandidateIndices.push_back(static_cast<int>(i));
+                isIdeal = true;
+            }
 
+            // If it wasn't ideal but met basic criteria, it's a fallback
+            if (!isIdeal) {
+                fallbackCandidateIndices.push_back(static_cast<int>(i));
+            }
+        } // --- End Loop 1 ---
 
-        // --- Attempt 2: Use Best Fallback (if no ideal found but base match exists) ---
-        if (!baseWordFound && bestFallbackIndex != -1) {
-            // bestFallbackIndex points to a word that met base criteria AND was unused
-            selectedBaseWord = m_roots[bestFallbackIndex].text;
-            std::cout << "DEBUG: No IDEAL word found. Using best fallback candidate: '" << selectedBaseWord << "'" << std::endl;
+        std::cout << "DEBUG: Found " << idealCandidateIndices.size() << " ideal candidates and "
+            << fallbackCandidateIndices.size() << " fallback candidates meeting session criteria." << std::endl;
+
+        // --- Decide Which Base Word to Use (Pick Randomly from Best Available Pool) ---
+        int chosenIndex = -1;
+
+        if (!idealCandidateIndices.empty()) {
+            // Pick randomly from ideal candidates
+            std::size_t randomListIndex = randRange<std::size_t>(0, idealCandidateIndices.size() - 1);
+            chosenIndex = idealCandidateIndices[randomListIndex];
+            selectedBaseWord = m_roots[chosenIndex].text;
             baseWordFound = true;
-            preCalculatedFilteredSolutions.clear(); // Ensure sub-words are recalculated
-            m_usedBaseWordsThisSession.insert(selectedBaseWord); // Mark as used
+            std::cout << "DEBUG: Randomly selected IDEAL candidate #" << randomListIndex << " (Root Index: " << chosenIndex << "): '" << selectedBaseWord << "'" << std::endl;
         }
-
-
-        // --- Attempt 3: Broad Fallback (if still no word found) ---
-        if (!baseWordFound) {
-            std::cerr << "Warning: No base word found matching strict/fallback criteria. Applying BROAD fallback." << std::endl;
-            PuzzleCriteria broadFallbackCriteria;
-            broadFallbackCriteria.allowedLengths = { 4, 5, 6, 7 };
-            broadFallbackCriteria.allowedRarities = { 1, 2, 3, 4 };
-
-            for (std::size_t i = 0; i < m_roots.size(); ++i) { // Iterate again
-                const auto& rootInfo = m_roots[i];
-                const std::string& candidateWord = rootInfo.text;
-
-                // *** Check if already used this session ***
-                if (m_usedBaseWordsThisSession.count(candidateWord)) {
-                    continue; // Skip if already used
-                }
-                // ****************************************
-
-                // Check broad criteria
-                bool lengthMatch = false;
-                for (int len : broadFallbackCriteria.allowedLengths) { if (rootInfo.text.length() == len) { lengthMatch = true; break; } }
-                if (!lengthMatch) continue;
-                // Rarity always matches {1,2,3,4}
-
-                selectedBaseWord = candidateWord;
-                baseWordFound = true;
-                preCalculatedFilteredSolutions.clear(); // Ensure recalculation
-                m_usedBaseWordsThisSession.insert(selectedBaseWord); // Mark as used
-                std::cout << "Found base word (Broad Fallback): " << selectedBaseWord << std::endl;
-                break;
-            }
-        }
-
-
-        // Final Safety Net
-        if (!baseWordFound) {
-            std::cerr << "CRITICAL FALLBACK: Cannot find unused root word. Using first available (may repeat)." << std::endl;
-            if (!m_roots.empty()) {
-                // Find the first word in the shuffled list, regardless of used status
-                selectedBaseWord = m_roots[0].text;
-                baseWordFound = true; // Mark as found to proceed
-                preCalculatedFilteredSolutions.clear(); // Ensure recalculation
-                // Do NOT insert into used set here, as we are allowing a repeat
-            }
-            else {
-                selectedBaseWord = "ERROR";
-            }
-        }
-        m_base = selectedBaseWord; // Set the final selected base word
-    }
-    // --- End Base Word Selection ---
-
-
-    // Scramble the selected base word letters
-    std::shuffle(m_base.begin(), m_base.end(), Rng());
-
-
-    // --- Sub-word Processing (using selected m_base) ---
-    std::vector<WordInfo> final_solutions; // This will become m_solutions
-
-    if (m_base != "ERROR") {
-        // Calculate *all* potential solutions for bonus checking later
-        m_allPotentialSolutions = Words::subWords(m_base, m_fullWordList);
-
-        // Did we already calculate filtered solutions during ideal word search?
-        if (!preCalculatedFilteredSolutions.empty()) {
-            std::cout << "DEBUG: Using pre-calculated filtered solutions." << std::endl;
-            final_solutions = std::move(preCalculatedFilteredSolutions); // Use the stored list
+        else if (!fallbackCandidateIndices.empty()) {
+            // No ideal candidates, pick randomly from fallback candidates
+            std::size_t randomListIndex = randRange<std::size_t>(0, fallbackCandidateIndices.size() - 1);
+            chosenIndex = fallbackCandidateIndices[randomListIndex];
+            selectedBaseWord = m_roots[chosenIndex].text;
+            baseWordFound = true;
+            std::cout << "DEBUG: No IDEAL words. Randomly selected FALLBACK candidate #" << randomListIndex << " (Root Index: " << chosenIndex << "): '" << selectedBaseWord << "'" << std::endl;
         }
         else {
-            // Filter m_allPotentialSolutions based on sub-word criteria
-            std::cout << "DEBUG: Filtering all potential solutions now." << std::endl;
-            std::vector<int> allowedSubRarities; // Recalculate criteria needed
-            int minSubLength = MIN_WORD_LENGTH;
-            switch (m_selectedDifficulty) { /* Set allowedSubRarities/minSubLength */
-            case DifficultyLevel::Easy:   allowedSubRarities = { 1, 2 }; minSubLength = MIN_WORD_LENGTH; break;
-            case DifficultyLevel::Medium: allowedSubRarities = { 1, 2, 3 }; minSubLength = MIN_WORD_LENGTH; break;
-            case DifficultyLevel::Hard:   allowedSubRarities = { 2, 3, 4 }; minSubLength = HARD_MIN_WORD_LENGTH; break;
-            default:                      allowedSubRarities = { 1, 2, 3, 4 }; minSubLength = MIN_WORD_LENGTH; break;
+            // No candidates met session criteria + unused checks. Apply BROAD fallback search.
+            std::cout << "DEBUG: No candidates met session criteria & unused checks. Applying BROAD fallback search..." << std::endl;
+            // --- Loop 2: Find Broad Fallback Candidates ---
+            for (std::size_t i = 0; i < m_roots.size(); ++i) {
+                const auto& rootInfo = m_roots[i]; const std::string& candidateWord = rootInfo.text;
+                // Just check if used (word or letters)
+                if (m_usedBaseWordsThisSession.count(candidateWord)) continue;
+                std::string canonicalCandidate = getCanonicalLetters(candidateWord);
+                if (m_usedLetterSetsThisSession.count(canonicalCandidate)) continue;
+                // Any unused word/letter set qualifies as broad fallback
+                broadFallbackIndices.push_back(static_cast<int>(i));
             }
+            std::cout << "DEBUG: Found " << broadFallbackIndices.size() << " broad fallback candidates." << std::endl;
 
-            for (const auto& subInfo : m_allPotentialSolutions) {
-                if (subInfo.text.length() < minSubLength) continue;
-                bool subRarityMatch = false;
-                for (int subRarity : allowedSubRarities) { if (subInfo.rarity == subRarity) { subRarityMatch = true; break; } }
-                if (subRarityMatch) { final_solutions.push_back(subInfo); }
+            if (!broadFallbackIndices.empty()) {
+                // Pick randomly from broad fallbacks
+                std::size_t randomListIndex = randRange<std::size_t>(0, broadFallbackIndices.size() - 1);
+                chosenIndex = broadFallbackIndices[randomListIndex];
+                selectedBaseWord = m_roots[chosenIndex].text;
+                baseWordFound = true;
+                std::cout << "DEBUG: Randomly selected BROAD FALLBACK candidate #" << randomListIndex << " (Root Index: " << chosenIndex << "): '" << selectedBaseWord << "'" << std::endl;
+            }
+            else {
+                // Absolute last resort: ALL words/anagrams used
+                std::cerr << "CRITICAL FALLBACK: Cannot find ANY unused root word or letter set. Using first available (may repeat)." << std::endl;
+                if (!m_roots.empty()) {
+                    selectedBaseWord = m_roots[0].text; // Use the very first word
+                    baseWordFound = true;
+                    // Don't add to used sets intentionally here, as it's a forced repeat
+                }
+                else {
+                    selectedBaseWord = "ERROR"; // Should not happen if list loads
+                }
             }
         }
 
-        // Truncate the filtered list if necessary (get maxSolutions again)
-        int maxSolutions = 0;
-        switch (m_selectedDifficulty) { /* Set maxSolutions */
-        case DifficultyLevel::Easy:   maxSolutions = EASY_MAX_SOLUTIONS; break;
-        case DifficultyLevel::Medium: maxSolutions = MEDIUM_MAX_SOLUTIONS; break;
-        case DifficultyLevel::Hard:   maxSolutions = HARD_MAX_SOLUTIONS; break;
-        default:                      maxSolutions = 999; break;
+        // --- Add chosen word to used sets (unless it was the absolute fallback) ---
+        if (baseWordFound && chosenIndex != -1) { // Check chosenIndex to exclude the absolute fallback case
+            m_usedBaseWordsThisSession.insert(selectedBaseWord);
+            m_usedLetterSetsThisSession.insert(getCanonicalLetters(selectedBaseWord));
+            std::cout << "DEBUG: Added '" << selectedBaseWord << "' (Canonical: " << getCanonicalLetters(selectedBaseWord) << ") to used sets." << std::endl;
         }
 
-        if (final_solutions.size() > maxSolutions) {
-            std::cout << "DEBUG: Truncating final solutions from " << final_solutions.size() << " to " << maxSolutions << std::endl;
-            std::sort(final_solutions.begin(), final_solutions.end(),
-                [](const WordInfo& a, const WordInfo& b) { /* Sorting lambda */
-                    if (a.rarity != b.rarity) return a.rarity < b.rarity;
-                    return a.text.length() < b.text.length();
-                });
-            final_solutions.resize(maxSolutions);
+        m_base = selectedBaseWord; // Assign the final selected word (or "ERROR")
+    } // End if (!m_roots.empty())
+
+
+    // Scramble the selected base word letters (only if valid)
+    if (m_base != "ERROR" && !m_base.empty()) {
+        std::shuffle(m_base.begin(), m_base.end(), Rng());
+    }
+
+
+    // --- Sub-word Processing (Generate ONCE, Filter Unique, Sort, Truncate) ---
+    std::vector<WordInfo> final_solutions;
+    if (m_base != "ERROR") {
+        m_allPotentialSolutions = Words::subWords(m_base, m_fullWordList);
+        std::cout << "DEBUG: Generating final grid words for selected base letters (current m_base: '" << m_base << "')." << std::endl;
+        std::vector<WordInfo> filtered_sub_solutions; // Initial filtering target
+        std::vector<int> allowedSubRarities;
+        switch (m_selectedDifficulty) { /* ... set allowedSubRarities ... */
+        case DifficultyLevel::Easy:   allowedSubRarities = { 1, 2 };    break;
+        case DifficultyLevel::Medium: allowedSubRarities = { 1, 2, 3 }; break;
+        case DifficultyLevel::Hard:   allowedSubRarities = { 2, 3, 4 }; break;
+        default:                      allowedSubRarities = { 1, 2, 3, 4 }; break;
         }
+
+        for (const auto& subInfo : m_allPotentialSolutions) { /* ... filter by length/rarity into filtered_sub_solutions ... */
+            if (subInfo.text.length() < minSubLengthForDifficulty) continue;
+            bool subRarityMatch = false;
+            for (int subRarity : allowedSubRarities) { if (subInfo.rarity == subRarity) { subRarityMatch = true; break; } }
+            if (!subRarityMatch) continue;
+            filtered_sub_solutions.push_back(subInfo);
+        }
+        std::cout << "DEBUG: Found " << filtered_sub_solutions.size() << " potential grid words matching sub-word difficulty criteria." << std::endl;
+
+        // --- Ensure Uniqueness ---
+        std::cout << "DEBUG: Ensuring uniqueness of potential grid words..." << std::endl;
+        std::set<std::string> unique_texts; std::vector<WordInfo> unique_solutions_temp;
+        unique_solutions_temp.reserve(filtered_sub_solutions.size());
+        for (const auto& info : filtered_sub_solutions) {
+            if (unique_texts.insert(info.text).second) { unique_solutions_temp.push_back(info); }
+        }
+        std::cout << "DEBUG: Reduced to " << unique_solutions_temp.size() << " unique grid words." << std::endl;
+
+        // --- Sort Unique Solutions ---
+        std::cout << "DEBUG: Sorting unique solutions by length/rarity/alpha..." << std::endl;
+        std::sort(unique_solutions_temp.begin(), unique_solutions_temp.end(),
+            [](const WordInfo& a, const WordInfo& b) { /* ... sort logic ... */
+                if (a.text.length() != b.text.length()) return a.text.length() > b.text.length();
+                if (a.rarity != b.rarity) return a.rarity < b.rarity;
+                return a.text < b.text;
+            });
+
+        // --- Truncate Unique Solutions ---
+        if (unique_solutions_temp.size() > maxSolutionsForDifficulty) {
+            std::cout << "DEBUG: Truncating unique sorted solutions from " << unique_solutions_temp.size() << " to " << maxSolutionsForDifficulty << std::endl;
+            unique_solutions_temp.resize(maxSolutionsForDifficulty);
+        }
+        else { std::cout << "DEBUG: No truncation needed for unique grid words." << std::endl; }
+
+        final_solutions = std::move(unique_solutions_temp); // Assign final unique list
 
     }
-    else {
-        // Handle the case where m_base was "ERROR"
-        m_allPotentialSolutions.clear();
-        final_solutions.clear();
+    else { // Handle m_base == "ERROR"
+        m_allPotentialSolutions.clear(); final_solutions.clear();
     }
 
-    // Assign the final list FOR THE GRID to member variables
-    m_solutions = final_solutions;
-    m_sorted = Words::sortForGrid(m_solutions); // Sort this final list for the grid
-    // --- END: Sub-word Filtering and Truncation ---
+    // Assign final lists for game state
+    m_solutions = final_solutions; // UNIQUE list
+    m_sorted = Words::sortForGrid(m_solutions);
 
-
-    // Debug print after processing sub-words
-    std::cout << "DEBUG: m_rebuild - m_base: " << m_base << ", FINAL m_solutions count: " << m_solutions.size() << ", m_sorted count: " << m_sorted.size() << std::endl;
+    // --- Debug Print ---
+    std::cout << "DEBUG: m_rebuild - Final Base: '" << m_base << "', FINAL m_solutions count (Grid Target): " << m_solutions.size() << ", m_sorted count: " << m_sorted.size() << std::endl;
+    /* ... rest of debug print ... */
+    std::cout << "DEBUG: Final list for grid (m_solutions, first 5 or fewer):" << std::endl;
+    for (size_t i = 0; i < std::min<size_t>(m_solutions.size(), 5); ++i) {
+        std::cout << "  - '" << m_solutions[i].text << "' (Len=" << m_solutions[i].text.length() << ", Rarity=" << m_solutions[i].rarity << ")" << std::endl;
+    }
     if (!m_sorted.empty()) {
-        std::cout << "DEBUG: m_rebuild - First sorted word after filter/truncate: '" << m_sorted[0].text << "'" << std::endl;
+        std::cout << "DEBUG: m_rebuild - First sorted word for grid display: '" << m_sorted[0].text << "'" << std::endl;
     }
+    else { std::cout << "DEBUG: m_rebuild - No words selected for the grid." << std::endl; }
 
 
-    // Setup Grid (uses the final m_sorted)
+    // --- Setup Grid & Reset State ---
     m_grid.assign(m_sorted.size(), {});
-    for (std::size_t i = 0; i < m_sorted.size(); ++i) {
+    for (std::size_t i = 0; i < m_sorted.size(); ++i) { /* ... assign grid blanks ... */
         if (!m_sorted[i].text.empty()) {
             m_grid[i].assign(m_sorted[i].text.length(), '_');
         }
-        else {
-            m_grid[i].clear();
-        }
+        else { m_grid[i].clear(); std::cerr << "Warning: Word at m_sorted index " << i << " has empty text. Grid row will be empty." << std::endl; }
     }
+    m_found.clear(); m_foundBonusWords.clear(); m_anims.clear(); m_scoreAnims.clear();
+    m_clearDragState(); m_gameState = GState::Playing;
 
-
-    // Reset Game State Variables *for the puzzle*
-    m_found.clear();
-    m_foundBonusWords.clear(); // Cleared here for each puzzle
-    m_anims.clear();
-    m_scoreAnims.clear();
-    m_clearDragState();
-    m_gameState = GState::Playing;
-
-    // DO NOT reset score: m_currentScore persists across puzzles in a session
-    // DO NOT reset hints: m_hintsAvailable persists
-
-    // If it's the *first* puzzle of a session, reset hint counters
-    if (m_currentPuzzleIndex == 0 && m_isInSession) {
-        m_hintsAvailable = INITIAL_HINTS; // Reset hints at start of session
+    // --- Reset Score/Hints ---
+    if (m_currentPuzzleIndex == 0 && m_isInSession) { /* ... reset score/hints ... */
+        m_currentScore = 0; m_hintsAvailable = INITIAL_HINTS; m_wordsSolvedSinceHint = 0;
+        std::cout << "DEBUG: First puzzle of session - Resetting score, hints, and words solved count." << std::endl;
+    }
+    else if (m_isInSession) { /* ... reset words solved count ... */
         m_wordsSolvedSinceHint = 0;
+        std::cout << "DEBUG: Subsequent puzzle - Resetting words solved count for next hint." << std::endl;
     }
-
-    // Update score display (score might be non-zero from previous puzzle)
     if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
+    if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
 
-
-    // IMPORTANT: Calculate layout based on the new data
+    // --- Update Layout & Music ---
     m_updateLayout(m_window.getSize());
-
-    // Start Background Music
-    m_backgroundMusic.stop();
-    if (!m_musicFiles.empty()) {
-        std::string musicPath = m_musicFiles[randRange<std::size_t>(0, m_musicFiles.size() - 1)];
-        if (m_backgroundMusic.openFromFile(musicPath)) {
-            m_backgroundMusic.setLooping(true);
-            //m_backgroundMusic.play(); // Keep commented if music is annoying during debug
-        }
-        else {
-            std::cerr << "Error loading music file: " << musicPath << std::endl;
+    if (m_backgroundMusic.getStatus() != sf::SoundSource::Status::Playing) { /* ... start music ... */
+        m_backgroundMusic.stop();
+        if (!m_musicFiles.empty()) {
+            std::string musicPath = m_musicFiles[randRange<std::size_t>(0, m_musicFiles.size() - 1)];
+            if (m_backgroundMusic.openFromFile(musicPath)) {
+                m_backgroundMusic.setLooping(true);
+                // m_backgroundMusic.play();
+                std::cout << "DEBUG: Started background music: " << musicPath << std::endl;
+            }
+            else { std::cerr << "Error loading music file: " << musicPath << std::endl; }
         }
     }
-} // End m_rebuild
 
+} // End Game::m_rebuild
 
 // --- START OF FULL m_updateLayout FUNCTION (Simplified 5-row limit) ---
 
@@ -1855,6 +1863,8 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
                     if (m_currentPuzzleIndex < m_puzzlesPerSession) {
                         // --- Go to Next Puzzle ---
                         std::cout << "DEBUG: Continuing Session - Calling m_rebuild for puzzle " << m_currentPuzzleIndex + 1 << std::endl;
+                        std::cout << "DEBUG: BEFORE rebuilding puzzle " << m_currentPuzzleIndex + 1
+                            << ", m_usedBaseWordsThisSession size = " << m_usedBaseWordsThisSession.size() << std::endl;
                         m_rebuild();
                         m_currentScreen = GameScreen::Playing;
                         m_gameState = GState::Playing;
@@ -2853,3 +2863,4 @@ void Game::m_renderDebugCircle() {
     designBorder.setOutlineThickness(1.f);
     m_window.draw(designBorder);
 }
+

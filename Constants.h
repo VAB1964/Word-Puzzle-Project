@@ -29,8 +29,6 @@ constexpr float SCRAMBLE_BTN_OFFSET_X = 10.f;// Keep as is
 constexpr float SCRAMBLE_BTN_OFFSET_Y = 10.f;// Keep as is
 constexpr float CONTINUE_BTN_OFFSET_Y = 80.f;
 constexpr float WORD_LENGTH = 5.f; // Or 6.f or 7.f as needed
-constexpr unsigned int INITIAL_HINTS = 3;
-constexpr unsigned int WORDS_PER_HINT = 5;
 constexpr float GRID_SIDE_MARGIN = 5.f;
 constexpr float MIN_WINDOW_HEIGHT = 800.f;
 constexpr float MIN_WINDOW_WIDTH = 1000.f;
@@ -46,6 +44,8 @@ const int EASY_MAX_SOLUTIONS = 7;
 const int MEDIUM_MAX_SOLUTIONS = 12;
 const int HARD_MAX_SOLUTIONS = 15;
 const int MIN_DESIRED_GRID_WORDS = 5;
+constexpr unsigned int INITIAL_HINTS = 100;
+constexpr unsigned int WORDS_PER_HINT = 5;
 
 const float SCORE_BAR_BOTTOM_MARGIN = 10.f;
 const float METER_SCORE_GAP = 8.f;

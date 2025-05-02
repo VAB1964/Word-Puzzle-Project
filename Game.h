@@ -54,11 +54,13 @@ private:
     // --- Debugging ---
     bool m_debugDrawCircleMode;
 
+    std::set<std::string> m_usedBaseWordsThisSession;
+    std::set<std::string> m_usedLetterSetsThisSession;
+
     float m_uiScale = 1.f;
     bool m_needsLayoutUpdate;
     sf::Vector2u m_lastKnownSize; // Store the last size used for layout
 
-    std::set<std::string> m_usedBaseWordsThisSession;
 
     // --- Session and Difficulty State ---
     DifficultyLevel m_selectedDifficulty;
