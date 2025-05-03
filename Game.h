@@ -51,8 +51,25 @@ public:
 
 private:
 
+    // --- Flourish State ---
+    struct GridLetterFlourish {
+        int wordIdx;       // Index in m_sorted
+        int charIdx;       // Index within the word
+        float timer;       // How much longer to flourish
+    };
+    std::vector<GridLetterFlourish> m_gridFlourishes; // Stores active grid flourishes
+
+    float m_bonusTextFlourishTimer = 0.f;   // Timer for bonus text flourish
+
+    // --- Flourish Constants (can also go in Constants.h) ---
+    const float GRID_FLOURISH_DURATION = 0.6f;  // Duration in seconds
+    const float BONUS_TEXT_FLOURISH_DURATION = 0.6f; // Duration in seconds
+
     // --- Debugging ---
     bool m_debugDrawCircleMode;
+
+
+    float m_currentGridLayoutScale = 1.0f;
 
     std::set<std::string> m_usedBaseWordsThisSession;
     std::set<std::string> m_usedLetterSetsThisSession;

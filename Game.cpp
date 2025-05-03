@@ -497,21 +497,34 @@ void Game::m_update(sf::Time dt) {
     // --- Update Score Flourish Timer ---
     if (m_scoreFlourishTimer > 0.f) {
         m_scoreFlourishTimer -= deltaSeconds;
-        if (m_scoreFlourishTimer < 0.f) {
-            m_scoreFlourishTimer = 0.f;
-        }
+        if (m_scoreFlourishTimer < 0.f) m_scoreFlourishTimer = 0.f;
     }
-    // ---------------------------------
+
+    // --- Update Bonus Text Flourish Timer --- // <<< NEW
+    if (m_bonusTextFlourishTimer > 0.f) {
+        m_bonusTextFlourishTimer -= deltaSeconds;
+        if (m_bonusTextFlourishTimer < 0.f) m_bonusTextFlourishTimer = 0.f;
+    }
+
+    // --- Update Grid Letter Flourish Timers --- // <<< NEW
+    m_gridFlourishes.erase(
+        std::remove_if(m_gridFlourishes.begin(), m_gridFlourishes.end(),
+            [deltaSeconds](GridLetterFlourish& f) {
+                f.timer -= deltaSeconds;
+                return f.timer <= 0.f; // Remove if timer expired
+            }),
+        m_gridFlourishes.end()
+    );
+    // -------------------------------------------
 
     // Update game elements based on screen
-    if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)
-    {
+    if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) {
         m_updateAnims(deltaSeconds);
     }
-    else if (m_currentScreen == GameScreen::SessionComplete) 
-    {
+    else if (m_currentScreen == GameScreen::SessionComplete) {
         m_updateCelebrationEffects(deltaSeconds);
     }
+    // (No need to call m_updateScoreAnims separately if it's part of m_updateAnims or not used)
 }
 
 // --- Render ---
@@ -817,38 +830,40 @@ void Game::m_rebuild() {
 
 // --- START OF FULL m_updateLayout FUNCTION (Simplified 5-row limit) ---
 
+// ***** START OF COMPLETE Game::m_updateLayout FUNCTION *****
+// Replace your existing Game::m_updateLayout with this entire block
+
+#include <limits> // Make sure <limits> is included for numeric_limits
+
 void Game::m_updateLayout(sf::Vector2u windowSize) {
 
-    // 1. Calculate Global UI Scale ----------------------------------
+    // 1. Calculate Global UI Scale (No Modifier Applied Yet)
     m_uiScale = std::min(windowSize.x / static_cast<float>(REF_W),
         windowSize.y / static_cast<float>(REF_H));
-    m_uiScale = std::clamp(m_uiScale, 0.65f, 1.6f);
+    m_uiScale = std::clamp(m_uiScale, 0.65f, 1.6f); // Clamp to reasonable limits
+    // NOTE: Global UI_SCALE_MODIFIER is NOT applied here anymore.
 
-    // 2. Define Design Space References & Sections ------------------
+    // 2. Define Design Space References & Sections
     const float designW = static_cast<float>(REF_W);
     const float designH = static_cast<float>(REF_H);
     const sf::Vector2f designCenter = { designW / 2.f, designH / 2.f };
     const float designTopEdge = 0.f;
     const float designBottomEdge = designH;
-
-    // --- Define Vertical Section Boundaries (DESIGN UNITS) ---
     const float topSectionHeight = designH * 0.15f;
-    const float wheelSectionHeight = designH * 0.35f; // This is more of a desired minimum space
-    const float gridSectionHeight = designH - topSectionHeight - wheelSectionHeight; // Available space for grid
-
+    const float wheelSectionHeight = designH * 0.35f;
+    const float gridSectionHeight = designH - topSectionHeight - wheelSectionHeight;
     const float topSectionBottomY = designTopEdge + topSectionHeight;
     const float gridSectionTopY = topSectionBottomY;
     const float gridSectionBottomY = gridSectionTopY + gridSectionHeight;
-    const float wheelSectionTopY = gridSectionBottomY; // Where wheel section *starts*
-    const float wheelSectionBottomY = designBottomEdge; // Where wheel section *ends*
+    const float wheelSectionTopY = gridSectionBottomY;
+    const float wheelSectionBottomY = designBottomEdge;
 
     // --- Start Logging ---
     std::cout << "--- Layout Update (" << windowSize.x << "x" << windowSize.y << ") ---" << std::endl;
-    std::cout << "UI Scale (m_uiScale): " << m_uiScale << std::endl;
+    std::cout << "Base UI Scale (m_uiScale): " << m_uiScale << std::endl; // Log base scale
     std::cout << "Design Space: " << designW << "x" << designH << " (Center: " << designCenter.x << "," << designCenter.y << ")" << std::endl;
 
-
-    // 3. Position Top Elements (Progress, Score) within Top Section ---------------
+    // 3. Position Top Elements (Progress, Score) - Uses Base UI Scale
     const float scaledScoreBarWidth = S(this, SCORE_BAR_WIDTH); const float scaledScoreBarHeight = S(this, SCORE_BAR_HEIGHT); const float scaledScoreBarBottomMargin = S(this, SCORE_BAR_BOTTOM_MARGIN);
     const float scoreBarX_design = designCenter.x; const float scoreBarY_design = topSectionBottomY - scaledScoreBarBottomMargin - scaledScoreBarHeight / 2.f;
     m_scoreBar.setSize({ scaledScoreBarWidth, scaledScoreBarHeight }); m_scoreBar.setRadius(S(this, 10.f)); m_scoreBar.setOrigin({ scaledScoreBarWidth / 2.f, scaledScoreBarHeight / 2.f }); m_scoreBar.setPosition({ scoreBarX_design, scoreBarY_design }); m_scoreBar.setOutlineThickness(S(this, 1.f));
@@ -862,396 +877,278 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     if (m_scoreLabelText) { const unsigned int bf = 24; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_scoreLabelText->setCharacterSize(sf); sf::FloatRect lb = m_scoreLabelText->getLocalBounds(); sf::Vector2f o = { lb.position.x + lb.size.x, lb.position.y + lb.size.y / 2.f }; sf::Vector2f p = { scoreBarX_design - scaledScoreTextOffset, scoreBarY_design }; m_scoreLabelText->setOrigin(o); m_scoreLabelText->setPosition(p); }
 
 
-    // 4. Calculate Grid Layout within Grid Section ---------------
-    m_gridStartY = gridSectionTopY; // Keep this line
-    const float availableGridHeight = gridSectionHeight; // Keep this line
+    // --- 4. Calculate Grid Layout ---
 
-    // --- Reset grid calculation variables ---
+    // --- 4a. Initial Setup & Heuristic (Uses Base UI Scale) ---
+    m_gridStartY = gridSectionTopY;
+    const float availableGridHeight = gridSectionHeight;
     int numCols = 1;
     int maxRowsPerCol = m_sorted.empty() ? 1 : (int)m_sorted.size();
-    m_totalGridW = 0;
-    float actualGridHeight = 0;
+    float initialTotalGridW = 0; // Store the initial calculation
+    float actualGridHeight = 0; // Will be recalculated if needed
     m_wordCol.clear();
     m_wordRow.clear();
     m_colMaxLen.clear();
-    m_colXOffset.clear();
+    m_colXOffset.clear(); // Will be recalculated if needed
 
     if (!m_sorted.empty()) {
-        // --- Grid calculation heuristic ---
-        const float st = S(this, TILE_SIZE);
-        const float sp = S(this, TILE_PAD);
-        const float sc = S(this, COL_PAD);
-        const float stph = st + sp; // Scaled Tile + Pad Height
-        const float stpw = st + sp; // Scaled Tile + Pad Width
+        // --- Calculate initial grid layout heuristic (cols/rows) using BASE scale ---
+        const float st_base = S(this, TILE_SIZE); // Base scaled size
+        const float sp_base = S(this, TILE_PAD);   // Base scaled pad
+        const float sc_base = S(this, COL_PAD);    // Base scaled col pad
+        const float stph_base = st_base + sp_base;
+        const float stpw_base = st_base + sp_base;
 
         int bestFitCols = 1;
         int bestFitRows = (int)m_sorted.size();
         float minWidthVertFit = std::numeric_limits<float>::max();
         bool foundVerticalFit = false;
-
         int narrowestOverallCols = 1;
         int narrowestOverallRows = (int)m_sorted.size();
         float minWidthOverall = std::numeric_limits<float>::max();
-
-        // Limit maximum columns slightly to prevent excessively wide layouts
         int maxPossibleCols = std::min(8, std::max(1, (int)m_sorted.size()));
 
         // --- Loop to find best layout ---
         for (int tryCols = 1; tryCols <= maxPossibleCols; ++tryCols) {
             int rowsNeeded = ((int)m_sorted.size() + tryCols - 1) / tryCols;
             if (rowsNeeded <= 0) rowsNeeded = 1;
-
             std::vector<int> currentTryColMaxLen(tryCols, 0);
             float currentTryWidth = 0;
-            // Calculate max word length per column for this 'tryCols' layout
             for (size_t w = 0; w < m_sorted.size(); ++w) {
-                int c = (int)w / rowsNeeded; // Determine column index for word w
-                if (c >= 0 && c < tryCols) { // Check bounds
-                    currentTryColMaxLen[c] = std::max<int>(currentTryColMaxLen[c], (int)m_sorted[w].text.length());
-                }
+                int c = (int)w / rowsNeeded;
+                if (c >= 0 && c < tryCols) { currentTryColMaxLen[c] = std::max<int>(currentTryColMaxLen[c], (int)m_sorted[w].text.length()); }
             }
-            // Calculate total width for this layout
-            for (int len : currentTryColMaxLen) {
-                currentTryWidth += (float)len * stpw - (len > 0 ? sp : 0.f); // Subtract trailing pad if len > 0
-            }
-            currentTryWidth += (float)std::max(0, tryCols - 1) * sc; // Add column padding
+            for (int len : currentTryColMaxLen) { currentTryWidth += (float)len * stpw_base - (len > 0 ? sp_base : 0.f); }
+            currentTryWidth += (float)std::max(0, tryCols - 1) * sc_base;
             if (currentTryWidth < 0) currentTryWidth = 0;
-
-            // Calculate total height for this layout
-            float currentTryHeight = (float)rowsNeeded * stph - (rowsNeeded > 0 ? sp : 0.f); // Subtract trailing pad
+            float currentTryHeight = (float)rowsNeeded * stph_base - (rowsNeeded > 0 ? sp_base : 0.f);
             if (currentTryHeight < 0) currentTryHeight = 0;
 
-
-            // Track narrowest overall layout
-            if (currentTryWidth < minWidthOverall) {
-                minWidthOverall = currentTryWidth;
-                narrowestOverallCols = tryCols;
-                narrowestOverallRows = rowsNeeded;
-            }
-
-            // Track best layout that fits vertically
+            if (currentTryWidth < minWidthOverall) { minWidthOverall = currentTryWidth; narrowestOverallCols = tryCols; narrowestOverallRows = rowsNeeded; }
             if (currentTryHeight <= availableGridHeight) {
-                if (!foundVerticalFit || currentTryWidth < minWidthVertFit) {
-                    minWidthVertFit = currentTryWidth;
-                    bestFitCols = tryCols;
-                    bestFitRows = rowsNeeded;
-                    foundVerticalFit = true;
-                }
+                if (!foundVerticalFit || currentTryWidth < minWidthVertFit) { minWidthVertFit = currentTryWidth; bestFitCols = tryCols; bestFitRows = rowsNeeded; foundVerticalFit = true; }
             }
         } // --- End loop to find best layout ---
 
-
-        // --- Determine initial chosen layout ---
+        // --- Determine initial chosen layout & Apply 5-row limit ---
         int chosenCols = narrowestOverallCols;
         int chosenRows = narrowestOverallRows;
-        if (foundVerticalFit) {
-            chosenCols = bestFitCols;
-            chosenRows = bestFitRows;
-            std::cout << "  GRID INIT: Found Vertical Fit: Cols=" << chosenCols << ", RowsPerCol=" << chosenRows << std::endl;
-        }
-        else {
-            std::cout << "  GRID INIT: Using Narrowest Overall: Cols=" << chosenCols << ", RowsPerCol=" << chosenRows << std::endl;
-        }
-
-
-        // --- ***** APPLY 5-ROW LIMIT (SIMPLIFIED) ***** ---
-        const int MAX_ROWS_LIMIT = 5; // The row limit
-
-        if (chosenRows > MAX_ROWS_LIMIT) { // Apply limit if initial calculation needs more than 5 rows
-            std::cout << "  GRID OVERRIDE: Initial calculation needs " << chosenRows << " rows." << std::endl;
-            std::cout << "                 Forcing Max Rows to " << MAX_ROWS_LIMIT << "." << std::endl;
-
-            chosenRows = MAX_ROWS_LIMIT; // Apply the limit
-            // Recalculate the number of columns needed for this fixed row count
+        if (foundVerticalFit) { chosenCols = bestFitCols; chosenRows = bestFitRows; std::cout << "  GRID INIT: Found Vertical Fit: Cols=" << chosenCols << ", RowsPerCol=" << chosenRows << std::endl; }
+        else { std::cout << "  GRID INIT: Using Narrowest Overall: Cols=" << chosenCols << ", RowsPerCol=" << chosenRows << std::endl; }
+        const int MAX_ROWS_LIMIT = 5;
+        if (chosenRows > MAX_ROWS_LIMIT) {
+            std::cout << "  GRID OVERRIDE: Initial calculation needs " << chosenRows << " rows. Forcing Max Rows to " << MAX_ROWS_LIMIT << "." << std::endl;
+            chosenRows = MAX_ROWS_LIMIT;
             chosenCols = ((int)m_sorted.size() + chosenRows - 1) / chosenRows;
-            if (chosenCols <= 0) chosenCols = 1; // Ensure at least one column
-
+            if (chosenCols <= 0) chosenCols = 1;
             std::cout << "                 Recalculated Columns Needed: " << chosenCols << std::endl;
         }
-        // --- ***** END OF SIMPLIFIED ROW LIMIT LOGIC ***** ---
 
-
-        // --- Finalize grid dimensions based on CHOSEN (potentially overridden) rows/cols ---
+        // --- Finalize grid structure ---
         numCols = chosenCols;
         maxRowsPerCol = chosenRows;
 
-        // Calculate actual grid height based on final maxRowsPerCol
-        actualGridHeight = (float)maxRowsPerCol * stph - (maxRowsPerCol > 0 ? sp : 0.f); // Subtract trailing pad
-        if (actualGridHeight < 0) actualGridHeight = 0;
-
-        // Log final grid dimensions
-        std::cout << "  GRID FINAL: Using Layout: Cols=" << numCols << ", RowsPerCol=" << maxRowsPerCol << std::endl;
-        std::cout << "  GRID H/W: Final Grid Height = " << actualGridHeight << std::endl;
-        // Add warning if grid bottom still exceeds section (can happen if MAX_ROWS is still too many for the available height)
-        if (m_gridStartY + actualGridHeight > gridSectionBottomY + 1.0f) { // Added tolerance
-            std::cout << "  GRID WARNING: Grid bottom (Y=" << (m_gridStartY + actualGridHeight)
-                << ") still exceeds section bottom (Y=" << gridSectionBottomY << ")!" << std::endl;
-        }
-
-
-        // --- Calculate grid word positions and column offsets using FINAL numCols/maxRowsPerCol ---
-        m_wordCol.resize(m_sorted.size());
-        m_wordRow.resize(m_sorted.size());
-        m_colMaxLen.assign(numCols, 0); // Use final numCols
-
-        // Assign words to columns/rows and find max length per column *based on the final layout*
+        // --- Calculate Initial Width using BASE scale ---
+        m_colMaxLen.assign(numCols, 0);
         for (size_t w = 0; w < m_sorted.size(); ++w) {
-            int c = (int)w / maxRowsPerCol; // Use final maxRowsPerCol
-            int r = (int)w % maxRowsPerCol;
-            if (c >= numCols) c = numCols - 1; // Safety clamp to final numCols
-            m_wordCol[w] = c;
-            m_wordRow[w] = r;
-            if (c >= 0 && c < m_colMaxLen.size()) { // Check bounds using final numCols size
-                m_colMaxLen[c] = std::max<int>(m_colMaxLen[c], (int)m_sorted[w].text.length());
-            }
+            int c = (int)w / maxRowsPerCol; if (c >= numCols) c = numCols - 1;
+            if (c >= 0 && c < m_colMaxLen.size()) { m_colMaxLen[c] = std::max<int>(m_colMaxLen[c], (int)m_sorted[w].text.length()); }
+        }
+        float currentX_base = 0;
+        for (int c = 0; c < numCols; ++c) {
+            int len = (c >= 0 && c < m_colMaxLen.size()) ? m_colMaxLen[c] : 0;
+            float colWidth_base = (float)len * stpw_base - (len > 0 ? sp_base : 0.f);
+            if (colWidth_base < 0) colWidth_base = 0;
+            currentX_base += colWidth_base + sc_base;
+        }
+        initialTotalGridW = currentX_base - (numCols > 0 ? sc_base : 0.f); // Width with base scale
+        if (initialTotalGridW < 0) initialTotalGridW = 0;
+
+        // --- 4b. Check if Adjustment is Needed & Set Grid Scale Factor ---
+        bool needsAdjustment = (initialTotalGridW > designW);
+        m_currentGridLayoutScale = needsAdjustment ? UI_SCALE_MODIFIER : 1.0f; // Set member variable
+
+        if (needsAdjustment) {
+            std::cout << "  GRID WARNING: Initial grid width (" << initialTotalGridW
+                << ") exceeds design width (" << designW << "). Applying scale modifier: "
+                << m_currentGridLayoutScale << std::endl;
+        }
+        else {
+            std::cout << "  GRID INFO: Initial grid width (" << initialTotalGridW << ") fits. No scale modifier needed." << std::endl;
+            // Ensure it's explicitly 1.0 if no adjustment needed, overriding potential stale value
+            m_currentGridLayoutScale = 1.0f;
         }
 
-        // Calculate column X offsets and total grid width based on m_colMaxLen (now using final layout)
-        m_colXOffset.resize(numCols); // Use final numCols
-        float currentX = 0;
-        for (int c = 0; c < numCols; ++c) { // Use final numCols
-            m_colXOffset[c] = currentX;
-            float colWidth = 0.f;
-            if (c >= 0 && c < m_colMaxLen.size()) { // Check bounds
-                int len = m_colMaxLen[c];
-                colWidth = (float)len * stpw - (len > 0 ? sp : 0.f); // Subtract trailing pad
-            }
-            if (colWidth < 0) colWidth = 0;
-            currentX += colWidth + sc; // Add width and column padding
+        // --- 4c. Recalculate Final Grid Dimensions & Positions using Grid Scale Factor ---
+        const float st_final = S(this, TILE_SIZE) * m_currentGridLayoutScale;
+        const float sp_final = S(this, TILE_PAD) * m_currentGridLayoutScale;
+        const float sc_final = S(this, COL_PAD) * m_currentGridLayoutScale;
+        const float stph_final = st_final + sp_final;
+        const float stpw_final = st_final + sp_final;
+
+        float currentX_final = 0;
+        m_colXOffset.resize(numCols);
+        for (int c = 0; c < numCols; ++c) {
+            m_colXOffset[c] = currentX_final;
+            int len = (c >= 0 && c < m_colMaxLen.size()) ? m_colMaxLen[c] : 0;
+            float colWidth_final = (float)len * stpw_final - (len > 0 ? sp_final : 0.f);
+            if (colWidth_final < 0) colWidth_final = 0;
+            currentX_final += colWidth_final + sc_final;
         }
-        // Calculate final total width
-        m_totalGridW = currentX - (numCols > 0 ? sc : 0.f); // Subtract trailing column pad
+        m_totalGridW = currentX_final - (numCols > 0 ? sc_final : 0.f);
         if (m_totalGridW < 0) m_totalGridW = 0;
 
-        // Calculate final starting X position for centering
         m_gridStartX = designCenter.x - m_totalGridW / 2.f;
-
-        // Adjust column offsets by the starting X position
         for (int c = 0; c < numCols; ++c) {
-            if (c < m_colXOffset.size()) { // Check bounds
-                m_colXOffset[c] += m_gridStartX;
-            }
+            if (c < m_colXOffset.size()) { m_colXOffset[c] += m_gridStartX; }
         }
 
+        actualGridHeight = (float)maxRowsPerCol * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f);
+        if (actualGridHeight < 0) actualGridHeight = 0;
+
+        m_wordCol.resize(m_sorted.size());
+        m_wordRow.resize(m_sorted.size());
+        for (size_t w = 0; w < m_sorted.size(); ++w) {
+            int c = (int)w / maxRowsPerCol; int r = (int)w % maxRowsPerCol;
+            if (c >= numCols) c = numCols - 1;
+            m_wordCol[w] = c; m_wordRow[w] = r;
+        }
+
+        std::cout << "  GRID FINAL: Using Layout: Cols=" << numCols << ", RowsPerCol=" << maxRowsPerCol << std::endl;
+        std::cout << "  GRID H/W: Final Grid Height = " << actualGridHeight << ", Final Grid Width = " << m_totalGridW << std::endl;
+
     }
-    else {
-        // Grid is empty, set defaults
-        m_gridStartX = designCenter.x;
-        m_totalGridW = 0;
-        actualGridHeight = 0;
+    else { // Grid is empty
+        m_gridStartX = designCenter.x; m_totalGridW = 0; actualGridHeight = 0;
+        m_currentGridLayoutScale = 1.0f; // Reset scale factor
         std::cout << "  GRID LAYOUT: Grid empty." << std::endl;
     }
     // --- End Grid Calculation Section ---
 
 
     // 5. Determine Final Wheel Size & Position ---------------
+    // (Wheel calculations remain unchanged - using base m_uiScale via S())
     const float scaledGridWheelGap = S(this, GRID_WHEEL_GAP);
     const float scaledWheelBottomMargin = S(this, WHEEL_BOTTOM_MARGIN);
-    const float scaledLetterRadius = S(this, LETTER_R); // Design letter radius
+    const float scaledLetterRadius = S(this, LETTER_R);
     const float scaledHudMinHeight = S(this, HUD_AREA_MIN_HEIGHT);
-    float gridActualBottomY = m_gridStartY + actualGridHeight; // Uses the potentially adjusted grid height
-    float gridAreaLimitY = gridActualBottomY + scaledGridWheelGap; // Y below which wheel path *should* start
-    float wheelCenterBottomLimit = designBottomEdge - scaledWheelBottomMargin - scaledHudMinHeight; // Y above which wheel center must be to leave HUD space
+    float gridActualBottomY = m_gridStartY + actualGridHeight; // Uses potentially adjusted grid height
+    float gridAreaLimitY = gridActualBottomY + scaledGridWheelGap;
+    float wheelCenterBottomLimit = designBottomEdge - scaledWheelBottomMargin - scaledHudMinHeight;
     std::cout << "--- WHEEL LAYOUT: Start Calculation ---" << std::endl;
     std::cout << "  Grid Actual Bottom Y: " << gridActualBottomY << ", Scaled Gap: " << scaledGridWheelGap << ", Grid Area Limit Y: " << gridAreaLimitY << std::endl;
     std::cout << "  Wheel Center Bottom Limit: " << wheelCenterBottomLimit << std::endl;
     float defaultScaledWheelRadius = S(this, WHEEL_R);
-    float availableWheelHeight = std::max(0.f, wheelCenterBottomLimit - gridAreaLimitY); // Space for wheel CENTER between limits
+    float availableWheelHeight = std::max(0.f, wheelCenterBottomLimit - gridAreaLimitY);
     std::cout << "  WHEEL VSPACE: Available Height (GridLimit to CenterBottomLimit) = " << availableWheelHeight << std::endl;
-
-    // --- REVISED Wheel Size/Pos Logic v5 ---
-    float finalScaledWheelRadius = defaultScaledWheelRadius;
-    float finalWheelY = 0;
-
-    float absoluteMinRadius = S(this, WHEEL_R * 0.4f); // Physical min radius based on default
-    absoluteMinRadius = std::max(absoluteMinRadius, scaledLetterRadius * 1.2f); // Ensure letters fit
+    float finalScaledWheelRadius = defaultScaledWheelRadius; float finalWheelY = 0;
+    float absoluteMinRadius = S(this, WHEEL_R * 0.4f); absoluteMinRadius = std::max(absoluteMinRadius, scaledLetterRadius * 1.2f);
     std::cout << "  WHEEL MIN/MAX: Absolute Min Radius = " << absoluteMinRadius << ", Default Radius = " << defaultScaledWheelRadius << std::endl;
-
-    // Determine the max radius that *could* fit if centered in the available space
     float maxRadiusPossible = availableWheelHeight / 2.0f;
-
-    // Determine the radius to actually use
     if (maxRadiusPossible >= absoluteMinRadius) {
-        // Enough space for at least the minimum physical wheel.
-        // Use the largest radius possible up to the default size.
         finalScaledWheelRadius = std::min(maxRadiusPossible, defaultScaledWheelRadius);
-        // Make sure we don't go below the absolute minimum either (can happen if availableHeight is small but > 2*absMin)
         finalScaledWheelRadius = std::max(finalScaledWheelRadius, absoluteMinRadius);
         std::cout << "  WHEEL LOGIC: Space available. MaxPossible=" << maxRadiusPossible << ", FinalRadius=" << finalScaledWheelRadius << std::endl;
     }
     else {
-        // Not enough space even for the absolute minimum. Use the absolute minimum.
         finalScaledWheelRadius = absoluteMinRadius;
         std::cout << "  WHEEL LOGIC: VERY TIGHT SPACE. Using absolute min radius: " << finalScaledWheelRadius << std::endl;
     }
-
-    // Calculate position based on the final chosen radius
-    // Start by centering in the available space
     finalWheelY = gridAreaLimitY + availableWheelHeight / 2.f;
-
-    // Now, CLAMP the Y position to ensure the FINAL radius fits within the bounds
-    float minYPos = gridAreaLimitY + finalScaledWheelRadius; // Lowest center Y to avoid grid overlap
-    float maxYPos = wheelCenterBottomLimit - finalScaledWheelRadius; // Highest center Y to allow HUD space
-
+    float minYPos = gridAreaLimitY + finalScaledWheelRadius;
+    float maxYPos = wheelCenterBottomLimit - finalScaledWheelRadius;
     std::cout << "  WHEEL Y CLAMP: Initial Center Y = " << finalWheelY << ", Min Allowed Y = " << minYPos << ", Max Allowed Y = " << maxYPos << std::endl;
-
-    if (minYPos > maxYPos) {
-        // Impossible to fit without *some* overlap. Prioritize avoiding grid overlap.
-        std::cout << "  WHEEL Y CLAMP WARNING: Min Y > Max Y. Prioritizing grid gap." << std::endl;
-        finalWheelY = minYPos; // Position wheel just below grid limit
-    }
-    else {
-        // Possible to fit, clamp the centered position within the valid range.
-        finalWheelY = std::clamp(finalWheelY, minYPos, maxYPos);
-    }
-    // --- End REVISED Wheel Size/Pos Logic v5 ---
-
+    if (minYPos > maxYPos) { std::cout << "  WHEEL Y CLAMP WARNING: Min Y > Max Y. Prioritizing grid gap." << std::endl; finalWheelY = minYPos; }
+    else { finalWheelY = std::clamp(finalWheelY, minYPos, maxYPos); }
     m_wheelX = designCenter.x; m_wheelY = finalWheelY; m_currentWheelRadius = finalScaledWheelRadius;
     std::cout << "  WHEEL FINAL: Assigned m_wheelX = " << m_wheelX << ", m_wheelY = " << m_wheelY << ", m_currentWheelRadius = " << m_currentWheelRadius << std::endl;
     std::cout << "--- WHEEL LAYOUT: End Calculation ---" << std::endl;
 
 
-    // 6. Calculate Final Wheel Letter Positions (Original m_wheelCentres loop)-----
-    // --> NOTE: m_wheelCentres are the LOGICAL centers for path detection
+    // 6. Calculate Final Wheel Letter Positions (using base m_uiScale via S())-----
     m_wheelCentres.resize(m_base.size());
-    if (!m_base.empty()) {
+    if (!m_base.empty()) { /* ... calculate m_wheelCentres ... */
         float angleStep = (2.f * PI) / (float)m_base.size();
-        for (size_t i = 0; i < m_base.size(); ++i) {
-            float ang = (float)i * angleStep - PI / 2.f;
-            m_wheelCentres[i] = { m_wheelX + m_currentWheelRadius * std::cos(ang),
-                                  m_wheelY + m_currentWheelRadius * std::sin(ang) };
-        }
+        for (size_t i = 0; i < m_base.size(); ++i) { float ang = (float)i * angleStep - PI / 2.f; m_wheelCentres[i] = { m_wheelX + m_currentWheelRadius * std::cos(ang), m_wheelY + m_currentWheelRadius * std::sin(ang) }; }
     }
-
-    // 6b. Calculate Final Wheel Letter RENDER Positions and Radius
-    // --> NOTE: m_wheelLetterRenderPos are for DRAWING and HIT DETECTION
     m_wheelLetterRenderPos.resize(m_base.size());
-    const float baseWheelRadius = S(this, WHEEL_R); // Scaled default radius
-    const float scaledWheelPadding = S(this, 30.f); // Dynamic scaling
+    const float baseWheelRadius = S(this, WHEEL_R);
+    const float scaledWheelPadding = S(this, 30.f);
     const float visualBgRadius = m_currentWheelRadius + scaledWheelPadding;
-
-    // Calculate scaling factor for letter circles/fonts based on final wheel size vs default
-    float wheelRadiusRatio = 1.0f;
-    if (baseWheelRadius > 1.0f && m_currentWheelRadius > 0.0f) {
-        wheelRadiusRatio = m_currentWheelRadius / baseWheelRadius;
-    }
-    wheelRadiusRatio = std::clamp(wheelRadiusRatio, 0.7f, 1.0f); // Clamp scaling factor
-
-    // Calculate and store the final radius used for RENDERING and HIT DETECTION
+    float wheelRadiusRatio = 1.0f; if (baseWheelRadius > 1.0f && m_currentWheelRadius > 0.0f) { wheelRadiusRatio = m_currentWheelRadius / baseWheelRadius; } wheelRadiusRatio = std::clamp(wheelRadiusRatio, 0.7f, 1.0f);
     m_currentLetterRenderRadius = S(this, LETTER_R) * wheelRadiusRatio;
-
-    // Calculate the radius for LETTER POSITIONING on the wheel
-    // This determines *where* the center of the letter circles are placed.
-    const float letterPositionGap = S(this, 5.f); // Small gap from visual edge (scaled)
-    // Calculate the radius where letters should be placed - slightly inside the visual BG edge
+    const float letterPositionGap = S(this, 5.f);
     float letterPositionRadius = visualBgRadius - m_currentLetterRenderRadius - letterPositionGap;
-    // Ensure the letter position radius isn't too small (e.g., less than half the logical radius or less than the render radius itself)
-    letterPositionRadius = std::max(letterPositionRadius, m_currentWheelRadius * 0.5f);
-    letterPositionRadius = std::max(letterPositionRadius, m_currentLetterRenderRadius);
-
-    std::cout << "  LAYOUT INFO: LetterRenderRadius=" << m_currentLetterRenderRadius
-        << ", LetterPositionRadius=" << letterPositionRadius << std::endl;
-
-    // Calculate and store the final render position for each letter using letterPositionRadius
-    if (!m_base.empty()) {
+    letterPositionRadius = std::max(letterPositionRadius, m_currentWheelRadius * 0.5f); letterPositionRadius = std::max(letterPositionRadius, m_currentLetterRenderRadius);
+    std::cout << "  LAYOUT INFO: LetterRenderRadius=" << m_currentLetterRenderRadius << ", LetterPositionRadius=" << letterPositionRadius << std::endl;
+    if (!m_base.empty()) { /* ... calculate m_wheelLetterRenderPos ... */
         float angleStep = (2.f * PI) / (float)m_base.size();
-        for (size_t i = 0; i < m_base.size(); ++i) {
-            float ang = (float)i * angleStep - PI / 2.f;
-            m_wheelLetterRenderPos[i] = {
-                m_wheelX + letterPositionRadius * std::cos(ang),
-                m_wheelY + letterPositionRadius * std::sin(ang)
-            };
-        }
+        for (size_t i = 0; i < m_base.size(); ++i) { float ang = (float)i * angleStep - PI / 2.f; m_wheelLetterRenderPos[i] = { m_wheelX + letterPositionRadius * std::cos(ang), m_wheelY + letterPositionRadius * std::sin(ang) }; }
     }
-    // --- END OF WHEEL LETTER RENDER POSITION CALCULATION ---
 
 
-    // 7. Other UI Element Positions ---------------
-    // Buttons relative to wheel's visual edge (visualBgRadius)
-    if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) { float h = S(this, SCRAMBLE_BTN_HEIGHT); float s = h / m_scrambleTex.getSize().y; m_scrambleSpr->setScale({ s,s }); m_scrambleSpr->setOrigin({ 0.f,m_scrambleTex.getSize().y / 2.f }); m_scrambleSpr->setPosition({ m_wheelX + visualBgRadius + S(this,SCRAMBLE_BTN_OFFSET_X), m_wheelY + S(this,SCRAMBLE_BTN_OFFSET_Y) }); }
-    if (m_hintSpr && m_hintTex.getSize().y > 0) { float h = S(this, HINT_BTN_HEIGHT); float s = h / m_hintTex.getSize().y; m_hintSpr->setScale({ s,s }); m_hintSpr->setOrigin({ (float)m_hintTex.getSize().x, m_hintTex.getSize().y / 2.f }); m_hintSpr->setPosition({ m_wheelX - visualBgRadius - S(this,HINT_BTN_OFFSET_X), m_wheelY + S(this,HINT_BTN_OFFSET_Y) }); }
+    // 7. Other UI Element Positions (using base m_uiScale via S())---------------
+    if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) { /* ... position scramble button ... */ float h = S(this, SCRAMBLE_BTN_HEIGHT); float s = h / m_scrambleTex.getSize().y; m_scrambleSpr->setScale({ s,s }); m_scrambleSpr->setOrigin({ 0.f,m_scrambleTex.getSize().y / 2.f }); m_scrambleSpr->setPosition({ m_wheelX + visualBgRadius + S(this,SCRAMBLE_BTN_OFFSET_X), m_wheelY + S(this,SCRAMBLE_BTN_OFFSET_Y) }); }
+    if (m_hintSpr && m_hintTex.getSize().y > 0) { /* ... position hint button ... */ float h = S(this, HINT_BTN_HEIGHT); float s = h / m_hintTex.getSize().y; m_hintSpr->setScale({ s,s }); m_hintSpr->setOrigin({ (float)m_hintTex.getSize().x,m_hintTex.getSize().y / 2.f }); m_hintSpr->setPosition({ m_wheelX - visualBgRadius - S(this,HINT_BTN_OFFSET_X), m_wheelY + S(this,HINT_BTN_OFFSET_Y) }); }
     if (m_hintCountTxt) { const unsigned int bf = 20; unsigned int sf = (unsigned int)std::max(8.0f, S(this, (float)bf)); m_hintCountTxt->setCharacterSize(sf); }
-
-    // Continue Button positioning (relative to wheel's visual edge)
-    if (m_contTxt && m_contBtn.getPointCount() > 0) {
-        sf::Vector2f s = { S(this,200.f),S(this,50.f) }; // Scaled button size
-        m_contBtn.setSize(s);
-        m_contBtn.setRadius(S(this, 10.f)); // Scaled radius
-        m_contBtn.setOrigin({ s.x / 2.f, 0.f }); // Origin: Top-Center
-        // Position below the visual bottom edge of the wheel background
-        m_contBtn.setPosition({ m_wheelX, m_wheelY + visualBgRadius + S(this,CONTINUE_BTN_OFFSET_Y) }); // Use visualBgRadius
-
-        // Position Continue Text centered on the button
-        const unsigned int bf = 24;
-        unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf));
-        m_contTxt->setCharacterSize(sf);
-        sf::FloatRect tb = m_contTxt->getLocalBounds();
-        m_contTxt->setOrigin({ tb.position.x + tb.size.x / 2.f, tb.position.y + tb.size.y / 2.f }); // Center origin
-        m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, s.y / 2.f }); // Position relative to button's origin
-    }
-
-    // Guess Display positioning (done dynamically in render, but set properties here)
+    if (m_contTxt && m_contBtn.getPointCount() > 0) { /* ... position continue button and text ... */ sf::Vector2f s = { S(this,200.f),S(this,50.f) }; m_contBtn.setSize(s); m_contBtn.setRadius(S(this, 10.f)); m_contBtn.setOrigin({ s.x / 2.f, 0.f }); m_contBtn.setPosition({ m_wheelX, m_wheelY + visualBgRadius + S(this,CONTINUE_BTN_OFFSET_Y) }); const unsigned int bf = 24; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_contTxt->setCharacterSize(sf); sf::FloatRect tb = m_contTxt->getLocalBounds(); m_contTxt->setOrigin({ tb.position.x + tb.size.x / 2.f, tb.position.y + tb.size.y / 2.f }); m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, s.y / 2.f }); }
     if (m_guessDisplay_Text) { const unsigned int bf = 30; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_guessDisplay_Text->setCharacterSize(sf); }
     if (m_guessDisplay_Bg.getPointCount() > 0) { m_guessDisplay_Bg.setRadius(S(this, 8.f)); m_guessDisplay_Bg.setOutlineThickness(S(this, 1.f)); }
-
-    // --- Log Calculated HUD Start Position & Visual Wheel Top ---
     const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y);
-    // Calculate where HUD starts based on visual wheel bottom edge
     float calculatedHudStartY = m_wheelY + visualBgRadius + scaledHudOffsetY;
-    float visualWheelTopEdgeY = m_wheelY - visualBgRadius; // Top of wheel BG
+    float visualWheelTopEdgeY = m_wheelY - visualBgRadius;
     std::cout << "  WHEEL/HUD INFO: Visual Wheel BG Top Edge Y = " << visualWheelTopEdgeY << std::endl;
     std::cout << "  WHEEL/HUD INFO: Calculated HUD Start Y = " << calculatedHudStartY << std::endl;
     if (visualWheelTopEdgeY < gridActualBottomY - 0.1f) { std::cout << "  WHEEL/HUD WARNING: Visual Wheel BG (Y=" << visualWheelTopEdgeY << ") overlaps Grid Bottom (Y=" << gridActualBottomY << ")!" << std::endl; }
     if (calculatedHudStartY > designBottomEdge + 0.1f) { std::cout << "  WHEEL/HUD WARNING: Calculated HUD Start Y (" << calculatedHudStartY << ") is below Design Bottom Edge (" << designBottomEdge << ")" << std::endl; }
 
 
-    // 8. Menu Layouts --------
+    // 8. Menu Layouts (using base m_uiScale via S()) --------
     sf::Vector2f windowCenterPix = sf::Vector2f(windowSize) / 2.f; sf::Vector2f mappedWindowCenter = m_window.mapPixelToCoords(sf::Vector2i(windowCenterPix));
     const float scaledMenuPadding = S(this, 40.f); const float scaledButtonSpacing = S(this, 20.f); const unsigned int scaledTitleSize = (unsigned int)std::max(12.0f, S(this, 36.f)); const unsigned int scaledButtonFontSize = (unsigned int)std::max(10.0f, S(this, 24.f)); const sf::Vector2f scaledButtonSize = { S(this,250.f),S(this,50.f) }; const float scaledButtonRadius = S(this, 10.f); const float scaledMenuRadius = S(this, 15.f);
     auto centerTextOnButton = [&](const std::unique_ptr<sf::Text>& textPtr, const RoundedRectangleShape& button) { if (!textPtr) return; sf::Text* text = textPtr.get(); sf::FloatRect tb = text->getLocalBounds(); text->setOrigin({ tb.position.x + tb.size.x / 2.f,tb.position.y + tb.size.y / 2.f }); text->setPosition(button.getPosition() + sf::Vector2f{ 0.f,button.getSize().y / 2.f }); };
-    if (m_mainMenuTitle && m_casualButtonShape.getPointCount() > 0) { m_mainMenuTitle->setCharacterSize(scaledTitleSize); m_casualButtonText->setCharacterSize(scaledButtonFontSize); m_competitiveButtonText->setCharacterSize(scaledButtonFontSize); m_quitButtonText->setCharacterSize(scaledButtonFontSize); m_casualButtonShape.setSize(scaledButtonSize); m_competitiveButtonShape.setSize(scaledButtonSize); m_quitButtonShape.setSize(scaledButtonSize); m_casualButtonShape.setRadius(scaledButtonRadius); m_competitiveButtonShape.setRadius(scaledButtonRadius); m_quitButtonShape.setRadius(scaledButtonRadius); sf::FloatRect titleBounds = m_mainMenuTitle->getLocalBounds(); float sths = titleBounds.size.y + titleBounds.position.y + scaledButtonSpacing; float tbh = 3 * scaledButtonSize.y + 2 * scaledButtonSpacing; float smmh = scaledMenuPadding + sths + tbh + scaledMenuPadding; float smmw = std::max(scaledButtonSize.x, titleBounds.size.x + titleBounds.position.x) + 2 * scaledMenuPadding; m_mainMenuBg.setSize({ smmw,smmh }); m_mainMenuBg.setRadius(scaledMenuRadius); m_mainMenuBg.setOrigin({ smmw / 2.f,smmh / 2.f }); m_mainMenuBg.setPosition(mappedWindowCenter); sf::Vector2f mbp = m_mainMenuBg.getPosition(); float mty = mbp.y - smmh / 2.f; m_mainMenuTitle->setOrigin({ titleBounds.position.x + titleBounds.size.x / 2.f,titleBounds.position.y }); m_mainMenuTitle->setPosition({ mbp.x,mty + scaledMenuPadding }); float currentY = mty + scaledMenuPadding + sths; m_casualButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_casualButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_casualButtonText, m_casualButtonShape); currentY += scaledButtonSize.y + scaledButtonSpacing; m_competitiveButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_competitiveButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_competitiveButtonText, m_competitiveButtonShape); currentY += scaledButtonSize.y + scaledButtonSpacing; m_quitButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_quitButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_quitButtonText, m_quitButtonShape); }
-    if (m_casualMenuTitle && m_easyButtonShape.getPointCount() > 0) { m_casualMenuTitle->setCharacterSize(scaledTitleSize); m_easyButtonText->setCharacterSize(scaledButtonFontSize); m_mediumButtonText->setCharacterSize(scaledButtonFontSize); m_hardButtonText->setCharacterSize(scaledButtonFontSize); m_returnButtonText->setCharacterSize(scaledButtonFontSize); m_easyButtonShape.setSize(scaledButtonSize); m_mediumButtonShape.setSize(scaledButtonSize); m_hardButtonShape.setSize(scaledButtonSize); m_returnButtonShape.setSize(scaledButtonSize); m_easyButtonShape.setRadius(scaledButtonRadius); m_mediumButtonShape.setRadius(scaledButtonRadius); m_hardButtonShape.setRadius(scaledButtonRadius); m_returnButtonShape.setRadius(scaledButtonRadius); sf::FloatRect ctb = m_casualMenuTitle->getLocalBounds(); float sths = ctb.size.y + ctb.position.y + scaledButtonSpacing; float tbh = 4 * scaledButtonSize.y + 3 * scaledButtonSpacing; float scmh = scaledMenuPadding + sths + tbh + scaledMenuPadding; float scmw = std::max(scaledButtonSize.x, ctb.size.x + ctb.position.x) + 2 * scaledMenuPadding; m_casualMenuBg.setSize({ scmw,scmh }); m_casualMenuBg.setRadius(scaledMenuRadius); m_casualMenuBg.setOrigin({ scmw / 2.f,scmh / 2.f }); m_casualMenuBg.setPosition(mappedWindowCenter); sf::Vector2f cmbp = m_casualMenuBg.getPosition(); float cmty = cmbp.y - scmh / 2.f; m_casualMenuTitle->setOrigin({ ctb.position.x + ctb.size.x / 2.f,ctb.position.y }); m_casualMenuTitle->setPosition({ cmbp.x,cmty + scaledMenuPadding }); float ccy = cmty + scaledMenuPadding + sths; m_easyButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_easyButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_easyButtonText, m_easyButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_mediumButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_mediumButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_mediumButtonText, m_mediumButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_hardButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_hardButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_hardButtonText, m_hardButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_returnButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_returnButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_returnButtonText, m_returnButtonShape); }
+    if (m_mainMenuTitle && m_casualButtonShape.getPointCount() > 0) { /* ... layout main menu ... */ m_mainMenuTitle->setCharacterSize(scaledTitleSize); m_casualButtonText->setCharacterSize(scaledButtonFontSize); m_competitiveButtonText->setCharacterSize(scaledButtonFontSize); m_quitButtonText->setCharacterSize(scaledButtonFontSize); m_casualButtonShape.setSize(scaledButtonSize); m_competitiveButtonShape.setSize(scaledButtonSize); m_quitButtonShape.setSize(scaledButtonSize); m_casualButtonShape.setRadius(scaledButtonRadius); m_competitiveButtonShape.setRadius(scaledButtonRadius); m_quitButtonShape.setRadius(scaledButtonRadius); sf::FloatRect titleBounds = m_mainMenuTitle->getLocalBounds(); float sths = titleBounds.size.y + titleBounds.position.y + scaledButtonSpacing; float tbh = 3 * scaledButtonSize.y + 2 * scaledButtonSpacing; float smmh = scaledMenuPadding + sths + tbh + scaledMenuPadding; float smmw = std::max(scaledButtonSize.x, titleBounds.size.x + titleBounds.position.x) + 2 * scaledMenuPadding; m_mainMenuBg.setSize({ smmw,smmh }); m_mainMenuBg.setRadius(scaledMenuRadius); m_mainMenuBg.setOrigin({ smmw / 2.f,smmh / 2.f }); m_mainMenuBg.setPosition(mappedWindowCenter); sf::Vector2f mbp = m_mainMenuBg.getPosition(); float mty = mbp.y - smmh / 2.f; m_mainMenuTitle->setOrigin({ titleBounds.position.x + titleBounds.size.x / 2.f,titleBounds.position.y }); m_mainMenuTitle->setPosition({ mbp.x,mty + scaledMenuPadding }); float currentY = mty + scaledMenuPadding + sths; m_casualButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_casualButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_casualButtonText, m_casualButtonShape); currentY += scaledButtonSize.y + scaledButtonSpacing; m_competitiveButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_competitiveButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_competitiveButtonText, m_competitiveButtonShape); currentY += scaledButtonSize.y + scaledButtonSpacing; m_quitButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_quitButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_quitButtonText, m_quitButtonShape); }
+    if (m_casualMenuTitle && m_easyButtonShape.getPointCount() > 0) { /* ... layout casual menu ... */ m_casualMenuTitle->setCharacterSize(scaledTitleSize); m_easyButtonText->setCharacterSize(scaledButtonFontSize); m_mediumButtonText->setCharacterSize(scaledButtonFontSize); m_hardButtonText->setCharacterSize(scaledButtonFontSize); m_returnButtonText->setCharacterSize(scaledButtonFontSize); m_easyButtonShape.setSize(scaledButtonSize); m_mediumButtonShape.setSize(scaledButtonSize); m_hardButtonShape.setSize(scaledButtonSize); m_returnButtonShape.setSize(scaledButtonSize); m_easyButtonShape.setRadius(scaledButtonRadius); m_mediumButtonShape.setRadius(scaledButtonRadius); m_hardButtonShape.setRadius(scaledButtonRadius); m_returnButtonShape.setRadius(scaledButtonRadius); sf::FloatRect ctb = m_casualMenuTitle->getLocalBounds(); float sths = ctb.size.y + ctb.position.y + scaledButtonSpacing; float tbh = 4 * scaledButtonSize.y + 3 * scaledButtonSpacing; float scmh = scaledMenuPadding + sths + tbh + scaledMenuPadding; float scmw = std::max(scaledButtonSize.x, ctb.size.x + ctb.position.x) + 2 * scaledMenuPadding; m_casualMenuBg.setSize({ scmw,scmh }); m_casualMenuBg.setRadius(scaledMenuRadius); m_casualMenuBg.setOrigin({ scmw / 2.f,scmh / 2.f }); m_casualMenuBg.setPosition(mappedWindowCenter); sf::Vector2f cmbp = m_casualMenuBg.getPosition(); float cmty = cmbp.y - scmh / 2.f; m_casualMenuTitle->setOrigin({ ctb.position.x + ctb.size.x / 2.f,ctb.position.y }); m_casualMenuTitle->setPosition({ cmbp.x,cmty + scaledMenuPadding }); float ccy = cmty + scaledMenuPadding + sths; m_easyButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_easyButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_easyButtonText, m_easyButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_mediumButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_mediumButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_mediumButtonText, m_mediumButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_hardButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_hardButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_hardButtonText, m_hardButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_returnButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_returnButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_returnButtonText, m_returnButtonShape); }
 
 
     // --- Final Summary Log ---
     std::cout << "--- Overall Layout Summary (Design Coords) ---" << std::endl;
-    std::cout << "Grid: StartY=" << m_gridStartY << " ActualH=" << actualGridHeight << " BottomY=" << gridActualBottomY << std::endl;
+    std::cout << "Grid: StartY=" << m_gridStartY << " ActualH=" << actualGridHeight << " BottomY=" << gridActualBottomY << " StartX=" << m_gridStartX << " Width=" << m_totalGridW << " (Using Scale Mod: " << m_currentGridLayoutScale << ")" << std::endl;
     std::cout << "Wheel: CenterY=" << m_wheelY << " Radius=" << m_currentWheelRadius << " VisualTopY=" << visualWheelTopEdgeY << std::endl;
     std::cout << "HUD: StartY=" << calculatedHudStartY << std::endl;
     std::cout << "---------------------------------------------" << std::endl;
 
-} // End of m_updateLayout implementation
+}
+// ***** END OF COMPLETE Game::m_updateLayout FUNCTION *****
 
 // --- END OF FULL m_updateLayout FUNCTION ---
 
 sf::Vector2f Game::m_tilePos(int wordIdx, int charIdx) {
-    sf::Vector2f result = { -1000.f, -1000.f }; // Default off-screen
+    sf::Vector2f result = { -1000.f, -1000.f };
 
-    // --- Bounds checks (keep as is) ---
+    // --- Bounds checks ---
     if (m_sorted.empty() || wordIdx < 0 || wordIdx >= m_wordCol.size() || wordIdx >= m_wordRow.size() || charIdx < 0) {
-        // Out of bounds or no data
-        return result; // Return default off-screen position
+        return result;
     }
-
     int c = m_wordCol[wordIdx];
     int r = m_wordRow[wordIdx];
-
     if (c < 0 || c >= m_colXOffset.size()) {
-        // Invalid column index
-        return result; // Return default off-screen position
+        return result;
     }
 
-    // --- Use SCALED tile dimensions for offset calculation ---
-    const float scaledTileSize = S(this, TILE_SIZE);     // Get scaled size using S()
-    const float scaledTilePad = S(this, TILE_PAD);       // Get scaled pad using S()
-    const float scaledStepWidth = scaledTileSize + scaledTilePad; // Calculate scaled step
+    // --- Calculate Step Width using the Grid-Specific Scale Factor ---
+    const float scaledTileSize = S(this, TILE_SIZE) * m_currentGridLayoutScale; // Apply grid scale
+    const float scaledTilePad = S(this, TILE_PAD) * m_currentGridLayoutScale;   // Apply grid scale
+    const float scaledStepWidth = scaledTileSize + scaledTilePad; // Adjusted step width
+    // Note: Assuming square tiles/padding for height step as well
+    const float scaledStepHeight = scaledStepWidth;
 
-    // m_colXOffset[c] and m_gridStartY were calculated using scaled values in m_updateLayout
-    float x = m_colXOffset[c] + static_cast<float>(charIdx) * scaledStepWidth; // Use scaled step
-    float y = m_gridStartY + static_cast<float>(r) * scaledStepWidth;       // Use scaled step (assuming square tiles/padding)
+    // --- Use pre-calculated adjusted offsets and the adjusted step width ---
+    // m_colXOffset[c] and m_gridStartY were calculated using the adjusted scale in m_updateLayout
+    float x = m_colXOffset[c] + static_cast<float>(charIdx) * scaledStepWidth; // Use adjusted step
+    float y = m_gridStartY + static_cast<float>(r) * scaledStepHeight;      // Use adjusted step
 
     result = { x, y };
-
     return result;
 }
 
@@ -1626,199 +1523,132 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 // --- Mouse Button Released ---
     else if (const auto* mb = event.getIf<sf::Event::MouseButtonReleased>()) {
         if (m_dragging && mb->button == sf::Mouse::Button::Left) {
-            bool gridMatchFound = false;    // Did we find a NEW word for the grid this turn?
-            bool bonusMatchFound = false;   // Did we find a NEW bonus word this turn?
-            bool textMatchedExisting = false; // Did the text match a word already found (grid or bonus)?
-            int foundWordIdx = -1;        // Index *in m_sorted* if it's a new grid word
+            bool actionTaken = false; // Flag: Did we find a new word or trigger a flourish?
+            std::string wordMatched = ""; // Store the original case of the matched word
+            int wordIndexMatched = -1; // Store index if it was a grid word
 
-            std::cout << "DEBUG: Mouse Released. Guess: '" << m_currentGuess << "'" << std::endl; // Start Debug
+            std::cout << "DEBUG: Mouse Released. Guess: '" << m_currentGuess << "'" << std::endl;
 
-            // --- Check 1: Does the guess match text of a GRID word? ---
+            // --- Phase 1: Check against GRID words ---
             for (std::size_t w = 0; w < m_sorted.size(); ++w) {
                 const std::string& solutionOriginalCase = m_sorted[w].text;
                 std::string solutionUpper = solutionOriginalCase;
-                std::transform(solutionUpper.begin(), solutionUpper.end(), solutionUpper.begin(),
-                    [](unsigned char c) { return std::toupper(c); });
+                std::transform(solutionUpper.begin(), solutionUpper.end(), solutionUpper.begin(), ::toupper);
 
-                if (solutionUpper == m_currentGuess) { // Text matches a grid word!
-                    bool alreadyFoundOnGrid = (m_found.find(solutionOriginalCase) != m_found.end());
+                if (solutionUpper == m_currentGuess) {
+                    wordMatched = solutionOriginalCase; // Store the matched word (original case)
+                    wordIndexMatched = static_cast<int>(w); // Store its index
 
-                    if (!alreadyFoundOnGrid) {
-                        // --- Handle NEW Grid Word Found ---
+                    if (m_found.count(solutionOriginalCase)) {
+                        // --- Repeated GRID Word ---
+                        std::cout << "DEBUG: Matched GRID word '" << solutionOriginalCase << "', but already found." << std::endl;
+                        // Trigger flourish for existing grid letters
+                        for (int c = 0; c < solutionOriginalCase.length(); ++c) {
+                            m_gridFlourishes.push_back({ wordIndexMatched, c, GRID_FLOURISH_DURATION });
+                        }
+                        if (m_errorWordSound) m_errorWordSound->play(); // Use error/repeat sound
+                        actionTaken = true;
+                    }
+                    else {
+                        // --- NEW Grid Word Found ---
                         std::cout << "DEBUG: Found NEW match on GRID: '" << solutionOriginalCase << "'" << std::endl;
-                        gridMatchFound = true; // Mark that we found a new grid word this turn
-                        foundWordIdx = static_cast<int>(w);
-                        m_found.insert(solutionOriginalCase);         // Add to grid set
-
-                        // --- Handle scoring, hints, animations for GRID WORD --- Start Full Block ---
+                        m_found.insert(solutionOriginalCase);
+                        // ... (Scoring, Hint Check, Letter Animations - keep this existing logic) ...
                         int baseScore = static_cast<int>(m_currentGuess.length()) * 10;
                         int rarityBonus = (m_sorted[w].rarity > 1) ? (m_sorted[w].rarity * 25) : 0;
                         m_currentScore += baseScore + rarityBonus;
                         if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
-
-                        // Check for earning a hint
                         m_wordsSolvedSinceHint++;
                         if (m_wordsSolvedSinceHint >= WORDS_PER_HINT) {
-                            m_hintsAvailable++;
-                            m_wordsSolvedSinceHint = 0; // Reset counter
+                            m_hintsAvailable++; m_wordsSolvedSinceHint = 0;
                             if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
-                            // TODO: Maybe add a small visual/audio cue for earning a hint?
                         }
-
-                        // --- Create letter animations TO GRID ---
-                        for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
-                            if (c < m_path.size()) { // Ensure path index is valid
+                        for (std::size_t c = 0; c < m_currentGuess.length(); ++c) { // Animation Logic
+                            if (c < m_path.size()) {
                                 int pathNodeIdx = m_path[c];
                                 if (pathNodeIdx >= 0 && pathNodeIdx < m_wheelCentres.size()) {
                                     sf::Vector2f startPos = m_wheelCentres[pathNodeIdx];
-                                    sf::Vector2f endPos = m_tilePos(foundWordIdx, static_cast<int>(c));
-                                    endPos.x += TILE_SIZE / 2.f; // Center of tile
-                                    endPos.y += TILE_SIZE / 2.f;
-                                    // Use aggregate initialization for LetterAnim
-                                    m_anims.push_back({
-                                        m_currentGuess[c],    // ch
-                                        startPos,             // start
-                                        endPos,               // end
-                                        0.f - (c * 0.03f),    // t (Slight delay based on index)
-                                        foundWordIdx,         // wordIdx
-                                        static_cast<int>(c),  // charIdx
-                                        AnimTarget::Grid      // target
-                                        });
+                                    sf::Vector2f endPos = m_tilePos(wordIndexMatched, static_cast<int>(c));
+                                    endPos.x += TILE_SIZE / 2.f; endPos.y += TILE_SIZE / 2.f;
+                                    m_anims.push_back({ m_currentGuess[c], startPos, endPos, 0.f - (c * 0.03f), wordIndexMatched, static_cast<int>(c), AnimTarget::Grid });
                                 }
                             }
-                        } // --- End letter animations ---
-
-                        std::cout << "GRID Word: " << m_currentGuess << " | Rarity: " << m_sorted[foundWordIdx].rarity << " | Len: " << m_currentGuess.length() << " | Rarity Bonus: " << rarityBonus << " | BasePts: " << baseScore << " | Total: " << m_currentScore << std::endl;
-
-                        // --- Check for Puzzle Solved ---
-                        // Compare count of found words (original case) with total solutions ON GRID
+                        }
+                        std::cout << "GRID Word: " << m_currentGuess << " | Rarity: " << m_sorted[wordIndexMatched].rarity << " | Len: " << m_currentGuess.length() << " | Rarity Bonus: " << rarityBonus << " | BasePts: " << baseScore << " | Total: " << m_currentScore << std::endl;
+                        // Check for Puzzle Solved
                         if (m_found.size() == m_solutions.size()) {
                             std::cout << "DEBUG: All grid words found! Puzzle solved." << std::endl;
                             if (m_winSound) m_winSound->play();
-                            m_gameState = GState::Solved; // Internal state
-                            m_currentScreen = GameScreen::GameOver; // Change screen state
+                            m_gameState = GState::Solved;
+                            m_currentScreen = GameScreen::GameOver;
                         }
-                        // --- Handle scoring, hints, animations for GRID WORD --- End Full Block ---
-
+                        // ... (End of new grid word logic) ...
+                        actionTaken = true;
                     }
-                    else {
-                        // Text matched a grid word, but it was already found
-                        std::cout << "DEBUG: Matched GRID word '" << solutionOriginalCase << "', but already found." << std::endl;
-                        textMatchedExisting = true; // Mark that the text is valid but word already used
-                    }
-                    // Whether new or already found, if text matched a grid word, no need to check further
-                    goto end_word_checks; // Use goto to jump past bonus check cleanly
+                    goto process_outcome; // Found a grid match (new or repeat), skip bonus check
                 }
             } // --- End Grid Check Loop ---
 
 
-// --- Check 2: Does the guess match text of a BONUS word? ---
-            if (!gridMatchFound && !textMatchedExisting) { // Only check if not a grid word (new or existing)
-                std::cout << "DEBUG: Checking for BONUS word..." << std::endl;
-                for (const auto& potentialWordInfo : m_allPotentialSolutions) {
-                    const std::string& bonusWordOriginalCase = potentialWordInfo.text;
-                    std::string bonusWordUpper = bonusWordOriginalCase;
-                    std::transform(bonusWordUpper.begin(), bonusWordUpper.end(), bonusWordUpper.begin(),
-                        [](unsigned char c) { return std::toupper(c); });
+            // --- Phase 2: Check against BONUS words (only if no grid match occurred) ---
+            std::cout << "DEBUG: Checking for BONUS word..." << std::endl;
+            for (const auto& potentialWordInfo : m_allPotentialSolutions) {
+                const std::string& bonusWordOriginalCase = potentialWordInfo.text;
+                // Skip if this potential bonus word is actually required for the grid
+                if (m_found.count(bonusWordOriginalCase)) { continue; } // Already handled by grid check
 
-                    if (bonusWordUpper == m_currentGuess) { // Text matches a potential bonus word!
+                std::string bonusWordUpper = bonusWordOriginalCase;
+                std::transform(bonusWordUpper.begin(), bonusWordUpper.end(), bonusWordUpper.begin(), ::toupper);
 
-                        // *** NEW CHECK: Is this word already found ON THE GRID? ***
-                        bool alreadyFoundOnGrid = (m_found.find(bonusWordOriginalCase) != m_found.end());
-                        if (alreadyFoundOnGrid) {
-                            std::cout << "DEBUG: Matched bonus text '" << bonusWordOriginalCase << "', but it's already on the grid." << std::endl;
-                            textMatchedExisting = true; // Mark that the text is valid but word used on grid
-                            goto end_word_checks; // Don't treat as bonus or invalid
-                        }
-                        // **********************************************************
+                if (bonusWordUpper == m_currentGuess) { // Text matches a potential bonus word
+                    wordMatched = bonusWordOriginalCase; // Store match
 
-
-                        // Is this specific word already found *as a bonus word*?
-                        bool alreadyFoundBonus = (m_foundBonusWords.find(bonusWordOriginalCase) != m_foundBonusWords.end());
-
-                        if (!alreadyFoundBonus) { // Note: alreadyFoundOnGrid check above ensures it's not a grid word either
-                            // --- Handle NEW Bonus Word Found --- START FULL BLOCK ---
-                            std::cout << "DEBUG: Found NEW match for BONUS: '" << bonusWordOriginalCase << "'" << std::endl;
-                            bonusMatchFound = true; // Mark that we found a new bonus word this turn
-                            m_foundBonusWords.insert(bonusWordOriginalCase); // Add to bonus found set ONLY
-
-                            // --- Handle scoring ---
-                            int bonusScore = 25; // Or base on length/rarity if desired
-                            m_currentScore += bonusScore;
-                            if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
-                            std::cout << "BONUS Word: " << m_currentGuess << " | Points: " << bonusScore << " | Total: " << m_currentScore << std::endl;
-                            // Note: Bonus words usually don't affect hint earning
-
-                            // --- Trigger Bonus Letter Animations TO SCORE ---
-                            std::cout << "DEBUG: Preparing bonus animations..." << std::endl;
-                            if (m_scoreValueText) {
-                                sf::FloatRect scoreBounds = m_scoreValueText->getGlobalBounds();
-                                sf::Vector2f scoreCenterPos = {
-                                    scoreBounds.position.x + scoreBounds.size.x / 2.f,
-                                    scoreBounds.position.y + scoreBounds.size.y / 2.f
-                                };
-                                std::cout << "DEBUG: Animating bonus letters to score center: (" << scoreCenterPos.x << "," << scoreCenterPos.y << ")" << std::endl;
-
-                                for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
-                                    if (c < m_path.size()) {
-                                        int pathNodeIdx = m_path[c];
-                                        if (pathNodeIdx >= 0 && pathNodeIdx < m_wheelCentres.size()) {
-                                            sf::Vector2f startPos = m_wheelCentres[pathNodeIdx];
-                                            sf::Vector2f endPos = scoreCenterPos;
-                                            // Use aggregate initialization for LetterAnim
-                                            m_anims.push_back({
-                                                m_currentGuess[c],    // ch
-                                                startPos,             // start
-                                                endPos,               // end
-                                                0.f - (c * 0.05f),    // t (Slight delay)
-                                                -1,                   // wordIdx (Not used)
-                                                -1,                   // charIdx (Not used)
-                                                AnimTarget::Score     // target
-                                                });
-                                        }
+                    if (m_foundBonusWords.count(bonusWordOriginalCase)) {
+                        // --- Repeated BONUS Word ---
+                        std::cout << "DEBUG: Matched BONUS word '" << bonusWordOriginalCase << "', but already found AS BONUS." << std::endl;
+                        m_bonusTextFlourishTimer = BONUS_TEXT_FLOURISH_DURATION; // Trigger bonus text flourish
+                        if (m_errorWordSound) m_errorWordSound->play(); // Use error/repeat sound
+                        actionTaken = true;
+                    }
+                    else {
+                        // --- NEW Bonus Word Found ---
+                        std::cout << "DEBUG: Found NEW match for BONUS: '" << bonusWordOriginalCase << "'" << std::endl;
+                        m_foundBonusWords.insert(bonusWordOriginalCase);
+                        // ... (Bonus Scoring, Letter Animations to Score - keep existing logic) ...
+                        int bonusScore = 25; m_currentScore += bonusScore;
+                        if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
+                        std::cout << "BONUS Word: " << m_currentGuess << " | Points: " << bonusScore << " | Total: " << m_currentScore << std::endl;
+                        if (m_scoreValueText) { // Animation Logic
+                            sf::FloatRect scoreBounds = m_scoreValueText->getGlobalBounds();
+                            sf::Vector2f scoreCenterPos = { scoreBounds.position.x + scoreBounds.size.x / 2.f, scoreBounds.position.y + scoreBounds.size.y / 2.f };
+                            for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
+                                if (c < m_path.size()) {
+                                    int pathNodeIdx = m_path[c];
+                                    if (pathNodeIdx >= 0 && pathNodeIdx < m_wheelCentres.size()) {
+                                        sf::Vector2f startPos = m_wheelCentres[pathNodeIdx];
+                                        m_anims.push_back({ m_currentGuess[c], startPos, scoreCenterPos, 0.f - (c * 0.05f), -1, -1, AnimTarget::Score });
                                     }
                                 }
-                                std::cout << "DEBUG: Bonus animations CREATED." << std::endl;
                             }
-                            else {
-                                std::cerr << "Warning: Cannot animate bonus to score - m_scoreValueText is null." << std::endl;
-                            }
-                            // --- End Bonus Animations ---
-
-                            // Optional: Play bonus sound
-                            // if(m_bonusSound) m_bonusSound->play();
-
-                            // --- Handle NEW Bonus Word Found --- END FULL BLOCK ---
-
+                            std::cout << "DEBUG: Bonus animations CREATED." << std::endl;
                         }
-                        else {
-                            // Text matched a potential bonus word, but it was already found *as bonus*
-                            std::cout << "DEBUG: Matched BONUS word '" << bonusWordOriginalCase << "', but already found AS BONUS." << std::endl;
-                            textMatchedExisting = true; // Mark that the text is valid but word already used
-                        }
-                        // Whether new or already found bonus, if text matched, stop checking
-                        goto end_word_checks;
+                        else { std::cerr << "Warning: Cannot animate bonus to score - m_scoreValueText is null." << std::endl; }
+                        // ... (End of new bonus word logic) ...
+                        actionTaken = true;
                     }
-                } // --- End Bonus Check Loop ---
-            } // --- End if (!gridMatchFound && !textMatchedExisting) ---
-
-        end_word_checks:; // Label for goto jump target
-
-            // --- Check 3: Incorrect/Already Found Word Handling ---
-            if (!gridMatchFound && !bonusMatchFound) { // If no NEW word was found this turn
-                if (textMatchedExisting) {
-                    // Text matched a word, but it was already found (grid or bonus)
-                    std::cout << "Word '" << m_currentGuess << "' already found." << std::endl;
-                    // Play "already found" sound?
-                    // if (m_alreadyFoundSound) m_alreadyFoundSound->play();
+                    goto process_outcome; // Found a bonus match (new or repeat)
                 }
-                else {
-                    // Text did not match any grid word or any potential bonus word
-                    std::cout << "Word '" << m_currentGuess << "' is not valid for this puzzle." << std::endl;
-                    // Play incorrect sound?
-                    if (m_errorWordSound) m_errorWordSound->play();
-                }
-            }
+            } // --- End Bonus Check Loop ---
+
+
+            // --- Phase 3: Incorrect Word ---
+            // This block is only reached if the guess didn't match ANY grid or potential bonus word text
+            std::cout << "Word '" << m_currentGuess << "' is not valid for this puzzle." << std::endl;
+            if (m_errorWordSound) m_errorWordSound->play();
+            actionTaken = true;
+
+
+        process_outcome:; // Label for jumps after processing a match
 
             m_clearDragState(); // Clear path and guess regardless of outcome
         }
@@ -2042,6 +1872,8 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
 
                 tileBackground.setPosition(p); // Use scaled pos
                 // ... set colors ...
+                tileBackground.setFillColor(m_currentTheme.gridEmptyTile);
+                tileBackground.setOutlineColor(m_currentTheme.gridEmptyTile);
                 m_window.draw(tileBackground); // Draws with scaled size/radius/thickness
 
                 if (!isFilled) { // Draw Gem instead of letter
@@ -2050,7 +1882,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                     switch (wordRarity) {
                     case 1: // Common - none
                         break;
-					case 2: // Uncommon - Emerald(Sapphire)
+                    case 2: // Uncommon - Emerald(Sapphire)
                         if (m_sapphireSpr) gemSprite = m_sapphireSpr.get();
                         break;
                     case 3: // Rare - Ruby
@@ -2062,8 +1894,8 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                     }
 
                     // Set tile background color (e.g., empty color)
-                    //tileBackground.setFillColor(m_currentTheme.gridEmptyTile);
-                    //tileBackground.setOutlineColor(m_currentTheme.gridEmptyTile);
+                    tileBackground.setFillColor(m_currentTheme.gridEmptyTile);
+                    tileBackground.setOutlineColor(m_currentTheme.gridEmptyTile);
                     m_window.draw(tileBackground); // Draw the empty tile background first
 
                     // If a valid gem sprite was selected, position and draw it
@@ -2077,19 +1909,54 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                         m_window.draw(*gemSprite); // Draw the gem sprite
                     }
                 }
-                else { // Draw Letter
-                    bool isAnimatingToTile = false; /* ... check anims ... */
+                else { // Draw Letter (Tile is filled)
+                    // Check if letter is currently animating TO this tile
+                    bool isAnimatingToTile = false;
+                    for (const auto& anim : m_anims) {
+                        if (anim.target == AnimTarget::Grid && anim.wordIdx == w && anim.charIdx == c && anim.t < 1.0f) {
+                            isAnimatingToTile = true;
+                            break;
+                        }
+                    }
+
                     if (!isAnimatingToTile) {
-                        tileBackground.setPosition(p); // Draw filled bg
-                        // ... set colors ...
+                        // --- Apply Grid Flourish --- // <<< NEW BLOCK START
+                        float currentFlourishScale = 1.0f;
+                        bool isFlourishing = false;
+                        for (const auto& flourish : m_gridFlourishes) {
+                            if (flourish.wordIdx == w && flourish.charIdx == c) {
+                                // Simple pulse effect using sine
+                                float progress = (GRID_FLOURISH_DURATION - flourish.timer) / GRID_FLOURISH_DURATION;
+                                currentFlourishScale = 1.0f + 0.4f * std::sin(progress * PI);
+                                isFlourishing = true;
+                                break; // Found the flourish for this letter
+                            }
+                        }
+                        // --- NEW BLOCK END ---
+
+                        // Draw background tile first
+                        tileBackground.setPosition(p);
+                        tileBackground.setFillColor(m_currentTheme.gridFilledTile); // Use filled color
+                        tileBackground.setOutlineColor(m_currentTheme.gridFilledTile);
                         m_window.draw(tileBackground);
 
+                        // Prepare letter text
                         letterText.setString(std::string(1, m_grid[w][c]));
-                        sf::FloatRect b = letterText.getLocalBounds(); // Depends on scaled font size
+                        sf::FloatRect b = letterText.getLocalBounds();
+                        // Adjust origin slightly if scaling to keep centered
                         letterText.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
-                        // Position using scaled pos 'p' and scaledTileSize
                         letterText.setPosition(p + sf::Vector2f{ scaledTileSize / 2.f, scaledTileSize / 2.f });
+                        letterText.setScale({ currentFlourishScale, currentFlourishScale }); // <<< APPLY SCALE
+                        // Optional: Change color during flourish?
+                        // letterText.setFillColor(isFlourishing ? sf::Color::Yellow : m_currentTheme.gridLetter);
+                        letterText.setFillColor(m_currentTheme.gridLetter); // Keep original color for now
+
                         m_window.draw(letterText);
+
+                        // IMPORTANT: Reset scale for next iteration if not flourishing
+                        if (!isFlourishing) {
+                            letterText.setScale({ 1.f, 1.f }); // Reset scale if necessary
+                        }
                     }
                 }
             }
@@ -2378,34 +2245,39 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
 
     // Bonus Word Counter
     if (!m_allPotentialSolutions.empty() || !m_foundBonusWords.empty()) {
-        // *** Calculate total possible bonus words ***
-        int totalPossibleBonus = 0;
+        // ... (calculate totalPossibleBonus) ...
+        int totalPossibleBonus = 0; /* ... */
         for (const auto& potentialWordInfo : m_allPotentialSolutions) {
-            bool isOnGrid = false;
-            for (const auto& gridWordInfo : m_solutions) {
-                if (potentialWordInfo.text == gridWordInfo.text) {
-                    isOnGrid = true;
-                    break;
-                }
-            }
-            if (!isOnGrid) {
-                totalPossibleBonus++;
-            }
+            bool isOnGrid = m_found.count(potentialWordInfo.text); // Simplified check
+            if (!isOnGrid) { totalPossibleBonus++; }
         }
-        // **********************************************
 
         std::string bonusCountStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
-        sf::Text bonusFoundTxt(m_font, bonusCountStr, scaledBonusFontSize); // USE SCALED SIZE
+        sf::Text bonusFoundTxt(m_font, bonusCountStr, scaledBonusFontSize); // Use scaled size
         bonusFoundTxt.setFillColor(sf::Color::Yellow); // Or theme color
+
+        // --- Apply Bonus Text Flourish --- // <<< NEW BLOCK START
+        float bonusFlourishScale = 1.0f;
+        if (m_bonusTextFlourishTimer > 0.f) {
+            float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION;
+            bonusFlourishScale = 1.0f + 0.4f * std::sin(progress * PI);
+            // Optional: Change color?
+            // bonusFoundTxt.setFillColor(sf::Color::White);
+        }
+        
+
+
         sf::FloatRect bonusBounds = bonusFoundTxt.getLocalBounds();
-        // Use Mid-Top origin
-        bonusFoundTxt.setOrigin({ bonusBounds.position.x + bonusBounds.size.x / 2.f,
-                                  bonusBounds.position.y }); // Origin Mid-Top
-        bonusFoundTxt.setPosition({ m_wheelX, currentTopY }); // Position the origin at the calculated Y
+        bonusFoundTxt.setOrigin({ bonusBounds.position.x + bonusBounds.size.x / 2.f, bonusBounds.position.y }); // Origin Mid-Top
+        bonusFoundTxt.setPosition({ m_wheelX, currentTopY });
+        bonusFoundTxt.setScale({ bonusFlourishScale, bonusFlourishScale }); // <<< APPLY SCALE
+
         m_window.draw(bonusFoundTxt);
 
-        // Update Y for any potential subsequent lines (if needed)
-        currentTopY += bonusBounds.size.y + scaledHudLineSpacing;
+        // Reset scale if needed (though creating sf::Text anew each frame makes it less critical)
+        // bonusFoundTxt.setScale({1.f, 1.f});
+
+        currentTopY += bonusBounds.size.y * bonusFlourishScale + scaledHudLineSpacing; // Adjust Y pos based on scaled height
     }
 
     // Hint Count Text - Position relative to Hint Icon (Existing logic should be okay)

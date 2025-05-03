@@ -23,6 +23,7 @@ constexpr float WHEEL_BOTTOM_MARGIN = 70.f;  // Keep reduced
 const float HUD_TEXT_OFFSET_Y = 15.f;       // Increased slightly from 8.f (Gives tiny bit more gap above HUD)
 const float HUD_LINE_SPACING = 20.f;        // Increased from 10.f/15.f (More space BETWEEN HUD lines)
 const float HUD_AREA_MIN_HEIGHT = 25.f;     // Increased from 15.f (Reserves more space FOR HUD)
+constexpr float UI_SCALE_MODIFIER = 0.95f;
 // ******************************
 
 constexpr float SCRAMBLE_BTN_OFFSET_X = 10.f;// Keep as is
@@ -44,7 +45,7 @@ const int EASY_MAX_SOLUTIONS = 7;
 const int MEDIUM_MAX_SOLUTIONS = 12;
 const int HARD_MAX_SOLUTIONS = 15;
 const int MIN_DESIRED_GRID_WORDS = 5;
-constexpr unsigned int INITIAL_HINTS = 100;
+constexpr unsigned int INITIAL_HINTS = 999;
 constexpr unsigned int WORDS_PER_HINT = 5;
 
 const float SCORE_BAR_BOTTOM_MARGIN = 10.f;
