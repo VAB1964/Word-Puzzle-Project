@@ -99,7 +99,7 @@ void Game::m_updateView(sf::Vector2u ws)
     m_window.setView(v);
 }
 
-Game::Game() : 
+Game::Game() :
     // --- Initialize members in the initializer list ---
     m_window(),                              // Default construct window
     m_font(),                                // Default construct font (will be loaded)
@@ -111,6 +111,7 @@ Game::Game() :
     m_wordsSolvedSinceHint(0),
     m_currentScore(0),
     m_scoreFlourishTimer(0.f),
+    m_bonusTextFlourishTimer(0.f), // <<< Initialize Bonus Text Timer
     m_dragging(false),
     m_decor(10),                             // Initialize DecorLayer
     m_selectedDifficulty(DifficultyLevel::None),
@@ -121,85 +122,106 @@ Game::Game() :
 
     // Resource Handles (default construct textures/buffers - loaded later)
     m_scrambleTex(), m_hintTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
-    m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), 
-    // Sounds (default construct - buffer set later)
-    m_selectSound(), m_placeSound(), m_winSound(), m_clickSound(), m_hintUsedSound(), m_errorWordSound(),
+    m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), m_errorWordBuffer(), // Added errorWordBuffer
+    // Sounds (will be unique_ptr, initialize to nullptr or default construct)
+    m_selectSound(nullptr), m_placeSound(nullptr), m_winSound(nullptr), m_clickSound(nullptr), m_hintUsedSound(nullptr), m_errorWordSound(nullptr),
     // Music (default construct - file loaded later)
     m_backgroundMusic(),
-    // Sprites (default construct - texture set later)
-    m_scrambleSpr(), m_hintSpr(), m_sapphireSpr(), m_rubySpr(), m_diamondSpr(),
+    // Sprites (will be unique_ptr, initialize to nullptr or default construct)
+    m_scrambleSpr(nullptr), m_hintSpr(nullptr), m_sapphireSpr(nullptr), m_rubySpr(nullptr), m_diamondSpr(nullptr),
+    // Texts (will be unique_ptr, initialize to nullptr or default construct)
+    m_contTxt(nullptr), m_scoreLabelText(nullptr), m_scoreValueText(nullptr), m_hintCountTxt(nullptr),
+    m_mainMenuTitle(nullptr), m_casualButtonText(nullptr), m_competitiveButtonText(nullptr), m_quitButtonText(nullptr),
+    m_casualMenuTitle(nullptr), m_easyButtonText(nullptr), m_mediumButtonText(nullptr), m_hardButtonText(nullptr), m_returnButtonText(nullptr),
+    m_guessDisplay_Text(nullptr),
+    m_progressMeterText(nullptr),
     // UI Shapes (can use constructor directly)
     m_contBtn({ 200.f, 50.f }, 10.f, 10),
-    m_solvedOverlay(),
-    m_scoreBar(),
-    m_guessDisplay_Text(),   
-    m_guessDisplay_Bg(),  
+    m_solvedOverlay({ 100.f, 50.f }, 10.f, 10), // Provide initial size/radius
+    m_scoreBar({ 100.f, 30.f }, 10.f, 10),     // Provide initial size/radius
+    m_guessDisplay_Bg({ 50.f, 30.f }, 5.f, 10), // Provide initial size/radius
     m_debugDrawCircleMode(false),
     m_needsLayoutUpdate(false),
     m_lastKnownSize(0, 0),
     // Add Main Menu Shapes
-    m_mainMenuBg(),
+    m_mainMenuBg({ 300.f, 300.f }, 15.f, 10), // Provide initial size/radius
     m_casualButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_competitiveButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_quitButtonShape({ 250.f, 50.f }, 10.f, 10),
     // Add Casual Menu Shapes
-    m_casualMenuBg(),
+    m_casualMenuBg({ 300.f, 400.f }, 15.f, 10), // Provide initial size/radius
     m_easyButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_mediumButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_hardButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_returnButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_progressMeterBg(),     
-    m_progressMeterFill(),   
-    m_progressMeterText()   
+    m_progressMeterBg({ 100.f, 20.f }),     // Rect shape, just size
+    m_progressMeterFill({ 100.f, 20.f })    // Rect shape, just size
+    // m_progressMeterText is initialized above
 { // --- Constructor Body Starts Here ---
 
     //----------------------------------------------------------------
-    //  create window at something close to the reference size but
-    //  never bigger than the desktop.
+    // Create a window maximized to the desktop size.
     //----------------------------------------------------------------
-    const sf::Vector2u desiredInitialSize{ 1000u, 800u };
     sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
-    unsigned int initialWidth = std::min(desiredInitialSize.x, desktop.size.x);
-    unsigned int initialHeight = std::min(desiredInitialSize.y, desktop.size.y);
+    m_window.create(desktop, "Word Puzzle", sf::Style::Default);
 
-    m_window.create(sf::VideoMode({ initialWidth, initialHeight }),
-        "Word Puzzle", sf::Style::Default);
+    // --- Keep existing settings ---
     m_window.setFramerateLimit(60);
     m_window.setVerticalSyncEnabled(true);
 
-    m_loadResources(); // This remains crucial
+    m_loadResources(); // Load resources AFTER window creation
 
-    // NOW safe to set properties that require loaded resources
-    // Use std::make_unique to create objects managed by unique_ptr
-    m_selectSound = std::make_unique<sf::Sound>(m_selectBuffer);
-    m_placeSound = std::make_unique<sf::Sound>(m_placeBuffer);
-    m_winSound = std::make_unique<sf::Sound>(m_winBuffer);
-    m_clickSound = std::make_unique<sf::Sound>(m_clickBuffer);
-    m_hintUsedSound = std::make_unique<sf::Sound>(m_hintUsedBuffer);
-    m_errorWordSound = std::make_unique<sf::Sound>(m_errorWordBuffer);
+    // --- Resource Setup ---
+    // (Sounds)
+    if (m_selectBuffer.getSampleCount() > 0) m_selectSound = std::make_unique<sf::Sound>(m_selectBuffer);
+    if (m_placeBuffer.getSampleCount() > 0) m_placeSound = std::make_unique<sf::Sound>(m_placeBuffer);
+    if (m_winBuffer.getSampleCount() > 0) m_winSound = std::make_unique<sf::Sound>(m_winBuffer);
+    if (m_clickBuffer.getSampleCount() > 0) m_clickSound = std::make_unique<sf::Sound>(m_clickBuffer);
+    if (m_hintUsedBuffer.getSampleCount() > 0) m_hintUsedSound = std::make_unique<sf::Sound>(m_hintUsedBuffer);
+    if (m_errorWordBuffer.getSampleCount() > 0) m_errorWordSound = std::make_unique<sf::Sound>(m_errorWordBuffer);
+    // (Sprites)
+    if (m_scrambleTex.getSize().x > 0) m_scrambleSpr = std::make_unique<sf::Sprite>(m_scrambleTex);
+    if (m_hintTex.getSize().x > 0) m_hintSpr = std::make_unique<sf::Sprite>(m_hintTex);
+    if (m_sapphireTex.getSize().x > 0) m_sapphireSpr = std::make_unique<sf::Sprite>(m_sapphireTex);
+    if (m_rubyTex.getSize().x > 0) m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
+    if (m_diamondTex.getSize().x > 0) m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
 
-    m_scrambleSpr = std::make_unique<sf::Sprite>(m_scrambleTex);
-    m_hintSpr = std::make_unique<sf::Sprite>(m_hintTex);
-    m_sapphireSpr = std::make_unique<sf::Sprite>(m_sapphireTex);
-    m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
-    m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
+    // --- Set initial properties ---
+    if (m_contTxt) m_contTxt->setFillColor(sf::Color::White);
+    // (Gems)
+    if (m_sapphireSpr && m_sapphireTex.getSize().y > 0) {
+        float desiredGemHeight = TILE_SIZE * 0.60f; float gemScale = desiredGemHeight / m_sapphireTex.getSize().y;
+        m_sapphireSpr->setScale({ gemScale, gemScale });
+        m_sapphireSpr->setOrigin({ m_sapphireTex.getSize().x / 2.f, m_sapphireTex.getSize().y / 2.f });
+    }
+    if (m_rubySpr && m_rubyTex.getSize().y > 0) {
+        float desiredGemHeight = TILE_SIZE * 0.60f; float gemScale = desiredGemHeight / m_rubyTex.getSize().y;
+        m_rubySpr->setScale({ gemScale, gemScale });
+        m_rubySpr->setOrigin({ m_rubyTex.getSize().x / 2.f, m_rubyTex.getSize().y / 2.f });
+    }
+    if (m_diamondSpr && m_diamondTex.getSize().y > 0) {
+        float desiredGemHeight = TILE_SIZE * 0.60f; float gemScale = desiredGemHeight / m_diamondTex.getSize().y;
+        m_diamondSpr->setScale({ gemScale, gemScale });
+        m_diamondSpr->setOrigin({ m_diamondTex.getSize().x / 2.f, m_diamondTex.getSize().y / 2.f });
+    }
+    // (Buttons)
+    if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) {
+        float scrambleScale = SCRAMBLE_BTN_HEIGHT / static_cast<float>(m_scrambleTex.getSize().y);
+        m_scrambleSpr->setScale({ scrambleScale, scrambleScale });
+    }
+    if (m_hintSpr && m_hintTex.getSize().y > 0) {
+        float hintScale = HINT_BTN_HEIGHT / static_cast<float>(m_hintTex.getSize().y);
+        m_hintSpr->setScale({ hintScale, hintScale });
+    }
 
-    // --- Set initial properties for newly created objects ---
-    m_contTxt->setFillColor(sf::Color::White);
-    // Set scales/origins for sprites (use -> because they are pointers now)
-    float desiredGemHeight = TILE_SIZE * 0.60f; float gemScale = desiredGemHeight / m_sapphireTex.getSize().y;
-    m_sapphireSpr->setScale({ gemScale, gemScale }); m_rubySpr->setScale({ gemScale, gemScale }); m_diamondSpr->setScale({ gemScale, gemScale });
-    m_sapphireSpr->setOrigin({ m_sapphireTex.getSize().x / 2.f, m_sapphireTex.getSize().y / 2.f });
-    m_rubySpr->setOrigin({ m_rubyTex.getSize().x / 2.f, m_rubyTex.getSize().y / 2.f });
-    m_diamondSpr->setOrigin({ m_diamondTex.getSize().x / 2.f, m_diamondTex.getSize().y / 2.f });
+    // --- ★★★ CORRECTED ORDER ★★★ ---
+    // Set the initial view based on the NEW window size FIRST.
+    m_updateView(m_window.getSize());
 
-    float scrambleScale = SCRAMBLE_BTN_HEIGHT / static_cast<float>(m_scrambleTex.getSize().y); // Use Constant
-    m_scrambleSpr->setScale({ scrambleScale, scrambleScale });
-    float hintScale = HINT_BTN_HEIGHT / static_cast<float>(m_hintTex.getSize().y); // Use Constant
-    m_hintSpr->setScale({ hintScale, hintScale });
-    // Initial Game Setup
-    m_rebuild(); // Calls m_updateLayout which sets sizes for scoreBar, mainMenuBg etc.
-    //m_updateView(m_window.getSize());
+    // THEN rebuild the game state and calculate layout, which depends on the view/size.
+    m_rebuild();
+    // --- ★★★ END CORRECTED ORDER ★★★ ---
+
 }
 
 // --- Main Game Loop ---
@@ -1452,11 +1474,20 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 // --- Mouse Button Released ---
     else if (const auto* mb = event.getIf<sf::Event::MouseButtonReleased>()) {
         if (m_dragging && mb->button == sf::Mouse::Button::Left) {
+
+            const int MIN_GUESS_LENGTH = 3; // Minimum letters required for a valid word attempt
+            if (m_currentGuess.length() < MIN_GUESS_LENGTH) {
+                // Guess is too short (1 or 2 letters), just clear the state and do nothing else.
+                std::cout << "DEBUG: Ignoring short guess (length " << m_currentGuess.length() << "): '" << m_currentGuess << "'" << std::endl;
+                m_clearDragState(); // Clear path, guess, and reset dragging flag
+                return;             // Exit the handler for this event, preventing failure sound/logic
+            }
+
             bool actionTaken = false; // Flag: Did we find a new word or trigger a flourish?
             std::string wordMatched = ""; // Store the original case of the matched word
             int wordIndexMatched = -1; // Store index if it was a grid word
 
-            std::cout << "DEBUG: Mouse Released. Guess: '" << m_currentGuess << "'" << std::endl;
+            std::cout << "DEBUG: Mouse Released. Processing Guess (Length >= " << MIN_GUESS_LENGTH << "): '" << m_currentGuess << "'" << std::endl;
 
             // --- Phase 1: Check against GRID words ---
             for (std::size_t w = 0; w < m_sorted.size(); ++w) {

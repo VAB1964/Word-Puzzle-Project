@@ -23,7 +23,7 @@ constexpr float WHEEL_BOTTOM_MARGIN = 70.f;  // Keep reduced
 const float HUD_TEXT_OFFSET_Y = 15.f;       // Increased slightly from 8.f (Gives tiny bit more gap above HUD)
 const float HUD_LINE_SPACING = 20.f;        // Increased from 10.f/15.f (More space BETWEEN HUD lines)
 const float HUD_AREA_MIN_HEIGHT = 25.f;     // Increased from 15.f (Reserves more space FOR HUD)
-constexpr float UI_SCALE_MODIFIER = 0.80f;
+constexpr float UI_SCALE_MODIFIER = 0.75f;
 constexpr float GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK = 0.95f;
 // ******************************
 

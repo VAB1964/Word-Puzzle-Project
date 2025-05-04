@@ -52,7 +52,7 @@ namespace Words {
 
                     // Process the field
                     switch (fieldIndex) {
-                    case 0: info.text = field; break;
+                    case 0: info.text = field; break; // Store original case from CSV
                     case 1: info.rarity = field.empty() ? 0 : std::stoi(field); break;
                     case 2: info.avgSubLen = field.empty() ? 0.0f : std::stof(field); break;
                     case 3: info.countGE3 = field.empty() ? 0 : std::stoi(field); break;
@@ -196,14 +196,21 @@ namespace Words {
     }
 
 
-    // *** DEFINITION for sortForGrid ***
-    // Sorts by length ascending, then alphabetically
+    // *** DEFINITION for sortForGrid (FIXED) ***
+    // Sorts by length ascending, then alphabetically (case-insensitive)
     std::vector<WordInfo> sortForGrid(std::vector<WordInfo> v) { // Pass by value ok
         std::sort(v.begin(), v.end(), [](const WordInfo& a, const WordInfo& b) {
             if (a.text.length() != b.text.length()) {
                 return a.text.length() < b.text.length(); // Shorter first
             }
-            return a.text < b.text; // Alphabetical for same length
+            // Case-insensitive comparison for same length words
+            return std::lexicographical_compare(
+                a.text.begin(), a.text.end(),
+                b.text.begin(), b.text.end(),
+                [](unsigned char c1, unsigned char c2) {
+                    return std::tolower(c1) < std::tolower(c2);
+                });
+            // Original (case-sensitive): return a.text < b.text;
             });
         return v; // Return the sorted vector
     }
