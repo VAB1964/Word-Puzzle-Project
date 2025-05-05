@@ -111,7 +111,7 @@ Game::Game() :
     m_wordsSolvedSinceHint(0),
     m_currentScore(0),
     m_scoreFlourishTimer(0.f),
-    m_bonusTextFlourishTimer(0.f), // <<< Initialize Bonus Text Timer
+    m_bonusTextFlourishTimer(0.f),
     m_dragging(false),
     m_decor(10),                             // Initialize DecorLayer
     m_selectedDifficulty(DifficultyLevel::None),
@@ -122,7 +122,7 @@ Game::Game() :
 
     // Resource Handles (default construct textures/buffers - loaded later)
     m_scrambleTex(), m_hintTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
-    m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), m_errorWordBuffer(), // Added errorWordBuffer
+    m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), m_errorWordBuffer(),
     // Sounds (will be unique_ptr, initialize to nullptr or default construct)
     m_selectSound(nullptr), m_placeSound(nullptr), m_winSound(nullptr), m_clickSound(nullptr), m_hintUsedSound(nullptr), m_errorWordSound(nullptr),
     // Music (default construct - file loaded later)
@@ -135,43 +135,50 @@ Game::Game() :
     m_casualMenuTitle(nullptr), m_easyButtonText(nullptr), m_mediumButtonText(nullptr), m_hardButtonText(nullptr), m_returnButtonText(nullptr),
     m_guessDisplay_Text(nullptr),
     m_progressMeterText(nullptr),
+    m_returnToMenuButtonText(nullptr), // Added for return button
     // UI Shapes (can use constructor directly)
     m_contBtn({ 200.f, 50.f }, 10.f, 10),
-    m_solvedOverlay({ 100.f, 50.f }, 10.f, 10), // Provide initial size/radius
-    m_scoreBar({ 100.f, 30.f }, 10.f, 10),     // Provide initial size/radius
-    m_guessDisplay_Bg({ 50.f, 30.f }, 5.f, 10), // Provide initial size/radius
+    m_solvedOverlay({ 100.f, 50.f }, 10.f, 10),
+    m_scoreBar({ 100.f, 30.f }, 10.f, 10),
+    m_guessDisplay_Bg({ 50.f, 30.f }, 5.f, 10),
     m_debugDrawCircleMode(false),
     m_needsLayoutUpdate(false),
     m_lastKnownSize(0, 0),
-    // Add Main Menu Shapes
-    m_mainMenuBg({ 300.f, 300.f }, 15.f, 10), // Provide initial size/radius
+    m_mainMenuBg({ 300.f, 300.f }, 15.f, 10),
     m_casualButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_competitiveButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_quitButtonShape({ 250.f, 50.f }, 10.f, 10),
-    // Add Casual Menu Shapes
-    m_casualMenuBg({ 300.f, 400.f }, 15.f, 10), // Provide initial size/radius
+    m_casualMenuBg({ 300.f, 400.f }, 15.f, 10),
     m_easyButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_mediumButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_hardButtonShape({ 250.f, 50.f }, 10.f, 10),
     m_returnButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_progressMeterBg({ 100.f, 20.f }),     // Rect shape, just size
-    m_progressMeterFill({ 100.f, 20.f })    // Rect shape, just size
-    // m_progressMeterText is initialized above
+    m_progressMeterBg({ 100.f, 20.f }),
+    m_progressMeterFill({ 100.f, 20.f }),
+    m_returnToMenuButtonShape({ 100.f, 40.f }, 8.f, 10), // Added for return button
+    m_firstFrame(true) // Initialize first frame flag
 { // --- Constructor Body Starts Here ---
 
     //----------------------------------------------------------------
-    // Create a window maximized to the desktop size.
+    // ★★★ REVERTED: Create window at desired size, capped by desktop.
     //----------------------------------------------------------------
+    const sf::Vector2u desiredInitialSize{ 1000u, 800u }; // Your original desired size
     sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
-    m_window.create(desktop, "Word Puzzle", sf::Style::Default);
 
-    // --- Keep existing settings ---
+    // Calculate initial size, ensuring it's not larger than the desktop
+    unsigned int initialWidth = std::min(desiredInitialSize.x, desktop.size.x);
+    unsigned int initialHeight = std::min(desiredInitialSize.y, desktop.size.y);
+
+    // Create the window with the calculated initial size and default style
+    m_window.create(sf::VideoMode({ initialWidth, initialHeight }),
+        "Word Puzzle",
+        sf::Style::Default); // Or Fullscreen if you prefer
     m_window.setFramerateLimit(60);
     m_window.setVerticalSyncEnabled(true);
 
-    m_loadResources(); // Load resources AFTER window creation
+    m_loadResources(); // Load resources
 
-    // --- Resource Setup ---
+    // --- Resource Setup (Sounds, Sprites) ---
     // (Sounds)
     if (m_selectBuffer.getSampleCount() > 0) m_selectSound = std::make_unique<sf::Sound>(m_selectBuffer);
     if (m_placeBuffer.getSampleCount() > 0) m_placeSound = std::make_unique<sf::Sound>(m_placeBuffer);
@@ -186,7 +193,7 @@ Game::Game() :
     if (m_rubyTex.getSize().x > 0) m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
     if (m_diamondTex.getSize().x > 0) m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
 
-    // --- Set initial properties ---
+    // --- Set initial sprite properties ---
     if (m_contTxt) m_contTxt->setFillColor(sf::Color::White);
     // (Gems)
     if (m_sapphireSpr && m_sapphireTex.getSize().y > 0) {
@@ -214,27 +221,53 @@ Game::Game() :
         m_hintSpr->setScale({ hintScale, hintScale });
     }
 
-    // --- ★★★ CORRECTED ORDER ★★★ ---
-    // Set the initial view based on the NEW window size FIRST.
+    // --- Initial Setup Order ---
+    // 1. Set the view based on the NEW window size.
     m_updateView(m_window.getSize());
 
-    // THEN rebuild the game state and calculate layout, which depends on the view/size.
+    // 2. Rebuild game state (includes an internal call to m_updateLayout).
     m_rebuild();
-    // --- ★★★ END CORRECTED ORDER ★★★ ---
+
+    // 3. ★★★ ADDED: Explicitly update layout AGAIN after rebuild. ★★★
+    // This ensures layout calculations use the finalized view and window state.
+    m_updateLayout(m_window.getSize());
 
 }
 
 // --- Main Game Loop ---
-void Game::run() {
-    while (m_window.isOpen()) {
-        sf::Time dt = m_clock.restart();
-        if (dt.asSeconds() > 0.1f) dt = sf::seconds(0.1f); // Clamp dt
+    void Game::run() {
+        while (m_window.isOpen()) {
 
-        m_processEvents();
-        m_update(dt);
-        m_render();
+            if (m_firstFrame) {
+                std::cout << "DEBUG: Performing first frame initialization..." << std::endl;
+
+                // 1. Set the view
+                m_updateView(m_window.getSize());
+
+                m_window.clear(m_currentTheme.winBg); // Clear with background color
+                m_decor.draw(m_window);
+                m_window.display();
+                // --- END CLEAR/DISPLAY CYCLE ---
+
+                // 2. Rebuild game state (includes an internal call to m_updateLayout)
+                m_rebuild();
+
+                // 3. Explicitly update layout AGAIN to be sure.
+                m_updateLayout(m_window.getSize());
+
+                m_firstFrame = false;
+                std::cout << "DEBUG: First frame initialization complete." << std::endl;
+            }
+
+            // --- Existing game loop code ---
+            sf::Time dt = m_clock.restart();
+            if (dt.asSeconds() > 0.1f) dt = sf::seconds(0.1f); // Clamp dt
+
+            m_processEvents();
+            m_update(dt);
+            m_render();
+        }
     }
-}
 
 void Game::m_updateAnims(float dt)
 {
@@ -303,7 +336,6 @@ void Game::m_updateScoreAnims(float dt) // No longer need to pass RenderTarget
 }
 
 // --- Resource Loading ---
-// --- Resource Loading (Modified) ---
 void Game::m_loadResources() {
     // --- Font ---
     if (!m_font.openFromFile("fonts/arialbd.ttf")) {
@@ -320,6 +352,8 @@ void Game::m_loadResources() {
     else {
         m_scrambleTex.setSmooth(true);
     }
+    // Return to menu button
+    m_returnToMenuButtonText = std::make_unique<sf::Text>(m_font, "Menu", 20);
 
 	//Progess Meter Elements
     m_progressMeterText = std::make_unique<sf::Text>(m_font, "", 16); // Smaller font size?
@@ -385,7 +419,7 @@ void Game::m_loadResources() {
     bool errorWordLoaded = m_errorWordBuffer.loadFromFile("assets/sounds/hint_used.mp3");
     if (!errorWordLoaded) { std::cerr << "Error loading hint_used sound\n"; }
 
-    // --- Create Sounds (Link Buffers) ---
+    
     // --- Create Sounds (Link Buffers) ---
     // Only create sound object IF the corresponding MEMBER buffer loaded successfully
     if (selectLoaded) { m_selectSound = std::make_unique<sf::Sound>(m_selectBuffer); }
@@ -468,6 +502,8 @@ void Game::m_loadResources() {
         std::cerr << "CRITICAL Warning: loadThemes() returned empty vector. Using fallback default theme.\n";
         m_themes.push_back({}); // Add a default-constructed theme as a fallback
     }
+
+    if (m_returnToMenuButtonText) m_returnToMenuButtonText->setFillColor(sf::Color::White);
 
 }
 
@@ -1049,6 +1085,30 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     if (visualWheelTopEdgeY < gridActualBottomY - 0.1f) { std::cout << "  WHEEL/HUD WARNING: Visual Wheel BG (Y=" << visualWheelTopEdgeY << ") overlaps Grid Bottom (Y=" << gridActualBottomY << ")!" << std::endl; }
     if (calculatedHudStartY > designBottomEdge + 0.1f) { std::cout << "  WHEEL/HUD WARNING: Calculated HUD Start Y (" << calculatedHudStartY << ") is below Design Bottom Edge (" << designBottomEdge << ")" << std::endl; }
 
+    // Inside Game::m_updateLayout()
+
+// --- Position Return to Menu Button (Bottom Right) ---
+
+    const float returnBtnPadding = S(this, 10.f); // Padding from corner
+    sf::Vector2f returnBtnSize = { S(this, 80.f), S(this, 30.f) }; // Scaled size
+    float returnBtnRadius = S(this, 8.f);
+    unsigned int returnBtnFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
+
+    m_returnToMenuButtonShape.setSize(returnBtnSize);
+    m_returnToMenuButtonShape.setRadius(returnBtnRadius);
+    m_returnToMenuButtonShape.setOrigin(returnBtnSize); // Origin at bottom-right corner of the button
+    m_returnToMenuButtonShape.setPosition({ designW - returnBtnPadding, designH - returnBtnPadding }); // Position relative to design bottom-right
+
+    if (m_returnToMenuButtonText) {
+        m_returnToMenuButtonText->setCharacterSize(returnBtnFontSize);
+        sf::FloatRect txtBounds = m_returnToMenuButtonText->getLocalBounds();
+        // Center text origin
+        m_returnToMenuButtonText->setOrigin({ txtBounds.position.x + txtBounds.size.x / 2.f,
+                                               txtBounds.position.y + txtBounds.size.y / 2.f });
+        // Position text in the center of the button
+        sf::Vector2f btnCenter = m_returnToMenuButtonShape.getPosition() - returnBtnSize / 2.f;
+        m_returnToMenuButtonText->setPosition(btnCenter);
+    }
 
     // 8. Menu Layouts (Uses Base UI Scale) --------
     sf::Vector2f windowCenterPix = sf::Vector2f(windowSize) / 2.f; sf::Vector2f mappedWindowCenter = m_window.mapPixelToCoords(sf::Vector2i(windowCenterPix)); const float scaledMenuPadding = S(this, 40.f); const float scaledButtonSpacing = S(this, 20.f); const unsigned int scaledTitleSize = (unsigned int)std::max(12.0f, S(this, 36.f)); const unsigned int scaledButtonFontSize = (unsigned int)std::max(10.0f, S(this, 24.f)); const sf::Vector2f scaledButtonSize = { S(this,250.f),S(this,50.f) }; const float scaledButtonRadius = S(this, 10.f); const float scaledMenuRadius = S(this, 15.f); auto centerTextOnButton = [&](const std::unique_ptr<sf::Text>& textPtr, const RoundedRectangleShape& button) { if (!textPtr) return; sf::Text* text = textPtr.get(); sf::FloatRect tb = text->getLocalBounds(); text->setOrigin({ tb.position.x + tb.size.x / 2.f,tb.position.y + tb.size.y / 2.f }); text->setPosition(button.getPosition() + sf::Vector2f{ 0.f,button.getSize().y / 2.f }); };
@@ -1327,6 +1387,18 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
     if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
         if (mb->button == sf::Mouse::Button::Left) {
             sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
+
+            // Check Return to Menu Button
+            if (m_returnToMenuButtonShape.getGlobalBounds().contains(mp)) {
+                if (m_clickSound) m_clickSound->play();
+                m_currentScreen = GameScreen::MainMenu;
+                // Optional: Stop music, reset session state if needed?
+                m_backgroundMusic.stop(); // Example
+                m_isInSession = false;    // Example
+                m_selectedDifficulty = DifficultyLevel::None; // Example
+                m_clearDragState(); // Clear guess if returning from playing
+                return; // Processed button click
+            }
 
             // Check Scramble Button
             if (m_scrambleSpr && m_scrambleSpr->getGlobalBounds().contains(mp)) {
@@ -1642,6 +1714,17 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
         if (mb->button == sf::Mouse::Button::Left) {
             sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
 
+            // Check Return to Menu Button
+            if (m_returnToMenuButtonShape.getGlobalBounds().contains(mp)) {
+                if (m_clickSound) m_clickSound->play();
+                m_currentScreen = GameScreen::MainMenu;
+                m_backgroundMusic.stop(); // Example
+                m_isInSession = false;    // Example
+                m_selectedDifficulty = DifficultyLevel::None; // Example
+                m_gameState = GState::Playing; // Reset internal state for menu
+                return; // Processed button click
+            }
+
             // Check Continue Button Click
             if (m_contBtn.getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
@@ -1731,6 +1814,20 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         float fillWidth = m_progressMeterBg.getSize().x * progressRatio; m_progressMeterFill.setSize({ fillWidth, m_progressMeterBg.getSize().y });
         m_window.draw(m_progressMeterBg); m_window.draw(m_progressMeterFill);
         if (m_progressMeterText) { const unsigned int scaledProgressFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 16.f))); m_progressMeterText->setCharacterSize(scaledProgressFontSize); std::string progressStr = std::to_string(m_currentPuzzleIndex + 1) + "/" + std::to_string(m_puzzlesPerSession); m_progressMeterText->setString(progressStr); m_progressMeterText->setFillColor(sf::Color::White); sf::FloatRect textBounds = m_progressMeterText->getLocalBounds(); m_progressMeterText->setOrigin({ textBounds.position.x + textBounds.size.x / 2.f, textBounds.position.y + textBounds.size.y / 2.f }); m_progressMeterText->setPosition(m_progressMeterBg.getPosition()); m_window.draw(*m_progressMeterText); }
+    }
+
+    // --- Draw Return to Menu Button ---
+    if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) // Show only during gameplay/gameover?
+    {
+        bool returnHover = m_returnToMenuButtonShape.getGlobalBounds().contains(mousePos);
+        sf::Color returnBaseColor = m_currentTheme.menuButtonNormal; // Use theme colors
+        sf::Color returnHoverColor = m_currentTheme.menuButtonHover;
+        m_returnToMenuButtonShape.setFillColor(returnHover ? returnHoverColor : returnBaseColor);
+        m_window.draw(m_returnToMenuButtonShape);
+        if (m_returnToMenuButtonText) {
+            m_returnToMenuButtonText->setFillColor(m_currentTheme.menuButtonText); // Use theme color
+            m_window.draw(*m_returnToMenuButtonText);
+        }
     }
 
     //------------------------------------------------------------
@@ -2251,6 +2348,17 @@ void Game::m_handleSessionCompleteEvents(const sf::Event& event) {
     if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
         if (mb->button == sf::Mouse::Button::Left) {
             sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
+
+            // Check Return to Menu Button
+            if (m_returnToMenuButtonShape.getGlobalBounds().contains(mp)) {
+                if (m_clickSound) m_clickSound->play();
+                m_confetti.clear(); // Stop effects
+                m_balloons.clear();
+                m_currentScreen = GameScreen::MainMenu;
+                // Reset score if desired
+                // m_currentScore = 0;
+                return; // Processed button click
+            }
 
             // Use the button's current position (set in m_renderSessionComplete)
             if (m_contBtn.getGlobalBounds().contains(mp)) {

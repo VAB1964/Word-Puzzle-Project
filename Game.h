@@ -102,7 +102,7 @@ private:
     // Calculated layout properties for wheel letters
     std::vector<sf::Vector2f> m_wheelLetterRenderPos; // Final screen position for each letter circle
     float m_currentLetterRenderRadius; // Final scaled radius for letter circles
-
+    bool m_firstFrame = true;
     bool m_dragging;
     std::vector<int> m_path;
     std::string m_currentGuess;
@@ -182,6 +182,8 @@ private:
     RoundedRectangleShape m_casualButtonShape;
     RoundedRectangleShape m_competitiveButtonShape;
     RoundedRectangleShape m_quitButtonShape;
+    RoundedRectangleShape m_returnToMenuButtonShape;
+    std::unique_ptr<sf::Text> m_returnToMenuButtonText;
     std::unique_ptr<sf::Text> m_mainMenuTitle; // Use unique_ptr
 	std::unique_ptr<sf::Text> m_casualMenuTitle; // Use unique_ptr
     std::unique_ptr<sf::Text> m_casualButtonText; // Use unique_ptrGame::m_updateLayer
@@ -213,6 +215,7 @@ private:
     float m_totalGridW = 0.f;
     float m_currentWheelRadius;
     int tempCount = 0; // For debugging
+    
 
     // Themes
     std::vector<ColorTheme> m_themes;
@@ -236,6 +239,7 @@ private:
     void m_processEvents();
     void m_update(sf::Time dt);
     void m_render();
+    
 
     void m_rebuild();
     void m_updateLayout(sf::Vector2u windowSize);
