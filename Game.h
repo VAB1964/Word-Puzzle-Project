@@ -38,6 +38,9 @@ enum class DifficultyLevel {
     Hard
 };
 
+// Add an enum for Hint Types
+enum class HintType { RevealFirst, RevealRandom, RevealLast };
+
 
 //--------------------------------------------------------------------
 //  Game Class Declaration
@@ -96,9 +99,26 @@ private:
     // Game State
     GameScreen m_currentScreen;
     GState m_gameState; // For Playing/Solved state within game screen
+    int m_hintPoints;
     unsigned int m_hintsAvailable;
     unsigned int m_wordsSolvedSinceHint;
     unsigned int m_currentScore;
+
+    // In Game.h (or the class definition)
+    std::unique_ptr<sf::Text> m_hintPointsText;
+    std::unique_ptr<sf::Text> m_hintRevealFirstCostText; // Cost for existing hint
+    std::unique_ptr<sf::Text> m_hintRevealRandomButtonText; // Text for new button ("Random")
+    std::unique_ptr<sf::Text> m_hintRevealRandomCostText;   // Cost for new button
+    std::unique_ptr<sf::Text> m_hintRevealLastButtonText;   // Text for new button ("Last Word")
+    std::unique_ptr<sf::Text> m_hintRevealLastCostText;     // Cost for new button
+    std::unique_ptr<sf::Text> m_hintRevealFirstButtonText;
+
+    // Shapes for the hint buttons
+    RoundedRectangleShape m_hintRevealFirstButtonShape;
+    RoundedRectangleShape m_hintRevealRandomButtonShape;
+    RoundedRectangleShape m_hintRevealLastButtonShape;
+    RoundedRectangleShape m_hintAreaBg;
+
     // Calculated layout properties for wheel letters
     std::vector<sf::Vector2f> m_wheelLetterRenderPos; // Final screen position for each letter circle
     float m_currentLetterRenderRadius; // Final scaled radius for letter circles
@@ -134,7 +154,6 @@ private:
 
     // Resources (Textures, Sound Buffers - loaded once)
     sf::Texture m_scrambleTex;
-    sf::Texture m_hintTex;
     sf::Texture m_sapphireTex;
     sf::Texture m_rubyTex;
     sf::Texture m_diamondTex;
@@ -159,7 +178,6 @@ private:
 
     // --- Sprites (Use unique_ptr) ---
     std::unique_ptr<sf::Sprite> m_scrambleSpr;
-    std::unique_ptr<sf::Sprite> m_hintSpr;
     std::unique_ptr<sf::Sprite> m_sapphireSpr;
     std::unique_ptr<sf::Sprite> m_rubySpr;
     std::unique_ptr<sf::Sprite> m_diamondSpr;
@@ -216,6 +234,9 @@ private:
     float m_currentWheelRadius;
     int tempCount = 0; // For debugging
     
+    //debug
+    sf::Vector2u m_lastLayoutSize; 
+
 
     // Themes
     std::vector<ColorTheme> m_themes;
@@ -258,6 +279,8 @@ private:
     void m_handlePlayingEvents(const sf::Event& event);
     void m_handleGameOverEvents(const sf::Event& event);
     void m_renderGameScreen(const sf::Vector2f& mousePos);
+    void m_activateHint(HintType type);
+    void m_checkWordCompletion(int wordIdx);
 
     //celebration functions
     void m_startCelebrationEffects(); 

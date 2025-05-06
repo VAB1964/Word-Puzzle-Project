@@ -46,6 +46,10 @@ const int EASY_MAX_SOLUTIONS = 7;
 const int MEDIUM_MAX_SOLUTIONS = 12;
 const int HARD_MAX_SOLUTIONS = 15;
 const int MIN_DESIRED_GRID_WORDS = 5;
+
+const int HINT_COST_REVEAL_FIRST = 1; 
+const int HINT_COST_REVEAL_RANDOM = 5; 
+const int HINT_COST_REVEAL_LAST = 10;
 constexpr unsigned int INITIAL_HINTS = 999;
 constexpr unsigned int WORDS_PER_HINT = 5;
 
