@@ -27,8 +27,8 @@
 #include <vector>
 #include <string>
 #include <set>
-#include <unordered_set> // If used in header (doesn't look like it is)
-#include <optional>
+//#include <unordered_set> // If used in header (doesn't look like it is)
+//#include <optional>
 #include <memory> // For std::unique_ptr
 
 enum class DifficultyLevel {
@@ -254,6 +254,8 @@ private:
     RoundedRectangleShape m_progressMeterFill;   // The filled part showing progress
     std::unique_ptr<sf::Text> m_progressMeterText; // Optional: Text overlay "X/Y"
 
+    std::vector<ScoreFlourishParticle> m_scoreFlourishes;
+
 
     // --- Private Helper Methods (Declarations only) ---
     void m_loadResources();
@@ -287,6 +289,10 @@ private:
     void m_updateCelebrationEffects(float dt); 
     void m_renderCelebrationEffects(sf::RenderTarget& target);
     void m_renderSessionComplete(const sf::Vector2f& mousePos);
+
+    void m_spawnScoreFlourish(int points, int wordIdxOnGrid); // Helper to create a new flourish
+    void m_updateScoreFlourishes(float dt);                  // To update animation logic
+    void m_renderScoreFlourishes(sf::RenderTarget& target);
 
     void m_handleSessionCompleteEvents(const sf::Event& event);
     void m_renderDebugCircle();

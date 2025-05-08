@@ -67,4 +67,12 @@ const int EASY_PUZZLE_COUNT = 5;
 const int MEDIUM_PUZZLE_COUNT = 7;
 const int HARD_PUZZLE_COUNT = 10;
 
+// Points Flourish
+const float SCORE_FLOURISH_FONT_SIZE_BASE_DESIGN = 20.f; // Base font size in design units
+const float SCORE_FLOURISH_LIFETIME_MIN_SEC = 1.8f;    // Minimum duration of the flourish
+const float SCORE_FLOURISH_LIFETIME_MAX_SEC = 2.8f;    // Maximum duration
+const float SCORE_FLOURISH_VEL_Y_MIN_DESIGN = -50.f;   // Min upward speed (design units/sec)
+const float SCORE_FLOURISH_VEL_Y_MAX_DESIGN = -90.f;   // Max upward speed
+const float SCORE_FLOURISH_VEL_X_RANGE_DESIGN = 20.f;    // Horizontal drift range (+/- this value)
+
 #endif // CONSTANTS_H

@@ -70,9 +70,29 @@ struct WordInfo {
 
 };
 
-//--------------------------------------------------------------------
-//  Game?wide state types (Enums moved here for better organization)
-//--------------------------------------------------------------------
+struct ScoreFlourishParticle {
+    std::string textString;     // e.g., "+40"
+    sf::Vector2f position;      // Current position for rendering
+    sf::Color color;            // Current color (for fading)
+    // Potentially: unsigned int characterSize;
+    // Potentially: sf::Text::Style style;
+
+    sf::Vector2f velocity;
+    float lifetime;
+    float initialLifetime;
+
+    // Explicit default constructor
+    ScoreFlourishParticle()
+        : textString(""),
+        position(0.f, 0.f),
+        color(sf::Color::White), // Default color
+        velocity(0.f, 0.f),
+        lifetime(0.f),
+        initialLifetime(0.f) {
+    }
+};
+
+
 enum class GState { Playing, Solved }; // Internal game state
 enum class GameScreen { MainMenu, CasualMenu, CompetitiveMenu, Playing, GameOver, SessionComplete }; // Overall screen state
 

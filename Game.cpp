@@ -1,17 +1,5 @@
-﻿#include "Theme.h"
-#include <utility>
+﻿#include <utility>
 #include <cstdint>
-#include "Constants.h"
-#include "ThemeData.h"
-#include "GameData.h"
-#include "Game.h" // Should ideally include everything needed by the Game class declaration
-#include "Words.h"
-#include "Utils.h"
-#include <SFML/Graphics.hpp>
-#include <SFML/Audio.hpp> 
-#include <SFML/Window/VideoMode.hpp>
-#include <SFML/System/Time.hpp>
-#include <SFML/Window/Mouse.hpp>
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -19,18 +7,33 @@
 #include <iostream> // For error messages
 #include <stdexcept> // For std::stof, std::stoi exceptions
 #include <algorithm>
-#include <string>
-#include <vector> // Ensure needed standard headers are here
+// <string> and <vector> were duplicated, ensure only one of each at the top level if not for specific reasons
 #include <set>
 #include <functional>
 #include <cmath>
 #include <numeric>
-#include <random> // For std::mt19937, std::uniform_real_distribution, etc.
+#include <random>
 #include <ctime>
-#include <memory> // For unique_ptr    
+#include <memory> // For unique_ptr
 #include <limits>
 #include <cctype>
 #include <map>
+
+// 2. SFML Headers (Crucial: Before your project headers that use SFML)
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
+#include <SFML/Window/VideoMode.hpp> // If directly used in Game.cpp, else SFML/Graphics.hpp might cover it via Window.hpp
+#include <SFML/System/Time.hpp>     // If directly used in Game.cpp, else SFML/Graphics.hpp might cover it via System.hpp
+#include <SFML/Window/Mouse.hpp>    // If directly used in Game.cpp
+
+// 3. Your Project-Specific Headers
+#include "Theme.h"
+#include "Constants.h"
+#include "ThemeData.h"
+#include "GameData.h" // GameData.h might use types from SFML/Graphics.hpp
+#include "Game.h"     // Game.h definitely uses types from SFML/Graphics.hpp
+#include "Words.h"
+#include "Utils.h"
 
 //--------------------------------------------------------------------
 //  Game Class Implementation
@@ -121,6 +124,7 @@ Game::Game() :
     m_isInSession(false),
     m_uiScale(1.f),
     m_hintPoints(100),
+    m_scoreFlourishes(),
 
     // Resource Handles (default construct textures/buffers - loaded later)
     m_scrambleTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
@@ -600,6 +604,7 @@ void Game::m_update(sf::Time dt) {
     // Update game elements based on screen
     if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) {
         m_updateAnims(deltaSeconds);
+        m_updateScoreFlourishes(deltaSeconds);
     }
     else if (m_currentScreen == GameScreen::SessionComplete) {
         m_updateCelebrationEffects(deltaSeconds);
@@ -876,7 +881,7 @@ void Game::m_rebuild() {
         }
         else { m_grid[i].clear(); std::cerr << "Warning: Word at m_sorted index " << i << " has empty text. Grid row will be empty." << std::endl; }
     }
-    m_found.clear(); m_foundBonusWords.clear(); m_anims.clear(); m_scoreAnims.clear();
+    m_found.clear(); m_foundBonusWords.clear(); m_anims.clear(); m_scoreAnims.clear(); m_scoreFlourishes.clear();
     m_clearDragState(); m_gameState = GState::Playing;
 
     // --- Reset Score/Hints ---
@@ -1825,7 +1830,11 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         // ... (Scoring, Hint Check, Letter Animations - keep this existing logic) ...
                         int baseScore = static_cast<int>(m_currentGuess.length()) * 10;
                         int rarityBonus = (m_sorted[w].rarity > 1) ? (m_sorted[w].rarity * 25) : 0;
-                        m_currentScore += baseScore + rarityBonus;
+                        int wordScoreForThisWord = baseScore + rarityBonus;
+
+                        m_currentScore += wordScoreForThisWord;
+                        m_spawnScoreFlourish(wordScoreForThisWord, static_cast<int>(w));
+
                         if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
                         m_wordsSolvedSinceHint++;
                         if (m_wordsSolvedSinceHint >= WORDS_PER_HINT) {
@@ -2198,6 +2207,8 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     sf::Text flyingLetterText(m_font, "", scaledFlyingLetterFontSize); sf::Color flyColorBase = m_currentTheme.gridLetter;
     for (const auto& a : m_anims) { sf::Color currentFlyColor = flyColorBase; if (a.target == AnimTarget::Score) { currentFlyColor = sf::Color::Yellow; } float alpha_ratio = 1.0f; if (a.t > 0.7f) { alpha_ratio = (1.0f - a.t) / 0.3f; alpha_ratio = std::max(0.0f, std::min(1.0f, alpha_ratio)); } currentFlyColor.a = static_cast<std::uint8_t>(255.f * alpha_ratio); flyingLetterText.setFillColor(currentFlyColor); float eased_t = a.t * a.t * (3.f - 2.f * a.t); sf::Vector2f p = a.start + (a.end - a.start) * eased_t; flyingLetterText.setString(std::string(1, a.ch)); sf::FloatRect bounds = flyingLetterText.getLocalBounds(); flyingLetterText.setOrigin({ bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f }); flyingLetterText.setPosition(p); m_window.draw(flyingLetterText); }
 
+    // --- DRAW SCORE FLOURISHES ---
+    m_renderScoreFlourishes(m_window);
 
     //------------------------------------------------------------
     //  Draw Path lines (BEFORE Wheel Letters) (Uses Base UI Scale)
@@ -3032,42 +3043,131 @@ void Game::m_checkWordCompletion(int wordIdx) {
 
         if (gridWordUpper == solutionWordUpper) {
             std::cout << "DEBUG: Word '" << solutionWord << "' completed by hint/auto-reveal." << std::endl;
-
-            // --- Process as a found grid word ---
             m_found.insert(solutionWord);
 
-            // Scoring
             int baseScore = static_cast<int>(solutionWord.length()) * 10;
             int rarityBonus = (m_sorted[wordIdx].rarity > 1) ? (m_sorted[wordIdx].rarity * 25) : 0;
-            m_currentScore += baseScore + rarityBonus;
+            int wordScoreForThisWord = baseScore + rarityBonus; // <<< NEW LINE
+
+            m_currentScore += wordScoreForThisWord;
+            m_spawnScoreFlourish(wordScoreForThisWord, wordIdx); // <<< NEW LINE
+
             if (m_scoreValueText) {
                 m_scoreValueText->setString(std::to_string(m_currentScore));
-                // Trigger score flourish (optional, could be too much with hints)
-                // m_scoreFlourishTimer = SCORE_FLOURISH_DURATION;
             }
+
             std::cout << "HINT-COMPLETED Word: " << solutionWord << " | Rarity: " << m_sorted[wordIdx].rarity
                 << " | Len: " << solutionWord.length() << " | Rarity Bonus: " << rarityBonus
                 << " | BasePts: " << baseScore << " | Total: " << m_currentScore << std::endl;
 
-
-            // Check if this earns a hint (if hints can be earned this way - current logic is based on player solving)
-            // m_wordsSolvedSinceHint++; // If you want hints to earn hints
-            // if (m_wordsSolvedSinceHint >= WORDS_PER_HINT) {
-            //     m_hintsAvailable++; m_wordsSolvedSinceHint = 0;
-            //     if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
-            // }
-
-
-            // Check for Puzzle Solved
             if (m_found.size() == m_solutions.size()) {
                 std::cout << "DEBUG: All grid words found (via hint)! Puzzle solved." << std::endl;
                 if (m_winSound) m_winSound->play();
                 m_gameState = GState::Solved;
                 m_currentScreen = GameScreen::GameOver;
-                m_updateLayout(m_window.getSize()); // Ensure overlay layout is correct
+                m_updateLayout(m_window.getSize());
             }
-            // --- End Processing ---
         }
+    }
+}
+
+void Game::m_spawnScoreFlourish(int points, int wordIdxOnGrid) {
+    if (points == 0) return;
+    if (wordIdxOnGrid < 0 || static_cast<std::size_t>(wordIdxOnGrid) >= m_sorted.size()) {
+        std::cerr << "ERROR: m_spawnScoreFlourish - Invalid wordIdxOnGrid: " << wordIdxOnGrid << std::endl;
+        return;
+    }
+
+    ScoreFlourishParticle particle;
+
+    // 1. Set Text Data
+    particle.textString = "+" + std::to_string(points);
+    particle.color = sf::Color(255, 215, 0, 255); // Gold-like color, full alpha initially
+
+    // 2. Determine Initial Position
+    const std::string& solvedWordText = m_sorted[wordIdxOnGrid].text;
+    if (solvedWordText.empty()) { /* ... error handling ... */ return; }
+    if (static_cast<int>(solvedWordText.length()) - 1 < 0) { /* ... error handling ... */ return; }
+
+
+    sf::Vector2f firstLetterPos = m_tilePos(wordIdxOnGrid, 0);
+    sf::Vector2f lastLetterPos = m_tilePos(wordIdxOnGrid, static_cast<int>(solvedWordText.length()) - 1);
+
+    float renderTileScaleFactor = (m_currentGridLayoutScale < 1.0f) ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1.0f;
+    const float finalRenderTileSize = S(this, TILE_SIZE) * renderTileScaleFactor;
+
+    sf::Vector2f firstLetterCenter = firstLetterPos + sf::Vector2f(finalRenderTileSize / 2.f, finalRenderTileSize / 2.f);
+    sf::Vector2f lastLetterCenter = lastLetterPos + sf::Vector2f(finalRenderTileSize / 2.f, finalRenderTileSize / 2.f);
+
+    particle.position = {
+        (firstLetterCenter.x + lastLetterCenter.x) / 2.f,
+        firstLetterCenter.y - (finalRenderTileSize * 0.5f)
+    };
+
+    // 3. Set Movement Properties
+    particle.velocity = {
+        randRange(-SCORE_FLOURISH_VEL_X_RANGE_DESIGN, SCORE_FLOURISH_VEL_X_RANGE_DESIGN),
+        randRange(SCORE_FLOURISH_VEL_Y_MAX_DESIGN, SCORE_FLOURISH_VEL_Y_MIN_DESIGN)
+    };
+
+    // 4. Set Lifetime
+    particle.lifetime = randRange(SCORE_FLOURISH_LIFETIME_MIN_SEC, SCORE_FLOURISH_LIFETIME_MAX_SEC);
+    particle.initialLifetime = particle.lifetime;
+
+    m_scoreFlourishes.push_back(std::move(particle));
+}
+
+void Game::m_updateScoreFlourishes(float dt) {
+    m_scoreFlourishes.erase(
+        std::remove_if(m_scoreFlourishes.begin(), m_scoreFlourishes.end(),
+            [&](ScoreFlourishParticle& p) {
+                // Update position
+                p.position += p.velocity * dt; // position is sf::Vector2f
+
+                // Update lifetime
+                p.lifetime -= dt;
+
+                if (p.lifetime <= 0.f) {
+                    return true; // Mark for removal
+                }
+
+                // Update alpha for fade-out effect
+                float alphaRatio = std::max(0.f, p.lifetime / p.initialLifetime);
+                p.color.a = static_cast<std::uint8_t>(alphaRatio * 255.f);
+
+                return false; // Keep particle
+            }),
+        m_scoreFlourishes.end()
+    );
+}
+
+void Game::m_renderScoreFlourishes(sf::RenderTarget& target) {
+    if (m_font.getInfo().family.empty()) { // Don't try to render if font is bad
+        std::cerr << "WARNING: m_renderScoreFlourishes - m_font is not loaded or invalid. Skipping flourish rendering." << std::endl;
+        return;
+    }
+
+    // Calculate scaled font size once
+    unsigned int scaledCharacterSize = static_cast<unsigned int>(std::max(8.0f, S(this, SCORE_FLOURISH_FONT_SIZE_BASE_DESIGN)));
+
+    // Construct sf::Text with font, an initial empty string, and character size as per your finding.
+    // The string will be updated in the loop.
+    sf::Text renderText(m_font, "", scaledCharacterSize);
+    renderText.setStyle(sf::Text::Bold); // Assuming always bold for flourish
+
+    for (const auto& p : m_scoreFlourishes) {
+        renderText.setString(p.textString);   // Set the specific string for this particle
+        renderText.setFillColor(p.color);     // Set the color (handles fading)
+        renderText.setPosition(p.position);   // Set the current position
+
+        // Set origin to center the text at p.position
+        // This needs to be done after setString and setCharacterSize if bounds depend on them.
+        // Since character size is set at construction and string is set here, getLocalBounds should be up-to-date.
+        sf::FloatRect textBounds = renderText.getLocalBounds();
+        renderText.setOrigin({ textBounds.position.x + textBounds.size.x / 2.f,
+                              textBounds.position.y + textBounds.size.y / 2.f });
+
+        target.draw(renderText);
     }
 }
 
