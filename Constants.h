@@ -47,7 +47,7 @@ const int MEDIUM_MAX_SOLUTIONS = 12;
 const int HARD_MAX_SOLUTIONS = 15;
 const int MIN_DESIRED_GRID_WORDS = 5;
 
-const int HINT_COST_REVEAL_FIRST = 1; 
+const int HINT_COST_REVEAL_FIRST = 3; 
 const int HINT_COST_REVEAL_RANDOM = 5; 
 const int HINT_COST_REVEAL_LAST = 10;
 constexpr unsigned int INITIAL_HINTS = 999;
@@ -74,5 +74,8 @@ const float SCORE_FLOURISH_LIFETIME_MAX_SEC = 2.8f;    // Maximum duration
 const float SCORE_FLOURISH_VEL_Y_MIN_DESIGN = -50.f;   // Min upward speed (design units/sec)
 const float SCORE_FLOURISH_VEL_Y_MAX_DESIGN = -90.f;   // Max upward speed
 const float SCORE_FLOURISH_VEL_X_RANGE_DESIGN = 20.f;    // Horizontal drift range (+/- this value)
+const float HINT_POINT_ANIM_FONT_SIZE_DESIGN = 20.f;
+const float HINT_POINT_TEXT_FLOURISH_DURATION = 0.5f; // Duration for "Points:" text flourish
+const float HINT_POINT_ANIM_SPEED = 1.0f;
 
 #endif // CONSTANTS_H

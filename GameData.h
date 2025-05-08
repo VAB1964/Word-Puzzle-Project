@@ -92,6 +92,27 @@ struct ScoreFlourishParticle {
     }
 };
 
+struct HintPointAnimParticle {
+    std::string textString;     // Will be "+1"
+    sf::Vector2f currentPosition;
+    sf::Vector2f startPosition;
+    sf::Vector2f targetPosition; // Position of the "Points:" text
+    sf::Color color;
+    float t;                    // Animation progress (0.0 to 1.0)
+    float speed;                // Speed of animation
+
+    HintPointAnimParticle()
+        : textString("+1"),
+        currentPosition(0.f, 0.f),
+        startPosition(0.f, 0.f),
+        targetPosition(0.f, 0.f),
+        color(sf::Color::Yellow), // A distinct color for hint points
+        t(0.f),
+        speed(0.5f) // Adjust as needed (higher is faster for t to reach 1.0)
+    {
+    }
+};
+
 
 enum class GState { Playing, Solved }; // Internal game state
 enum class GameScreen { MainMenu, CasualMenu, CompetitiveMenu, Playing, GameOver, SessionComplete }; // Overall screen state

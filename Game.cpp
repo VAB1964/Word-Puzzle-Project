@@ -125,6 +125,8 @@ Game::Game() :
     m_uiScale(1.f),
     m_hintPoints(100),
     m_scoreFlourishes(),
+    m_hintPointAnims(), 
+    m_hintPointsTextFlourishTimer(0.f),
 
     // Resource Handles (default construct textures/buffers - loaded later)
     m_scrambleTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
@@ -605,6 +607,7 @@ void Game::m_update(sf::Time dt) {
     if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) {
         m_updateAnims(deltaSeconds);
         m_updateScoreFlourishes(deltaSeconds);
+        m_updateHintPointAnims(deltaSeconds);
     }
     else if (m_currentScreen == GameScreen::SessionComplete) {
         m_updateCelebrationEffects(deltaSeconds);
@@ -881,7 +884,8 @@ void Game::m_rebuild() {
         }
         else { m_grid[i].clear(); std::cerr << "Warning: Word at m_sorted index " << i << " has empty text. Grid row will be empty." << std::endl; }
     }
-    m_found.clear(); m_foundBonusWords.clear(); m_anims.clear(); m_scoreAnims.clear(); m_scoreFlourishes.clear();
+    m_found.clear(); m_foundBonusWords.clear(); m_anims.clear(); m_scoreAnims.clear(); m_hintPointAnims.clear(); m_scoreFlourishes.clear(); 
+    m_hintPointsTextFlourishTimer = 0.f;
     m_clearDragState(); m_gameState = GState::Playing;
 
     // --- Reset Score/Hints ---
@@ -1873,20 +1877,19 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
             std::cout << "DEBUG: Checking for BONUS word..." << std::endl;
             for (const auto& potentialWordInfo : m_allPotentialSolutions) {
                 const std::string& bonusWordOriginalCase = potentialWordInfo.text;
-                // Skip if this potential bonus word is actually required for the grid
                 if (m_found.count(bonusWordOriginalCase)) { continue; } // Already handled by grid check
 
                 std::string bonusWordUpper = bonusWordOriginalCase;
                 std::transform(bonusWordUpper.begin(), bonusWordUpper.end(), bonusWordUpper.begin(), ::toupper);
 
-                if (bonusWordUpper == m_currentGuess) { // Text matches a potential bonus word
-                    wordMatched = bonusWordOriginalCase; // Store match
+                if (bonusWordUpper == m_currentGuess) {
+                    wordMatched = bonusWordOriginalCase;
 
                     if (m_foundBonusWords.count(bonusWordOriginalCase)) {
                         // --- Repeated BONUS Word ---
                         std::cout << "DEBUG: Matched BONUS word '" << bonusWordOriginalCase << "', but already found AS BONUS." << std::endl;
-                        m_bonusTextFlourishTimer = BONUS_TEXT_FLOURISH_DURATION; // Trigger bonus text flourish
-                        if (m_placeSound) m_placeSound->play(); // Use error/repeat sound
+                        m_bonusTextFlourishTimer = BONUS_TEXT_FLOURISH_DURATION;
+                        if (m_placeSound) m_placeSound->play();
                         actionTaken = true;
                     }
                     else {
@@ -1894,17 +1897,31 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         std::cout << "DEBUG: Found NEW match for BONUS: '" << bonusWordOriginalCase << "'" << std::endl;
                         m_foundBonusWords.insert(bonusWordOriginalCase);
 
-                        // --- Increment Hint Points --- <<< ADD THIS
-                        m_hintPoints++;
-                        std::cout << "DEBUG: Hint Points increased to: " << m_hintPoints << std::endl;
+                        m_hintPoints++; // <<< THIS LINE WAS ALREADY THERE FROM PREVIOUS WORK
+                        std::cout << "DEBUG: Hint Points increased to: " << m_hintPoints << std::endl; // <<< THIS LINE WAS ALREADY THERE
 
-                        // ... (Bonus Scoring, Letter Animations to Score - keep existing logic) ...
+                        // --- Spawn the "+1" animation for the hint point ---
+                        // Calculate an approximate center Y for where the "Bonus Words: X/Y" text is displayed.
+                        // This is based on the HUD layout logic.
+                        // Adjust S(this, 25.f) or S(this, HUD_TEXT_OFFSET_Y) if the "Bonus Words" text is higher/lower.
+                        float bonusTextApproxY = m_wheelY + (m_currentWheelRadius + S(this, 30.f)) /* visual wheel bottom edge */
+                            + S(this, HUD_TEXT_OFFSET_Y)    /* gap below wheel */
+                            + S(this, 20.f)                 /* approx height of "Found: X/Y" */
+                            + S(this, HUD_LINE_SPACING)     /* space after "Found: X/Y" */
+                            + S(this, 10.f);                /* approx half-height of "Bonus: X/Y" itself */
+                        sf::Vector2f hintAnimStartPos = { m_wheelX, bonusTextApproxY };
+                        m_spawnHintPointAnimation(hintAnimStartPos); // <<< --- ADD THIS LINE ---
+
+                        // Existing logic for bonus score and letter animations to score bar
                         int bonusScore = 25; m_currentScore += bonusScore;
                         if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
                         std::cout << "BONUS Word: " << m_currentGuess << " | Points: " << bonusScore << " | Total: " << m_currentScore << std::endl;
-                        if (m_scoreValueText) { // Animation Logic
+
+                        if (m_scoreValueText) {
                             sf::FloatRect scoreBounds = m_scoreValueText->getGlobalBounds();
-                            sf::Vector2f scoreCenterPos = { scoreBounds.position.x + scoreBounds.size.x / 2.f, scoreBounds.position.y + scoreBounds.size.y / 2.f };
+                            sf::Vector2f scoreCenterPos = { scoreBounds.position.x + scoreBounds.size.x / 2.f, 
+                                                            scoreBounds.position.y + scoreBounds.size.y / 2.f  
+                            };
                             for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
                                 if (c < m_path.size()) {
                                     int pathNodeIdx = m_path[c];
@@ -1916,11 +1933,14 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                             }
                             std::cout << "DEBUG: Bonus animations CREATED." << std::endl;
                         }
-                        else { std::cerr << "Warning: Cannot animate bonus to score - m_scoreValueText is null." << std::endl; }
-                        // ... (End of new bonus word logic) ...
+                        else {
+                            std::cerr << "Warning: Cannot animate bonus to score - m_scoreValueText is null." << std::endl;
+                        }
+
+                        m_bonusTextFlourishTimer = BONUS_TEXT_FLOURISH_DURATION; // This flourishes the "Bonus Words: X/Y" text itself
                         actionTaken = true;
                     }
-                    goto process_outcome; // Found a bonus match (new or repeat)
+                    goto process_outcome;
                 }
             } // --- End Bonus Check Loop ---
 
@@ -2029,7 +2049,6 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //------------------------------------------------------------
     //  Calculate common scaled values ONCE (using base m_uiScale)
     //------------------------------------------------------------
-    // Note: Grid-specific scaling is applied *selectively* below
     const float scaledLetterRadius = S(this, LETTER_R);
     const float scaledWheelOutlineThickness = S(this, 3.f);
     const float scaledLetterCircleOutline = S(this, 2.f);
@@ -2041,8 +2060,8 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     const float scaledGuessDisplayOutline = S(this, 1.f);
     const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y);
     const float scaledHudLineSpacing = S(this, HUD_LINE_SPACING);
-    const float scaledHintOffsetX = S(this, 10.f);
-    const float scaledHintOffsetY = S(this, 5.f);
+    // const float scaledHintOffsetX = S(this, 10.f); // Not directly used in this function render logic for m_hintPointsText
+    // const float scaledHintOffsetY = S(this, 5.f); // Not directly used here
 
     // Scaled Font Sizes (ensure minimum usable size)
     const unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
@@ -2050,7 +2069,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     const unsigned int scaledGuessDisplayFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 30.f)));
     const unsigned int scaledFoundFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
     const unsigned int scaledBonusFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 18.f)));
-    const unsigned int scaledHintFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
+    // const unsigned int scaledHintFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f))); // m_hintPointsText size set in layout
     const unsigned int scaledSolvedFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 26.f)));
     const unsigned int scaledContinueFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 24.f)));
 
@@ -2059,7 +2078,6 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //  Draw Progress Meter (If in session)
     //------------------------------------------------------------
     if (m_isInSession) {
-        // ... (Progress Meter drawing - NO CHANGES) ...
         m_progressMeterBg.setFillColor(sf::Color(50, 50, 50, 150)); m_progressMeterBg.setOutlineColor(sf::Color(150, 150, 150));
         m_progressMeterBg.setOutlineThickness(S(this, PROGRESS_METER_OUTLINE)); m_progressMeterFill.setFillColor(sf::Color(0, 180, 0, 200));
         float progressRatio = 0.f; if (m_puzzlesPerSession > 0) { progressRatio = static_cast<float>(m_currentPuzzleIndex + 1) / static_cast<float>(m_puzzlesPerSession); }
@@ -2069,15 +2087,15 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     }
 
     // --- Draw Return to Menu Button ---
-    if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) // Show only during gameplay/gameover?
+    if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)
     {
         bool returnHover = m_returnToMenuButtonShape.getGlobalBounds().contains(mousePos);
-        sf::Color returnBaseColor = m_currentTheme.menuButtonNormal; // Use theme colors
+        sf::Color returnBaseColor = m_currentTheme.menuButtonNormal;
         sf::Color returnHoverColor = m_currentTheme.menuButtonHover;
         m_returnToMenuButtonShape.setFillColor(returnHover ? returnHoverColor : returnBaseColor);
         m_window.draw(m_returnToMenuButtonShape);
         if (m_returnToMenuButtonText) {
-            m_returnToMenuButtonText->setFillColor(m_currentTheme.menuButtonText); // Use theme color
+            m_returnToMenuButtonText->setFillColor(m_currentTheme.menuButtonText);
             m_window.draw(*m_returnToMenuButtonText);
         }
     }
@@ -2085,7 +2103,6 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //------------------------------------------------------------
     //  Draw Score Bar
     //------------------------------------------------------------
-    // ... (Score bar drawing - NO CHANGES) ...
     m_scoreBar.setFillColor(m_currentTheme.scoreBarBg); m_scoreBar.setOutlineColor(m_currentTheme.wheelOutline); m_scoreBar.setOutlineThickness(1.f);
     m_window.draw(m_scoreBar);
     if (m_scoreLabelText) { m_scoreLabelText->setFillColor(m_currentTheme.scoreTextLabel); m_window.draw(*m_scoreLabelText); }
@@ -2095,33 +2112,27 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //  Draw letter grid
     //------------------------------------------------------------
     if (!m_sorted.empty()) {
-        // --- Determine FINAL Tile Size/Radius for Rendering ---
-        // (Matches logic in m_updateLayout 4c and m_tilePos)
         float renderTileScaleFactor = (m_currentGridLayoutScale < 1.0f) ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1.0f;
         const float finalRenderTileSize = S(this, TILE_SIZE) * renderTileScaleFactor;
         const float finalRenderTileRadius = finalRenderTileSize * 0.18f;
-        const float scaledTileOutline = S(this, 1.f); // Outline thickness can use base scale
-        // ---
+        const float scaledTileOutline = S(this, 1.f);
 
-        // Reusable shapes for drawing tiles and letters
         RoundedRectangleShape tileBackground({ finalRenderTileSize, finalRenderTileSize }, finalRenderTileRadius, 10);
         tileBackground.setOutlineThickness(scaledTileOutline);
-        sf::Text letterText(m_font, "", scaledGridLetterFontSize); // Font size uses base scale
+
+        // Use SFML 3.0 constructor for sf::Text as figured out previously
+        sf::Text letterText(m_font, "", scaledGridLetterFontSize);
 
         for (std::size_t w = 0; w < m_sorted.size(); ++w) {
             int wordRarity = m_sorted[w].rarity;
-            if (w >= m_grid.size()) continue; // Bounds check for m_grid
+            if (w >= m_grid.size()) continue;
 
             for (std::size_t c = 0; c < m_sorted[w].text.length(); ++c) {
-                if (c >= m_grid[w].size()) continue; // Bounds check for m_grid[w]
+                if (c >= m_grid[w].size()) continue;
 
-                sf::Vector2f p = m_tilePos(static_cast<int>(w), static_cast<int>(c)); // Gets final position
+                sf::Vector2f p = m_tilePos(static_cast<int>(w), static_cast<int>(c));
                 bool isFilled = (m_grid[w][c] != '_');
-
-                // Set position for the background tile
                 tileBackground.setPosition(p);
-
-                // Configure background appearance based on filled status
                 if (isFilled) {
                     tileBackground.setFillColor(m_currentTheme.gridFilledTile);
                     tileBackground.setOutlineColor(m_currentTheme.gridFilledTile);
@@ -2130,121 +2141,116 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                     tileBackground.setFillColor(m_currentTheme.gridEmptyTile);
                     tileBackground.setOutlineColor(m_currentTheme.gridEmptyTile);
                 }
-                // Draw the background tile ONCE
                 m_window.draw(tileBackground);
 
-                // --- Draw Gem OR Letter ---
                 if (!isFilled) {
-                    // Draw Gem
                     sf::Sprite* gemSprite = nullptr;
                     switch (wordRarity) {
-                    case 1: break; // Common words might have no gem
-                    case 2: if (m_sapphireSpr) gemSprite = m_sapphireSpr.get(); break; // Uncommon - Sapphire/Emerald
-                    case 3: if (m_rubySpr) gemSprite = m_rubySpr.get(); break;     // Rare - Ruby
-                    case 4: if (m_diamondSpr) gemSprite = m_diamondSpr.get(); break; // Very Rare - Diamond
+                    case 1: break;
+                    case 2: if (m_sapphireSpr) gemSprite = m_sapphireSpr.get(); break;
+                    case 3: if (m_rubySpr) gemSprite = m_rubySpr.get(); break;
+                    case 4: if (m_diamondSpr) gemSprite = m_diamondSpr.get(); break;
                     }
-
                     if (gemSprite != nullptr) {
-                        // Center the gem within the final tile size
                         float tileCenterX = p.x + finalRenderTileSize / 2.f;
                         float tileCenterY = p.y + finalRenderTileSize / 2.f;
                         gemSprite->setPosition({ tileCenterX, tileCenterY });
-                        // Note: Gem sprite scale is set once during load based on TILE_SIZE.
-                        // If grid shrinks significantly, gems might appear large relative to the tile.
-                        // A dynamic rescaling here based on finalRenderTileSize could be added if needed.
-                        // Example:
-                        // float desiredGemHeight = finalRenderTileSize * 0.60f;
-                        // if (gemSprite->getTexture()) { // Check texture exists
-                        //    float texHeight = gemSprite->getTexture()->getSize().y;
-                        //    if (texHeight > 0) {
-                        //       float gemScale = desiredGemHeight / texHeight;
-                        //       gemSprite->setScale({gemScale, gemScale});
-                        //     }
-                        // }
-                        m_window.draw(*gemSprite); // Draw the selected gem
+                        m_window.draw(*gemSprite);
                     }
                 }
                 else {
-                    // Draw Letter
                     bool isAnimatingToTile = false;
-                    for (const auto& anim : m_anims) { /* ... check if animating ... */ if (anim.target == AnimTarget::Grid && anim.wordIdx == w && anim.charIdx == c && anim.t < 1.0f) { isAnimatingToTile = true; break; } }
-
+                    for (const auto& anim : m_anims) { if (anim.target == AnimTarget::Grid && anim.wordIdx == w && anim.charIdx == c && anim.t < 1.0f) { isAnimatingToTile = true; break; } }
                     if (!isAnimatingToTile) {
-                        // Apply Grid Flourish effect
                         float currentFlourishScale = 1.0f;
                         bool isFlourishing = false;
-                        for (const auto& flourish : m_gridFlourishes) { /* ... check flourish & calculate scale ... */ if (flourish.wordIdx == w && flourish.charIdx == c) { float progress = (GRID_FLOURISH_DURATION - flourish.timer) / GRID_FLOURISH_DURATION; currentFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); isFlourishing = true; break; } }
-
-                        // Prepare letter text
+                        for (const auto& flourish : m_gridFlourishes) { if (flourish.wordIdx == w && flourish.charIdx == c) { float progress = (GRID_FLOURISH_DURATION - flourish.timer) / GRID_FLOURISH_DURATION; currentFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); isFlourishing = true; break; } }
                         letterText.setString(std::string(1, m_grid[w][c]));
-                        letterText.setFillColor(m_currentTheme.gridLetter); // Set color
+                        letterText.setFillColor(m_currentTheme.gridLetter);
                         sf::FloatRect b = letterText.getLocalBounds();
-                        letterText.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f }); // Center origin
-                        letterText.setPosition(p + sf::Vector2f{ finalRenderTileSize / 2.f, finalRenderTileSize / 2.f }); // Center in tile
-                        letterText.setScale({ currentFlourishScale, currentFlourishScale }); // Apply flourish scale
-
+                        letterText.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+                        letterText.setPosition(p + sf::Vector2f{ finalRenderTileSize / 2.f, finalRenderTileSize / 2.f });
+                        letterText.setScale({ currentFlourishScale, currentFlourishScale });
                         m_window.draw(letterText);
-
-                        // Reset scale AFTER drawing if it was modified, for the next letter
-                        if (!isFlourishing) { letterText.setScale({ 1.f, 1.f }); }
+                        if (!isFlourishing) { letterText.setScale({ 1.f, 1.f }); } // Reset for next use if not default
                     }
-                } // End if/else for gem/letter
-            } // End char loop
-        } // End word loop
-    } // End grid drawing
-
+                }
+            }
+        }
+    }
 
     //------------------------------------------------------------
-    //  Draw wheel background & letters (Uses Base UI Scale)
+    //  Draw wheel background & letters
     //------------------------------------------------------------
-    // ... (Wheel BG drawing - NO CHANGES) ...
-    const float currentWheelRadius = m_currentWheelRadius; const float scaledWheelPadding = S(this, 30.f);
-    m_wheelBg.setRadius(currentWheelRadius + scaledWheelPadding); m_wheelBg.setFillColor(m_currentTheme.wheelBg); m_wheelBg.setOutlineColor(m_currentTheme.wheelOutline); m_wheelBg.setOutlineThickness(scaledWheelOutlineThickness); m_wheelBg.setOrigin({ m_wheelBg.getRadius(), m_wheelBg.getRadius() }); m_wheelBg.setPosition({ m_wheelX, m_wheelY });
+    const float currentWheelRadiusVal = m_currentWheelRadius; // Use member m_currentWheelRadius
+    const float scaledWheelPaddingVal = S(this, 30.f);
+    m_wheelBg.setRadius(currentWheelRadiusVal + scaledWheelPaddingVal);
+    m_wheelBg.setFillColor(m_currentTheme.wheelBg);
+    m_wheelBg.setOutlineColor(m_currentTheme.wheelOutline);
+    m_wheelBg.setOutlineThickness(scaledWheelOutlineThickness);
+    m_wheelBg.setOrigin({ m_wheelBg.getRadius(), m_wheelBg.getRadius() });
+    m_wheelBg.setPosition({ m_wheelX, m_wheelY });
     m_window.draw(m_wheelBg);
 
     // --- DRAW FLYING LETTER ANIMATIONS ---
-    // ... (Flying letter drawing - NO CHANGES) ...
-    sf::Text flyingLetterText(m_font, "", scaledFlyingLetterFontSize); sf::Color flyColorBase = m_currentTheme.gridLetter;
-    for (const auto& a : m_anims) { sf::Color currentFlyColor = flyColorBase; if (a.target == AnimTarget::Score) { currentFlyColor = sf::Color::Yellow; } float alpha_ratio = 1.0f; if (a.t > 0.7f) { alpha_ratio = (1.0f - a.t) / 0.3f; alpha_ratio = std::max(0.0f, std::min(1.0f, alpha_ratio)); } currentFlyColor.a = static_cast<std::uint8_t>(255.f * alpha_ratio); flyingLetterText.setFillColor(currentFlyColor); float eased_t = a.t * a.t * (3.f - 2.f * a.t); sf::Vector2f p = a.start + (a.end - a.start) * eased_t; flyingLetterText.setString(std::string(1, a.ch)); sf::FloatRect bounds = flyingLetterText.getLocalBounds(); flyingLetterText.setOrigin({ bounds.position.x + bounds.size.x / 2.f, bounds.position.y + bounds.size.y / 2.f }); flyingLetterText.setPosition(p); m_window.draw(flyingLetterText); }
+    sf::Text flyingLetterText(m_font, "", scaledFlyingLetterFontSize); // SFML 3.0 constructor
+    sf::Color flyColorBase = m_currentTheme.gridLetter;
+    for (const auto& a : m_anims) { sf::Color currentFlyColor = flyColorBase; if (a.target == AnimTarget::Score) { currentFlyColor = sf::Color::Yellow; } float alpha_ratio = 1.0f; if (a.t > 0.7f) { alpha_ratio = (1.0f - a.t) / 0.3f; alpha_ratio = std::max(0.0f, std::min(1.0f, alpha_ratio)); } currentFlyColor.a = static_cast<std::uint8_t>(255.f * alpha_ratio); flyingLetterText.setFillColor(currentFlyColor); float eased_t = a.t * a.t * (3.f - 2.f * a.t); sf::Vector2f p_anim = a.start + (a.end - a.start) * eased_t; flyingLetterText.setString(std::string(1, a.ch)); sf::FloatRect bounds_fly = flyingLetterText.getLocalBounds(); flyingLetterText.setOrigin({ bounds_fly.position.x + bounds_fly.size.x / 2.f, bounds_fly.position.y + bounds_fly.size.y / 2.f }); flyingLetterText.setPosition(p_anim); m_window.draw(flyingLetterText); }
 
-    // --- DRAW SCORE FLOURISHES ---
+    // --- DRAW SCORE FLOURISHES (from grid words) ---
     m_renderScoreFlourishes(m_window);
 
-    //------------------------------------------------------------
-    //  Draw Path lines (BEFORE Wheel Letters) (Uses Base UI Scale)
-    //------------------------------------------------------------
-    // ... (Path line drawing - NO CHANGES) ...
-    if (m_dragging && !m_path.empty()) { const float halfThickness = scaledPathThickness / 2.0f; const sf::PrimitiveType stripType = sf::PrimitiveType::TriangleStrip; const sf::Color pathColor = m_currentTheme.dragLine; if (m_path.size() >= 2) { sf::VertexArray finalPathStrip(stripType, (m_path.size() - 1) * 4); size_t currentVertex = 0; for (size_t i = 0; i < m_path.size() - 1; ++i) { int idx1 = m_path[i]; int idx2 = m_path[i + 1]; if (idx1 < 0 || idx1 >= m_wheelCentres.size() || idx2 < 0 || idx2 >= m_wheelCentres.size()) { continue; } sf::Vector2f p1 = m_wheelCentres[idx1]; sf::Vector2f p2 = m_wheelCentres[idx2]; sf::Vector2f direction = p2 - p1; float length = std::sqrt(direction.x * direction.x + direction.y * direction.y); if (length < 0.1f) continue; sf::Vector2f unitDirection = direction / length; sf::Vector2f unitPerpendicular = { -unitDirection.y, unitDirection.x }; sf::Vector2f offset = unitPerpendicular * halfThickness; if (currentVertex + 3 < finalPathStrip.getVertexCount()) { finalPathStrip[currentVertex].position = p1 - offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p1 + offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p2 - offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p2 + offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; } else { std::cerr << "VertexArray index out of bounds!" << std::endl; break; } } finalPathStrip.resize(currentVertex); if (finalPathStrip.getVertexCount() > 0) { m_window.draw(finalPathStrip); } } if (!m_path.empty()) { int lastIdx = m_path.back(); if (lastIdx >= 0 && lastIdx < m_wheelCentres.size()) { sf::Vector2f p1 = m_wheelCentres[lastIdx]; sf::Vector2f p2 = mousePos; sf::Vector2f direction = p2 - p1; float length = std::sqrt(direction.x * direction.x + direction.y * direction.y); if (length > 0.1f) { sf::Vector2f unitDirection = direction / length; sf::Vector2f unitPerpendicular = { -unitDirection.y, unitDirection.x }; sf::Vector2f offset = unitPerpendicular * halfThickness; sf::VertexArray rubberBandStrip(stripType, 4); rubberBandStrip[0].position = p1 - offset; rubberBandStrip[1].position = p1 + offset; rubberBandStrip[2].position = p2 - offset; rubberBandStrip[3].position = p2 + offset; rubberBandStrip[0].color = pathColor; rubberBandStrip[1].color = pathColor; rubberBandStrip[2].color = pathColor; rubberBandStrip[3].color = pathColor; m_window.draw(rubberBandStrip); } } } }
-
-
-    // --- START: Draw Guess Display (Uses Base UI Scale) ---
-    // ... (Guess display drawing - NO CHANGES) ...
-    if (m_gameState == GState::Playing && !m_currentGuess.empty() && m_guessDisplay_Text && m_guessDisplay_Bg.getPointCount() > 0) { m_guessDisplay_Text->setCharacterSize(scaledGuessDisplayFontSize); m_guessDisplay_Text->setString(m_currentGuess); sf::FloatRect textBounds = m_guessDisplay_Text->getLocalBounds(); sf::Vector2f bgSize = { textBounds.position.x + textBounds.size.x + 2 * scaledGuessDisplayPadX, textBounds.position.y + textBounds.size.y + 2 * scaledGuessDisplayPadY }; float guessY = m_wheelY - (currentWheelRadius + scaledWheelPadding) - (bgSize.y / 2.f) - scaledGuessDisplayGap; m_guessDisplay_Bg.setSize(bgSize); m_guessDisplay_Bg.setRadius(scaledGuessDisplayRadius); m_guessDisplay_Bg.setFillColor(m_currentTheme.gridFilledTile); m_guessDisplay_Bg.setOutlineColor(sf::Color(150, 150, 150, 200)); m_guessDisplay_Bg.setOutlineThickness(scaledGuessDisplayOutline); m_guessDisplay_Bg.setOrigin({ bgSize.x / 2.f, bgSize.y / 2.f }); m_guessDisplay_Bg.setPosition({ m_wheelX, guessY }); m_guessDisplay_Text->setOrigin({ textBounds.position.x + textBounds.size.x / 2.f, textBounds.position.y + textBounds.size.y / 2.f }); m_guessDisplay_Text->setPosition({ m_wheelX, guessY }); m_guessDisplay_Text->setFillColor(m_currentTheme.gridLetter); m_window.draw(m_guessDisplay_Bg); m_window.draw(*m_guessDisplay_Text); }
-
-
-    // --- Draw Wheel Letters (Uses Base UI Scale) ---
-    // ... (Wheel letter drawing - NO CHANGES) ...
-    const float baseWheelRadius = S(this, WHEEL_R); float wheelRadiusRatio = 1.0f; if (baseWheelRadius > 1.0f && m_currentWheelRadius > 0.0f) { wheelRadiusRatio = m_currentWheelRadius / baseWheelRadius; } wheelRadiusRatio = std::clamp(wheelRadiusRatio, 0.7f, 1.0f); const unsigned int scaledWheelLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 25.f) * wheelRadiusRatio)); const float letterCircleRadius = m_currentLetterRenderRadius;
-    for (std::size_t i = 0; i < m_base.size(); ++i) { if (i >= m_wheelLetterRenderPos.size()) continue; bool isHilited = std::find(m_path.begin(), m_path.end(), static_cast<int>(i)) != m_path.end(); sf::Vector2f renderPos = m_wheelLetterRenderPos[i]; sf::CircleShape letterCircle(letterCircleRadius); letterCircle.setOrigin({ letterCircleRadius, letterCircleRadius }); letterCircle.setPosition(renderPos); letterCircle.setFillColor(isHilited ? m_currentTheme.wheelOutline : m_currentTheme.letterCircleNormal); letterCircle.setOutlineColor(m_currentTheme.wheelOutline); letterCircle.setOutlineThickness(scaledLetterCircleOutline); m_window.draw(letterCircle); sf::Text chTxt(m_font, std::string(1, static_cast<char>(std::toupper(m_base[i]))), scaledWheelLetterFontSize); chTxt.setFillColor(isHilited ? m_currentTheme.letterTextHighlight : m_currentTheme.letterTextNormal); sf::FloatRect txtBounds = chTxt.getLocalBounds(); chTxt.setOrigin({ txtBounds.position.x + txtBounds.size.x / 2.f, txtBounds.position.y + txtBounds.size.y / 2.f }); chTxt.setPosition(renderPos); m_window.draw(chTxt); }
-
+    // --- DRAW HINT POINT ANIMATIONS (+1 flying to Points text) ---
+    m_renderHintPointAnims(m_window);
 
     //------------------------------------------------------------
-    //  Draw UI Buttons / Hover (Uses Base UI Scale)
+    //  Draw Path lines (BEFORE Wheel Letters)
     //------------------------------------------------------------
-    // ... (Scramble/Hint button drawing - NO CHANGES) ...
+    if (m_dragging && !m_path.empty()) { const float halfThickness = scaledPathThickness / 2.0f; const sf::PrimitiveType stripType = sf::PrimitiveType::TriangleStrip; const sf::Color pathColor = m_currentTheme.dragLine; if (m_path.size() >= 2) { sf::VertexArray finalPathStrip(stripType, (m_path.size() - 1) * 4); size_t currentVertex = 0; for (size_t i = 0; i < m_path.size() - 1; ++i) { int idx1 = m_path[i]; int idx2 = m_path[i + 1]; if (idx1 < 0 || static_cast<size_t>(idx1) >= m_wheelCentres.size() || idx2 < 0 || static_cast<size_t>(idx2) >= m_wheelCentres.size()) { continue; } sf::Vector2f p1 = m_wheelCentres[idx1]; sf::Vector2f p2 = m_wheelCentres[idx2]; sf::Vector2f direction = p2 - p1; float length = std::sqrt(direction.x * direction.x + direction.y * direction.y); if (length < 0.1f) continue; sf::Vector2f unitDirection = direction / length; sf::Vector2f unitPerpendicular = { -unitDirection.y, unitDirection.x }; sf::Vector2f offset = unitPerpendicular * halfThickness; if (currentVertex + 3 < finalPathStrip.getVertexCount()) { finalPathStrip[currentVertex].position = p1 - offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p1 + offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p2 - offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p2 + offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; } else { std::cerr << "VertexArray index out of bounds!" << std::endl; break; } } finalPathStrip.resize(currentVertex); if (finalPathStrip.getVertexCount() > 0) { m_window.draw(finalPathStrip); } } if (!m_path.empty()) { int lastIdx = m_path.back(); if (lastIdx >= 0 && static_cast<size_t>(lastIdx) < m_wheelCentres.size()) { sf::Vector2f p1 = m_wheelCentres[lastIdx]; sf::Vector2f p2 = mousePos; sf::Vector2f direction = p2 - p1; float length = std::sqrt(direction.x * direction.x + direction.y * direction.y); if (length > 0.1f) { sf::Vector2f unitDirection = direction / length; sf::Vector2f unitPerpendicular = { -unitDirection.y, unitDirection.x }; sf::Vector2f offset = unitPerpendicular * halfThickness; sf::VertexArray rubberBandStrip(stripType, 4); rubberBandStrip[0].position = p1 - offset; rubberBandStrip[1].position = p1 + offset; rubberBandStrip[2].position = p2 - offset; rubberBandStrip[3].position = p2 + offset; rubberBandStrip[0].color = pathColor; rubberBandStrip[1].color = pathColor; rubberBandStrip[2].color = pathColor; rubberBandStrip[3].color = pathColor; m_window.draw(rubberBandStrip); } } } }
+
+    // --- START: Draw Guess Display ---
+    if (m_gameState == GState::Playing && !m_currentGuess.empty() && m_guessDisplay_Text && m_guessDisplay_Bg.getPointCount() > 0) {
+        m_guessDisplay_Text->setCharacterSize(scaledGuessDisplayFontSize); // m_guessDisplay_Text is a unique_ptr, set its properties
+        m_guessDisplay_Text->setString(m_currentGuess);
+        sf::FloatRect textBounds_guess = m_guessDisplay_Text->getLocalBounds();
+        sf::Vector2f bgSize_guess = { textBounds_guess.position.x + textBounds_guess.size.x + 2 * scaledGuessDisplayPadX, textBounds_guess.position.y + textBounds_guess.size.y + 2 * scaledGuessDisplayPadY };
+        float guessY_val = m_wheelY - (currentWheelRadiusVal + scaledWheelPaddingVal) - (bgSize_guess.y / 2.f) - scaledGuessDisplayGap;
+        m_guessDisplay_Bg.setSize(bgSize_guess);
+        m_guessDisplay_Bg.setRadius(scaledGuessDisplayRadius);
+        m_guessDisplay_Bg.setFillColor(m_currentTheme.gridFilledTile);
+        m_guessDisplay_Bg.setOutlineColor(sf::Color(150, 150, 150, 200));
+        m_guessDisplay_Bg.setOutlineThickness(scaledGuessDisplayOutline);
+        m_guessDisplay_Bg.setOrigin({ bgSize_guess.x / 2.f, bgSize_guess.y / 2.f });
+        m_guessDisplay_Bg.setPosition({ m_wheelX, guessY_val });
+        m_guessDisplay_Text->setOrigin({ textBounds_guess.position.x + textBounds_guess.size.x / 2.f, textBounds_guess.position.y + textBounds_guess.size.y / 2.f });
+        m_guessDisplay_Text->setPosition({ m_wheelX, guessY_val });
+        m_guessDisplay_Text->setFillColor(m_currentTheme.gridLetter);
+        m_window.draw(m_guessDisplay_Bg);
+        m_window.draw(*m_guessDisplay_Text);
+    }
+
+    // --- Draw Wheel Letters ---
+    const float baseWheelRadius = S(this, WHEEL_R); float wheelRadiusRatio = 1.0f; if (baseWheelRadius > 1.0f && currentWheelRadiusVal > 0.0f) { wheelRadiusRatio = currentWheelRadiusVal / baseWheelRadius; } wheelRadiusRatio = std::clamp(wheelRadiusRatio, 0.7f, 1.0f);
+    const unsigned int scaledWheelLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 25.f) * wheelRadiusRatio));
+    const float letterCircleRadius = m_currentLetterRenderRadius; // Use member m_currentLetterRenderRadius
+    sf::Text chTxt(m_font, "", scaledWheelLetterFontSize); // SFML 3.0 constructor
+    for (std::size_t i = 0; i < m_base.size(); ++i) { if (i >= m_wheelLetterRenderPos.size()) continue; bool isHilited = std::find(m_path.begin(), m_path.end(), static_cast<int>(i)) != m_path.end(); sf::Vector2f renderPos = m_wheelLetterRenderPos[i]; sf::CircleShape letterCircle(letterCircleRadius); letterCircle.setOrigin({ letterCircleRadius, letterCircleRadius }); letterCircle.setPosition(renderPos); letterCircle.setFillColor(isHilited ? m_currentTheme.wheelOutline : m_currentTheme.letterCircleNormal); letterCircle.setOutlineColor(m_currentTheme.wheelOutline); letterCircle.setOutlineThickness(scaledLetterCircleOutline); m_window.draw(letterCircle); chTxt.setString(std::string(1, static_cast<char>(std::toupper(m_base[i])))); chTxt.setFillColor(isHilited ? m_currentTheme.letterTextHighlight : m_currentTheme.letterTextNormal); sf::FloatRect txtBounds_ch = chTxt.getLocalBounds(); chTxt.setOrigin({ txtBounds_ch.position.x + txtBounds_ch.size.x / 2.f, txtBounds_ch.position.y + txtBounds_ch.size.y / 2.f }); chTxt.setPosition(renderPos); m_window.draw(chTxt); }
+
+    //------------------------------------------------------------
+    //  Draw UI Buttons / Hover (Scramble Button)
+    //------------------------------------------------------------
     if (m_gameState == GState::Playing) {
         if (m_scrambleSpr) { bool scrambleHover = m_scrambleSpr->getGlobalBounds().contains(mousePos); m_scrambleSpr->setColor(scrambleHover ? sf::Color::White : sf::Color(255, 255, 255, 200)); m_window.draw(*m_scrambleSpr); }
 
-
         //------------------------------------------------------------
-        //  Draw HUD (Uses Base UI Scale, except for Bonus Flourish)
+        //  Draw HUD (Found, Bonus, Hint "Points:")
         //------------------------------------------------------------
-        float bottomHudStartY = m_wheelY + (m_currentWheelRadius + scaledWheelPadding) + scaledHudOffsetY;
+        float bottomHudStartY = m_wheelY + (currentWheelRadiusVal + scaledWheelPaddingVal) + scaledHudOffsetY;
         float currentTopY = bottomHudStartY;
 
         // Found Text
-        std::string foundCountStr = "Found: " + std::to_string(m_found.size()) + "/" + std::to_string(m_solutions.size());
-        sf::Text foundTxt(m_font, foundCountStr, scaledFoundFontSize);
+        sf::Text foundTxt(m_font, "", scaledFoundFontSize); // SFML 3.0 constructor
+        foundTxt.setString("Found: " + std::to_string(m_found.size()) + "/" + std::to_string(m_solutions.size()));
         foundTxt.setFillColor(m_currentTheme.hudTextFound);
         sf::FloatRect foundBounds = foundTxt.getLocalBounds();
         foundTxt.setOrigin({ foundBounds.position.x + foundBounds.size.x / 2.f, foundBounds.position.y });
@@ -2252,121 +2258,110 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         m_window.draw(foundTxt);
         currentTopY += foundBounds.size.y + scaledHudLineSpacing;
 
-        // Bonus Word Counter (with Flourish)
+        // Bonus Word Counter (with Flourish for "Bonus Words: X/Y" text)
         if (!m_allPotentialSolutions.empty() || !m_foundBonusWords.empty()) {
             int totalPossibleBonus = 0; for (const auto& potentialWordInfo : m_allPotentialSolutions) { if (!m_found.count(potentialWordInfo.text)) { totalPossibleBonus++; } }
             std::string bonusCountStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
-            sf::Text bonusFoundTxt(m_font, bonusCountStr, scaledBonusFontSize);
-            bonusFoundTxt.setFillColor(sf::Color::Yellow); // Or theme color
-            float bonusFlourishScale = 1.0f;
-            if (m_bonusTextFlourishTimer > 0.f) { float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION; bonusFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); }
+
+            sf::Text bonusFoundTxt(m_font, bonusCountStr, scaledBonusFontSize); // SFML 3.0 constructor
+            bonusFoundTxt.setFillColor(sf::Color::Yellow);
+            float bonusTextFlourishScale = 1.0f;
+            if (m_bonusTextFlourishTimer > 0.f) { float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION; bonusTextFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); }
             sf::FloatRect bonusBounds = bonusFoundTxt.getLocalBounds();
             bonusFoundTxt.setOrigin({ bonusBounds.position.x + bonusBounds.size.x / 2.f, bonusBounds.position.y });
             bonusFoundTxt.setPosition({ m_wheelX, currentTopY });
-            bonusFoundTxt.setScale({ bonusFlourishScale, bonusFlourishScale }); // Apply scale
+            bonusFoundTxt.setScale({ bonusTextFlourishScale, bonusTextFlourishScale });
             m_window.draw(bonusFoundTxt);
-            currentTopY += bonusBounds.size.y * bonusFlourishScale + scaledHudLineSpacing; // Adjust Y based on scaled height
+            currentTopY += bonusBounds.size.y * bonusTextFlourishScale + scaledHudLineSpacing;
         }
 
-        // Hint Count Text
-        if (m_hintCountTxt) {
-            m_hintCountTxt->setCharacterSize(scaledHintFontSize);
-            m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
-            m_hintCountTxt->setFillColor(m_currentTheme.hudTextFound);
-            sf::FloatRect hintTxtBounds = m_hintCountTxt->getLocalBounds();
-            m_hintCountTxt->setOrigin({ hintTxtBounds.position.x + hintTxtBounds.size.x / 2.f, hintTxtBounds.position.y });
-        }
+        // --- START: Hint "Points:" Text Display with Flourish ---
+        // This section assumes m_hintPointsText is a std::unique_ptr<sf::Text> member,
+        // and its basic properties (font, character size) are set in m_updateLayout or m_loadResources.
+        if (m_hintPointsText) {
+            // 1. Ensure the string content is up-to-date
+            m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
+            // Ensure color is set (m_updateLayout likely handles initial color, or set here)
+            m_hintPointsText->setFillColor(m_currentTheme.hudTextFound); // Match theme
 
-        // -- - Draw Hint UI-- -
-        if (m_gameState == GState::Playing || m_currentScreen == GameScreen::GameOver)
-        {
+            // 2. Apply flourish effect IF the timer is active
+            sf::Vector2f originalPosition = m_hintPointsText->getPosition(); // Position set by m_updateLayout
+            sf::Vector2f originalOrigin = m_hintPointsText->getOrigin();     // Origin set by m_updateLayout
+            sf::Vector2f originalScale = m_hintPointsText->getScale();       // Usually {1,1} unless layout scales it
 
-            // --- DRAW HINT BACKGROUND FIRST ---
-            m_hintAreaBg.setFillColor(sf::Color(200, 200, 200, 50)); // Light grey, semi-transparent
-            m_hintAreaBg.setOutlineColor(sf::Color(220, 220, 220, 100)); // Slightly brighter outline
-            m_hintAreaBg.setOutlineThickness(S(this, 1.f)); // Scaled outline thickness
-            m_window.draw(m_hintAreaBg);
+            if (m_hintPointsTextFlourishTimer > 0.f) {
+                float progress = (HINT_POINT_TEXT_FLOURISH_DURATION - m_hintPointsTextFlourishTimer) / HINT_POINT_TEXT_FLOURISH_DURATION;
+                float flourishScaleFactor = 1.0f + 0.3f * std::sin(progress * PI);
 
-            // Update points display string and draw
-            if (m_hintPointsText) {
-                // *** SET STRING HERE ***
-                m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
-                m_hintPointsText->setFillColor(m_currentTheme.hudTextFound); // Use theme color or specific color
-                m_window.draw(*m_hintPointsText);
+                sf::FloatRect localBounds = m_hintPointsText->getLocalBounds();
+                float centerX = localBounds.position.x + localBounds.size.x / 2.f;
+                float centerY = localBounds.position.y + localBounds.size.y / 2.f;
+
+                m_hintPointsText->setOrigin({ centerX, centerY });
+                // Adjust position to keep the new center where the old origin's point + center offset was
+                m_hintPointsText->setPosition({ originalPosition.x + (centerX - originalOrigin.x),
+                                               originalPosition.y + (centerY - originalOrigin.y) });
+                m_hintPointsText->setScale({ flourishScaleFactor, flourishScaleFactor });
             }
 
-            // Define colors
-            sf::Color affordableColor = m_currentTheme.menuButtonNormal;
-            sf::Color affordableHoverColor = m_currentTheme.menuButtonHover; // Or adjustColorBrightness(...) if you prefer
-            sf::Color unaffordableColor = sf::Color(100, 100, 100, 180); // Greyed out
-            sf::Color affordableTextColor = m_currentTheme.menuButtonText;
-            sf::Color unaffordableTextColor = sf::Color(180, 180, 180, 200);
+            // 3. Draw the text
+            m_window.draw(*m_hintPointsText);
 
-
-            // Check affordability
-            bool canAffordFirst = m_hintPoints >= HINT_COST_REVEAL_FIRST;
-            // ... (rest of affordability checks) ...
-            bool canAffordRandom = m_hintPoints >= HINT_COST_REVEAL_RANDOM;
-            bool canAffordLast = m_hintPoints >= HINT_COST_REVEAL_LAST;
-
-            // --- Hint 1: Reveal First ---
-            bool hoverFirst = m_hintRevealFirstButtonShape.getGlobalBounds().contains(mousePos);
-            m_hintRevealFirstButtonShape.setFillColor(canAffordFirst ? (hoverFirst ? affordableHoverColor : affordableColor) : unaffordableColor);
-            m_window.draw(m_hintRevealFirstButtonShape);
-
-            if (m_hintRevealFirstButtonText) {
-                m_hintRevealFirstButtonText->setFillColor(canAffordFirst ? affordableTextColor : unaffordableTextColor);
-                m_window.draw(*m_hintRevealFirstButtonText);
-            }
-            if (m_hintRevealFirstCostText) {
-                // *** SET STRING HERE ***
-                m_hintRevealFirstCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_FIRST));
-                m_hintRevealFirstCostText->setFillColor(canAffordFirst ? affordableTextColor : unaffordableTextColor);
-                m_window.draw(*m_hintRevealFirstCostText);
-            }
-
-            // --- Hint 2: Reveal Random ---
-            bool hoverRandom = m_hintRevealRandomButtonShape.getGlobalBounds().contains(mousePos);
-            m_hintRevealRandomButtonShape.setFillColor(canAffordRandom ? (hoverRandom ? affordableHoverColor : affordableColor) : unaffordableColor);
-            m_window.draw(m_hintRevealRandomButtonShape);
-
-            if (m_hintRevealRandomButtonText) {
-                m_hintRevealRandomButtonText->setFillColor(canAffordRandom ? affordableTextColor : unaffordableTextColor);
-                m_window.draw(*m_hintRevealRandomButtonText);
-            }
-            if (m_hintRevealRandomCostText) {
-                // *** SET STRING HERE ***
-                m_hintRevealRandomCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_RANDOM));
-                m_hintRevealRandomCostText->setFillColor(canAffordRandom ? affordableTextColor : unaffordableTextColor);
-                m_window.draw(*m_hintRevealRandomCostText);
-            }
-
-            // --- Hint 3: Reveal Last Word ---
-            bool hoverLast = m_hintRevealLastButtonShape.getGlobalBounds().contains(mousePos);
-            m_hintRevealLastButtonShape.setFillColor(canAffordLast ? (hoverLast ? affordableHoverColor : affordableColor) : unaffordableColor);
-            m_window.draw(m_hintRevealLastButtonShape);
-
-            if (m_hintRevealLastButtonText) {
-                m_hintRevealLastButtonText->setFillColor(canAffordLast ? affordableTextColor : unaffordableTextColor);
-                m_window.draw(*m_hintRevealLastButtonText);
-            }
-            if (m_hintRevealLastCostText) {
-                // *** SET STRING HERE ***
-                m_hintRevealLastCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_LAST));
-                m_hintRevealLastCostText->setFillColor(canAffordLast ? affordableTextColor : unaffordableTextColor);
-                m_window.draw(*m_hintRevealLastCostText);
+            // 4. Reset scale, origin, and position if they were changed by the flourish
+            if (m_hintPointsTextFlourishTimer > 0.f) {
+                m_hintPointsText->setScale(originalScale);
+                m_hintPointsText->setOrigin(originalOrigin);
+                m_hintPointsText->setPosition(originalPosition);
             }
         }
-        // --- End Hint UI Drawing ---
-    }
+        // --- END: Hint "Points:" Text Display with Flourish ---
+
+        // --- Draw Hint UI Buttons and Cost Text (already handled by m_updateLayout for positioning) ---
+        // Affordability and hover colors are applied here.
+        m_hintAreaBg.setFillColor(sf::Color(200, 200, 200, 50));
+        m_hintAreaBg.setOutlineColor(sf::Color(220, 220, 220, 100));
+        m_hintAreaBg.setOutlineThickness(S(this, 1.f));
+        m_window.draw(m_hintAreaBg);
+
+        // (m_hintPointsText is drawn above with flourish logic)
+
+        sf::Color affordableColor = m_currentTheme.menuButtonNormal;
+        sf::Color affordableHoverColor = m_currentTheme.menuButtonHover;
+        sf::Color unaffordableColor = sf::Color(100, 100, 100, 180);
+        sf::Color affordableTextColor = m_currentTheme.menuButtonText;
+        sf::Color unaffordableTextColor = sf::Color(180, 180, 180, 200);
+
+        bool canAffordFirst = m_hintPoints >= HINT_COST_REVEAL_FIRST;
+        bool canAffordRandom = m_hintPoints >= HINT_COST_REVEAL_RANDOM;
+        bool canAffordLast = m_hintPoints >= HINT_COST_REVEAL_LAST;
+
+        // Hint 1: Reveal First
+        bool hoverFirst = m_hintRevealFirstButtonShape.getGlobalBounds().contains(mousePos);
+        m_hintRevealFirstButtonShape.setFillColor(canAffordFirst ? (hoverFirst ? affordableHoverColor : affordableColor) : unaffordableColor);
+        m_window.draw(m_hintRevealFirstButtonShape);
+        if (m_hintRevealFirstButtonText) { m_hintRevealFirstButtonText->setFillColor(canAffordFirst ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstButtonText); }
+        if (m_hintRevealFirstCostText) { m_hintRevealFirstCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_FIRST)); m_hintRevealFirstCostText->setFillColor(canAffordFirst ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstCostText); }
+
+        // Hint 2: Reveal Random
+        bool hoverRandom = m_hintRevealRandomButtonShape.getGlobalBounds().contains(mousePos);
+        m_hintRevealRandomButtonShape.setFillColor(canAffordRandom ? (hoverRandom ? affordableHoverColor : affordableColor) : unaffordableColor);
+        m_window.draw(m_hintRevealRandomButtonShape);
+        if (m_hintRevealRandomButtonText) { m_hintRevealRandomButtonText->setFillColor(canAffordRandom ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealRandomButtonText); }
+        if (m_hintRevealRandomCostText) { m_hintRevealRandomCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_RANDOM)); m_hintRevealRandomCostText->setFillColor(canAffordRandom ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealRandomCostText); }
+
+        // Hint 3: Reveal Last Word
+        bool hoverLast = m_hintRevealLastButtonShape.getGlobalBounds().contains(mousePos);
+        m_hintRevealLastButtonShape.setFillColor(canAffordLast ? (hoverLast ? affordableHoverColor : affordableColor) : unaffordableColor);
+        m_window.draw(m_hintRevealLastButtonShape);
+        if (m_hintRevealLastButtonText) { m_hintRevealLastButtonText->setFillColor(canAffordLast ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealLastButtonText); }
+        if (m_hintRevealLastCostText) { m_hintRevealLastCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_LAST)); m_hintRevealLastCostText->setFillColor(canAffordLast ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealLastCostText); }
+    } // End if (m_gameState == GState::Playing)
 
     //------------------------------------------------------------
     //  Draw Solved State overlay
     //------------------------------------------------------------
     if (m_currentScreen == GameScreen::GameOver) {
-
-        //std::cout << "  RENDER OVERLAY: Screen is GameOver. Drawing overlay..." << std::endl;
-        sf::Text winTxt(m_font, "Puzzle Solved!", scaledSolvedFontSize);
+        sf::Text winTxt(m_font, "Puzzle Solved!", scaledSolvedFontSize); // SFML 3.0 constructor
         winTxt.setFillColor(m_currentTheme.hudTextSolved);
         winTxt.setStyle(sf::Text::Bold);
         sf::FloatRect winTxtBounds = winTxt.getLocalBounds();
@@ -2386,29 +2381,23 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         float contBtnPosY = winTxtCenterY + (winTxtBounds.size.y / 2.f) + scaledSpacing;
         winTxt.setOrigin({ winTxtBounds.position.x + winTxtBounds.size.x / 2.f, winTxtBounds.position.y + winTxtBounds.size.y / 2.f });
         winTxt.setPosition({ overlayCenter.x, winTxtCenterY });
-        if (m_contTxt)
+        if (m_contTxt) // m_contTxt is a unique_ptr
         {
             m_contTxt->setCharacterSize(scaledContinueFontSize);
             sf::FloatRect contTxtBounds = m_contTxt->getLocalBounds();
             m_contTxt->setOrigin({ contTxtBounds.position.x + contTxtBounds.size.x / 2.f, contTxtBounds.position.y + contTxtBounds.size.y / 2.f });
-            m_contBtn.setOrigin({ contBtnSize.x / 2.f, 0.f });
+            m_contBtn.setOrigin({ contBtnSize.x / 2.f, 0.f }); // Assuming m_contBtn is a direct member or properly initialized shape
             m_contBtn.setPosition({ overlayCenter.x, contBtnPosY });
             m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, contBtnSize.y / 2.f });
         }
         bool contHover = m_contBtn.getGlobalBounds().contains(mousePos); sf::Color continueHoverColor = adjustColorBrightness(m_currentTheme.continueButton, 1.2f);
         m_contBtn.setFillColor(contHover ? continueHoverColor : m_currentTheme.continueButton);
 
-        // Log positions just before drawing
-        //std::cout << "  RENDER OVERLAY: Overlay Pos(" << overlayCenter.x << "," << overlayCenter.y << ") Size(" << overlayWidth << "," << overlayHeight << ")" << std::endl;
-        //std::cout << "  RENDER OVERLAY: ContBtn Pos(" << m_contBtn.getPosition().x << "," << m_contBtn.getPosition().y << ") Size(" << contBtnSize.x << "," << contBtnSize.y << ")" << std::endl;
-        //if (m_contTxt) std::cout << "  RENDER OVERLAY: ContTxt Pos(" << m_contTxt->getPosition().x << "," << m_contTxt->getPosition().y << ")" << std::endl;
-
         m_window.draw(m_solvedOverlay);
         m_window.draw(winTxt);
         m_window.draw(m_contBtn);
         if (m_contTxt) m_window.draw(*m_contTxt);
     }
-    
 }
 // ***** END OF COMPLETE Game::m_renderGameScreen FUNCTION *****
 
@@ -3171,3 +3160,91 @@ void Game::m_renderScoreFlourishes(sf::RenderTarget& target) {
     }
 }
 
+void Game::m_spawnHintPointAnimation(const sf::Vector2f& bonusWordTextCenterPos) {
+    HintPointAnimParticle particle;
+    particle.startPosition = bonusWordTextCenterPos; // Where the "Bonus Word" text is
+    particle.currentPosition = particle.startPosition;
+    particle.textString = "+1";
+    particle.color = sf::Color(255, 215, 0, 255); 
+
+    // Determine target position: the center of m_hintPointsText
+    if (m_hintPointsText) {
+        sf::FloatRect hintTextGlobalBounds = m_hintPointsText->getGlobalBounds(); // Use global for screen pos
+        particle.targetPosition = {
+            hintTextGlobalBounds.position.x + hintTextGlobalBounds.size.x / 2.f,
+            hintTextGlobalBounds.position.y + hintTextGlobalBounds.size.y / 2.f
+        };
+    }
+    else {
+        // Fallback if m_hintPointsText is somehow not available
+        // This should ideally not happen if layout is done correctly.
+        // Target a generic spot on the left.
+        std::cerr << "WARNING: m_hintPointsText is null. Hint point anim targeting fallback." << std::endl;
+        particle.targetPosition = { S(this, 100.f), S(this, 50.f) }; // Example fallback
+    }
+
+    particle.speed = HINT_POINT_ANIM_SPEED;
+    particle.t = 0.f; // Start animation
+
+    m_hintPointAnims.push_back(particle);
+}
+
+void Game::m_updateHintPointAnims(float dt) {
+    m_hintPointAnims.erase(
+        std::remove_if(m_hintPointAnims.begin(), m_hintPointAnims.end(),
+            [&](HintPointAnimParticle& p) {
+                p.t += dt * p.speed;
+                if (p.t >= 1.f) {
+                    p.t = 1.f; // Clamp
+                    // When animation finishes, trigger the flourish of the "Points:" text
+                    m_hintPointsTextFlourishTimer = HINT_POINT_TEXT_FLOURISH_DURATION;
+                    // Note: The actual increment of m_hintPoints happens when the bonus word is found.
+                    // This animation is purely visual for the "+1".
+                    return true; // Mark for removal
+                }
+
+                // Interpolate position (simple linear for now, can add easing)
+                p.currentPosition.x = p.startPosition.x + (p.targetPosition.x - p.startPosition.x) * p.t;
+                p.currentPosition.y = p.startPosition.y + (p.targetPosition.y - p.startPosition.y) * p.t;
+
+                // Fade out towards the end of the animation (e.g., last 30%)
+                if (p.t > 0.7f) {
+                    float fadeRatio = (1.0f - p.t) / 0.3f; // 0.0 at t=1.0, 1.0 at t=0.7
+                    p.color.a = static_cast<std::uint8_t>(std::max(0.f, std::min(255.f, fadeRatio * 255.f)));
+                }
+                return false; // Keep particle
+            }),
+        m_hintPointAnims.end()
+    );
+
+    // Update the "Points:" text flourish timer
+    if (m_hintPointsTextFlourishTimer > 0.f) {
+        m_hintPointsTextFlourishTimer -= dt;
+        if (m_hintPointsTextFlourishTimer < 0.f) {
+            m_hintPointsTextFlourishTimer = 0.f;
+        }
+    }
+}
+
+void Game::m_renderHintPointAnims(sf::RenderTarget& target) {
+    if (m_font.getInfo().family.empty()) {
+        return;
+    }
+
+    unsigned int scaledCharSize = static_cast<unsigned int>(std::max(8.0f, S(this, HINT_POINT_ANIM_FONT_SIZE_DESIGN)));
+
+    // Construct with font, empty string (will be set), and char size
+    sf::Text renderText(m_font, "", scaledCharSize);
+    // No need to setStyle if it's always regular for this animation
+
+    for (const auto& p : m_hintPointAnims) {
+        renderText.setString(p.textString); // Should be "+1"
+        renderText.setFillColor(p.color);
+        renderText.setPosition(p.currentPosition);
+
+        sf::FloatRect textBounds = renderText.getLocalBounds();
+        renderText.setOrigin({ textBounds.position.x + textBounds.size.x / 2.f,
+                              textBounds.position.y + textBounds.size.y / 2.f });
+        target.draw(renderText);
+    }
+}

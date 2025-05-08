@@ -27,8 +27,6 @@
 #include <vector>
 #include <string>
 #include <set>
-//#include <unordered_set> // If used in header (doesn't look like it is)
-//#include <optional>
 #include <memory> // For std::unique_ptr
 
 enum class DifficultyLevel {
@@ -88,8 +86,10 @@ private:
     int m_currentPuzzleIndex; 
     bool m_isInSession;      
 
-    std::vector<WordInfo> m_allPotentialSolutions; // Stores ALL sub-words before filtering
-    std::set<std::string> m_foundBonusWords;      // Tracks found bonus words this puzzle
+    std::vector<WordInfo> m_allPotentialSolutions;
+    std::set<std::string> m_foundBonusWords;
+    std::vector<HintPointAnimParticle> m_hintPointAnims;
+    float m_hintPointsTextFlourishTimer;
 
     // Core SFML Objects
     sf::RenderWindow m_window;
@@ -296,6 +296,10 @@ private:
 
     void m_handleSessionCompleteEvents(const sf::Event& event);
     void m_renderDebugCircle();
+
+    void m_spawnHintPointAnimation(const sf::Vector2f& startPos);
+    void m_updateHintPointAnims(float dt);
+    void m_renderHintPointAnims(sf::RenderTarget& target);
 };
 
 #endif // GAME_H
