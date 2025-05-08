@@ -37,7 +37,7 @@ enum class DifficultyLevel {
 };
 
 // Add an enum for Hint Types
-enum class HintType { RevealFirst, RevealRandom, RevealLast };
+enum class HintType { RevealFirst, RevealRandom, RevealLast, RevealFirstOfEach };
 
 
 //--------------------------------------------------------------------
@@ -112,11 +112,14 @@ private:
     std::unique_ptr<sf::Text> m_hintRevealLastButtonText;   // Text for new button ("Last Word")
     std::unique_ptr<sf::Text> m_hintRevealLastCostText;     // Cost for new button
     std::unique_ptr<sf::Text> m_hintRevealFirstButtonText;
+    std::unique_ptr<sf::Text> m_hintRevealFirstOfEachButtonText; // <<< NEW BUTTON TEXT
+    std::unique_ptr<sf::Text> m_hintRevealFirstOfEachCostText;
 
     // Shapes for the hint buttons
     RoundedRectangleShape m_hintRevealFirstButtonShape;
     RoundedRectangleShape m_hintRevealRandomButtonShape;
     RoundedRectangleShape m_hintRevealLastButtonShape;
+    RoundedRectangleShape m_hintRevealFirstOfEachButtonShape;
     RoundedRectangleShape m_hintAreaBg;
 
     // Calculated layout properties for wheel letters
