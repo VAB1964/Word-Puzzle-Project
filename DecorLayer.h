@@ -2,10 +2,11 @@
 #ifndef DECORLAYER_H
 #define DECORLAYER_H
 
+#include "theme.h" 
 #include <SFML/Graphics.hpp> // Includes Vector2f, Color, RenderTarget, Drawable, Transformable etc.
 #include <vector>
 #include <string> // Included by SFML/Graphics, but good practice
-#include "Theme.h" // Needs ColorTheme for the update method
+// Needs ColorTheme for the update method
 
 
 //--------------------------------------------------------------------

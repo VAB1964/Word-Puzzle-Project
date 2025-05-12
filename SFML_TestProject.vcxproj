@@ -119,6 +119,8 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <ShowIncludes>false</ShowIncludes>
+      <AdditionalIncludeDirectories>E:\UdemyCoursesProjects\WordPuzzle\SFML_TestProject;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

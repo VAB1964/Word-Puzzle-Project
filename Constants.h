@@ -80,4 +80,14 @@ const float HINT_POINT_ANIM_FONT_SIZE_DESIGN = 20.f;
 const float HINT_POINT_TEXT_FLOURISH_DURATION = 0.5f; // Duration for "Points:" text flourish
 const float HINT_POINT_ANIM_SPEED = 1.0f;
 
+// DEBUG: ---- Assuming REF_W = 1000, REF_H = 800 for these example values:
+const sf::FloatRect GRID_ZONE_RECT_DESIGN = { { 90.f,  122.f}, {815.f, 273.f} }; // Large central area for the word grid
+const sf::FloatRect HINT_ZONE_RECT_DESIGN = { { 95.f, 500.f}, {272.f, 195.f} }; // Bottom-left area for hints
+const sf::FloatRect WHEEL_ZONE_RECT_DESIGN = { {382.f, 451.f}, {265.f, 290.f} }; // Bottom-middle for letter wheel
+const sf::FloatRect SCORE_ZONE_RECT_DESIGN = { {660.f, 500.f}, {243.f, 195.f} }; // Bottom-right for score/bonus
+const sf::FloatRect TOP_BAR_ZONE_DESIGN = { { 50.f,  10.f}, {900.f,  30.f} }; // Area for current "Score: XXX" and "1/5"
+
+const float GRID_ZONE_PADDING_X_DESIGN = 2.f; 
+const float GRID_ZONE_PADDING_Y_DESIGN = 2.f;
+
 #endif // CONSTANTS_H

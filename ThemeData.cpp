@@ -1,8 +1,10 @@
 #include "ThemeData.h"
-#include "Theme.h" // Include ColorTheme definition again
+#include "theme.h" // Include ColorTheme definition again
+#include <vector> 
 #include <SFML/Graphics/Color.hpp> // Include sf::Color
 
-std::vector<ColorTheme> loadThemes() {
+std::vector<ColorTheme> loadThemes()
+{
     std::vector<ColorTheme> m_themes;
 
     // Define and add themes here using the commented format from above

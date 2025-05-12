@@ -1,8 +1,9 @@
-// ThemeData.h
-#pragma once // Or use include guards (#ifndef THEME_DATA_H ... #endif)
+//ThemeData.h
+#pragma once
+//#ifndef THEME_DATA_H
+//#define THEME_DATA_H
 
-#include "theme.h" // Include the definition of ColorTheme struct
+#include "theme.h"
 #include <vector>
 
-// Declare the function that will load and return all defined themes
 std::vector<ColorTheme> loadThemes();

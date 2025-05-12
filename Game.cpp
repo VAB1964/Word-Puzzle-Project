@@ -1,8 +1,9 @@
-﻿#include <utility>
+﻿
+#include <utility>
 #include <cstdint>
 #include <fstream>
 #include <sstream>
-#include <vector>
+
 #include <string>
 #include <iostream> // For error messages
 #include <stdexcept> // For std::stof, std::stoi exceptions
@@ -27,13 +28,14 @@
 #include <SFML/Window/Mouse.hpp>    // If directly used in Game.cpp
 
 // 3. Your Project-Specific Headers
-#include "Theme.h"
+#include "theme.h"
 #include "Constants.h"
 #include "ThemeData.h"
 #include "GameData.h" // GameData.h might use types from SFML/Graphics.hpp
 #include "Game.h"     // Game.h definitely uses types from SFML/Graphics.hpp
 #include "Words.h"
 #include "Utils.h"
+#include <vector>
 
 //--------------------------------------------------------------------
 //  Game Class Implementation
@@ -123,7 +125,7 @@ Game::Game() :
     m_currentPuzzleIndex(0),
     m_isInSession(false),
     m_uiScale(1.f),
-    m_hintPoints(100),
+    m_hintPoints(999),
     m_scoreFlourishes(),
     m_hintPointAnims(), 
     m_hintPointsTextFlourishTimer(0.f),
@@ -143,6 +145,7 @@ Game::Game() :
     m_casualMenuTitle(nullptr), m_easyButtonText(nullptr), m_mediumButtonText(nullptr), m_hardButtonText(nullptr), m_returnButtonText(nullptr),
     m_guessDisplay_Text(nullptr),
     m_progressMeterText(nullptr),
+    m_mainBackgroundSpr(nullptr),
     m_returnToMenuButtonText(nullptr), // Added for return button
     // UI Shapes (can use constructor directly)
     m_contBtn({ 200.f, 50.f }, 10.f, 10),
@@ -169,7 +172,10 @@ Game::Game() :
     m_hintRevealFirstButtonShape({ 100.f, 30.f }, 5.f, 10), 
     m_hintRevealFirstOfEachButtonShape({ 100.f, 30.f }, 5.f, 10),
     m_hintAreaBg({ 100.f, 200.f }, 10.f, 10),
-    m_firstFrame(true) // Initialize first frame flag
+    //debug
+    m_showDebugZones(true),
+
+    m_firstFrame(true) 
 { // --- Constructor Body Starts Here ---
 
     //----------------------------------------------------------------
@@ -228,6 +234,26 @@ Game::Game() :
         float scrambleScale = SCRAMBLE_BTN_HEIGHT / static_cast<float>(m_scrambleTex.getSize().y);
         m_scrambleSpr->setScale({ scrambleScale, scrambleScale });
     }
+
+    //DEBUG:
+    sf::Color debugColor = sf::Color(255, 0, 0, 100); // Semi-transparent red
+    float outlineThickness = 5.0f; // In design units (will be scaled by m_uiScale via S())
+
+    m_debugGridZoneShape.setFillColor(sf::Color::Transparent);
+    m_debugGridZoneShape.setOutlineColor(debugColor);
+   
+
+    m_debugHintZoneShape.setFillColor(sf::Color::Transparent);
+    m_debugHintZoneShape.setOutlineColor(debugColor);
+
+    m_debugWheelZoneShape.setFillColor(sf::Color::Transparent);
+    m_debugWheelZoneShape.setOutlineColor(debugColor);
+
+    m_debugScoreZoneShape.setFillColor(sf::Color::Transparent);
+    m_debugScoreZoneShape.setOutlineColor(debugColor);
+
+    m_debugTopBarZoneShape.setFillColor(sf::Color::Transparent);
+    m_debugTopBarZoneShape.setOutlineColor(debugColor);
 
 
     // --- Initial Setup Order ---
@@ -362,6 +388,14 @@ void Game::m_loadResources() {
         }
     }
     // --- Textures ---
+    
+    // --- Load New Main Background Texture ---
+    if (!m_mainBackgroundTex.loadFromFile("assets/BackgroundandFrame.png")) { 
+        std::cerr << "CRITICAL ERROR: Could not load main background texture!" << std::endl;
+        exit(1); 
+    }
+    m_mainBackgroundTex.setSmooth(true); // Optional, but good for detailed art if scaled    
+
     // Load scramble button texture (Example - adjust path as needed)
     if (!m_scrambleTex.loadFromFile("assets/scramble.png")) {
         std::cerr << "Error loading scramble texture!" << std::endl;
@@ -446,6 +480,18 @@ void Game::m_loadResources() {
     m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
     m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
 
+    // --- Create and set up the main background sprite ---
+    m_mainBackgroundSpr = std::make_unique<sf::Sprite>(m_mainBackgroundTex);
+    if (m_mainBackgroundSpr) {
+        m_mainBackgroundSpr->setTexture(m_mainBackgroundTex);
+        m_mainBackgroundSpr->setPosition({ 0.f, 0.f });
+    }
+    else {
+        std::cerr << "ERROR: Failed to create m_mainBackgroundSpr unique_ptr!" << std::endl;
+        exit(1); // Critical error
+    }
+
+
     // --- Create Text Objects (Link Font, Set Properties) --- *** MOVED HERE ***
     m_contTxt = std::make_unique<sf::Text>(m_font, "Continue", 24);
     m_scoreLabelText = std::make_unique<sf::Text>(m_font, "SCORE:", 24);
@@ -528,17 +574,18 @@ void Game::m_loadResources() {
     // --- End m_roots creation ---
 
     // --- Load Color Themes ---
-    // Clear any potential default theme added erroneously earlier if necessary
     m_themes.clear();
     m_themes = loadThemes();
+    //m_themes[0] = m_currentTheme;
 
     // Check if loading failed or returned empty
     if (m_themes.empty()) {
         std::cerr << "CRITICAL Warning: loadThemes() returned empty vector. Using fallback default theme.\n";
         m_themes.push_back({}); // Add a default-constructed theme as a fallback
     }
-
     if (m_returnToMenuButtonText) m_returnToMenuButtonText->setFillColor(sf::Color::White);
+
+    
 
 }
 
@@ -625,6 +672,14 @@ void Game::m_update(sf::Time dt) {
 // --- Render ---
 void Game::m_render() {
     m_window.clear(m_currentTheme.winBg);
+
+    // --- DRAW NEW MAIN BACKGROUND SPRITE FIRST ---
+    if (m_mainBackgroundSpr && m_mainBackgroundTex.getSize().x > 0) { 
+        m_window.draw(*m_mainBackgroundSpr); 
+    }
+    // --- END DRAW NEW MAIN BACKGROUND ---
+
+
     m_decor.draw(m_window); // Draw background decor first
 
     // Get mouse position once for hover checks within render helpers
@@ -641,6 +696,16 @@ void Game::m_render() {
         else if (m_currentScreen == GameScreen::SessionComplete) { m_renderSessionComplete(mpos); }
         else { m_renderGameScreen(mpos); }
     }
+
+    // --- Draw Debug Zones (draw them last to see on top of everything) ---
+    if (m_showDebugZones) {
+        m_window.draw(m_debugGridZoneShape);
+        m_window.draw(m_debugHintZoneShape);
+        m_window.draw(m_debugWheelZoneShape);
+        m_window.draw(m_debugScoreZoneShape);
+        m_window.draw(m_debugTopBarZoneShape);
+    }
+
 
     // TODO: Draw Pop-ups last if needed
 
@@ -959,6 +1024,26 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         // ... (other initial log messages)
     }
 
+    // --- Update Main Background Sprite to fill the design view ---
+    if (m_mainBackgroundSpr && m_mainBackgroundTex.getSize().x > 0) { // <<< CHECK m_mainBackgroundSpr POINTER
+        m_mainBackgroundSpr->setPosition({ 0.f, 0.f }); 
+
+        float scaleX = static_cast<float>(REF_W) / m_mainBackgroundTex.getSize().x;
+        float scaleY = static_cast<float>(REF_H) / m_mainBackgroundTex.getSize().y;
+
+        m_mainBackgroundSpr->setScale({ scaleX, scaleY });
+
+        float designAspect = static_cast<float>(REF_W) / REF_H;
+        float bgAspect = static_cast<float>(m_mainBackgroundTex.getSize().x) / m_mainBackgroundTex.getSize().y;
+        if (bgAspect > designAspect) { // Background is wider than design space
+            m_mainBackgroundSpr->setScale({ scaleY, scaleY });
+            m_mainBackgroundSpr->setPosition({ (REF_W - m_mainBackgroundTex.getSize().x * scaleY) / 2.f, 0.f });
+         } else { 
+            m_mainBackgroundSpr->setScale({ scaleX, scaleX }); // Scale by width, height will be cropped
+            m_mainBackgroundSpr->setPosition({ 0.f, (REF_H - m_mainBackgroundTex.getSize().y * scaleX) / 2.f }); // Center vertically
+         }
+    }
+
     // 3. Position Top Elements (Score Bar, Progress Meter)
     // ... (This section remains unchanged from your working version) ...
     const float scaledScoreBarWidth = S(this, SCORE_BAR_WIDTH); const float scaledScoreBarHeight = S(this, SCORE_BAR_HEIGHT); const float scaledScoreBarBottomMargin = S(this, SCORE_BAR_BOTTOM_MARGIN);
@@ -975,63 +1060,179 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
 
     // --- 4. Calculate Grid Layout ---
-    // ... (This extensive section remains unchanged from your working version) ...
-    m_gridStartY = gridSectionTopY;
-    const float availableGridHeight = gridSectionHeight;
+    // --- 4a. Define Grid Zone's Inner boundaries and Original m_gridStartY ---
+    // These are in design coordinates. The sf::View handles overall scaling to window.
+    const float zoneInnerX = GRID_ZONE_RECT_DESIGN.position.x + GRID_ZONE_PADDING_X_DESIGN;
+    const float zoneInnerY = GRID_ZONE_RECT_DESIGN.position.y + GRID_ZONE_PADDING_Y_DESIGN;
+    const float zoneInnerWidth = GRID_ZONE_RECT_DESIGN.size.x - 2 * GRID_ZONE_PADDING_X_DESIGN;
+    const float zoneInnerHeight = GRID_ZONE_RECT_DESIGN.size.y - 2 * GRID_ZONE_PADDING_Y_DESIGN;
+
+    m_gridStartY = zoneInnerY; // Grid will start at the top of the padded zone area
+    // This might be adjusted later if we center vertically.
+
     int numCols = 1;
     int maxRowsPerCol = m_sorted.empty() ? 1 : (int)m_sorted.size();
-    float actualGridHeight = 0;
+    float actualGridFinalHeight = 0; // Will store the final height of the rendered grid
     m_wordCol.clear(); m_wordRow.clear(); m_colMaxLen.clear(); m_colXOffset.clear();
-    m_currentGridLayoutScale = 1.0f;
+
+    // This scale factor will be calculated to make the grid fit the zone.
+    // It will be <= 1.0. If 1.0, it means original TILE_SIZE fits.
+    float gridElementsScaleFactor = 1.0f;
+
     if (!m_sorted.empty()) {
-        const float st_base = S(this, TILE_SIZE); const float sp_base = S(this, TILE_PAD); const float sc_base = S(this, COL_PAD);
-        const float stph_base = st_base + sp_base; const float stpw_base = st_base + sp_base;
-        int bestFitCols = 1; int bestFitRows = (int)m_sorted.size(); float minWidthVertFit = std::numeric_limits<float>::max(); bool foundVerticalFit = false;
+        // --- 4b. Heuristic: Find best column/row count using ORIGINAL (unscaled) design constants ---
+        // TILE_SIZE, TILE_PAD, COL_PAD are base design values.
+        const float st_base_design = TILE_SIZE; // Original tile size from Constants.h
+        const float sp_base_design = TILE_PAD;  // Original tile padding
+        const float sc_base_design = COL_PAD;   // Original column padding
+
+        const float stph_base_design = st_base_design + sp_base_design;
+        const float stpw_base_design = st_base_design + sp_base_design;
+
+        // The heuristic itself for choosing column/row counts can largely remain.
+        // It prioritizes fitting MAX_ROWS_LIMIT and then being narrow.
+        // We are NOT using zoneInnerHeight directly in *this* heuristic pass,
+        // because we'll scale the result later.
+        int bestFitCols = 1; int bestFitRows = (int)m_sorted.size();
+        // float minWidthVertFit = std::numeric_limits<float>::max(); bool foundVerticalFit = false; // Old variables
         int narrowestOverallCols = 1; int narrowestOverallRows = (int)m_sorted.size(); float minWidthOverall = std::numeric_limits<float>::max();
         int maxPossibleCols = std::min(8, std::max(1, (int)m_sorted.size()));
+
         for (int tryCols = 1; tryCols <= maxPossibleCols; ++tryCols) {
             int rowsNeeded = ((int)m_sorted.size() + tryCols - 1) / tryCols; if (rowsNeeded <= 0) rowsNeeded = 1;
-            std::vector<int> currentTryColMaxLen(tryCols, 0); float currentTryWidth = 0;
+            std::vector<int> currentTryColMaxLen(tryCols, 0); float currentTryWidthUnscaled = 0;
             for (size_t w = 0; w < m_sorted.size(); ++w) { int c = (int)w / rowsNeeded; if (c >= 0 && c < tryCols) { currentTryColMaxLen[c] = std::max<int>(currentTryColMaxLen[c], (int)m_sorted[w].text.length()); } }
-            for (int len : currentTryColMaxLen) { currentTryWidth += (float)len * stpw_base - (len > 0 ? sp_base : 0.f); } currentTryWidth += (float)std::max(0, tryCols - 1) * sc_base; if (currentTryWidth < 0) currentTryWidth = 0;
-            float currentTryHeight = (float)rowsNeeded * stph_base - (rowsNeeded > 0 ? sp_base : 0.f); if (currentTryHeight < 0) currentTryHeight = 0;
-            if (currentTryWidth < minWidthOverall) { minWidthOverall = currentTryWidth; narrowestOverallCols = tryCols; narrowestOverallRows = rowsNeeded; }
-            if (currentTryHeight <= availableGridHeight) { if (!foundVerticalFit || currentTryWidth < minWidthVertFit) { minWidthVertFit = currentTryWidth; bestFitCols = tryCols; bestFitRows = rowsNeeded; foundVerticalFit = true; } }
+            for (int len : currentTryColMaxLen) { currentTryWidthUnscaled += (float)len * stpw_base_design - (len > 0 ? sp_base_design : 0.f); }
+            currentTryWidthUnscaled += (float)std::max(0, tryCols - 1) * sc_base_design; if (currentTryWidthUnscaled < 0) currentTryWidthUnscaled = 0;
+
+            // float currentTryHeightUnscaled = (float)rowsNeeded * stph_base_design - (rowsNeeded > 0 ? sp_base_design : 0.f); // Not strictly needed for selection here
+
+            if (currentTryWidthUnscaled < minWidthOverall) { // Prioritize narrowness
+                minWidthOverall = currentTryWidthUnscaled;
+                narrowestOverallCols = tryCols;
+                narrowestOverallRows = rowsNeeded;
+            }
         }
-        int chosenCols = narrowestOverallCols; int chosenRows = narrowestOverallRows;
-        if (foundVerticalFit) { chosenCols = bestFitCols; chosenRows = bestFitRows; }
-        const int MAX_ROWS_LIMIT = 5;
+        int chosenCols = narrowestOverallCols;
+        int chosenRows = narrowestOverallRows;
+
+        // Apply MAX_ROWS_LIMIT override (this is a hard constraint on rows per column)
+        const int MAX_ROWS_LIMIT = 5; // Keep your existing limit
         if (chosenRows > MAX_ROWS_LIMIT) {
-            chosenRows = MAX_ROWS_LIMIT; chosenCols = ((int)m_sorted.size() + chosenRows - 1) / chosenRows; if (chosenCols <= 0) chosenCols = 1;
+            chosenRows = MAX_ROWS_LIMIT;
+            chosenCols = ((int)m_sorted.size() + chosenRows - 1) / chosenRows;
+            if (chosenCols <= 0) chosenCols = 1;
         }
-        numCols = chosenCols; maxRowsPerCol = chosenRows;
+        numCols = chosenCols;
+        maxRowsPerCol = chosenRows;
+
+        // --- 4c. Calculate Max Length per Column (using final numCols) ---
         m_colMaxLen.assign(numCols, 0);
-        for (size_t w = 0; w < m_sorted.size(); ++w) { int c = (int)w / maxRowsPerCol; if (c >= numCols) c = numCols - 1; if (c >= 0 && c < m_colMaxLen.size()) { m_colMaxLen[c] = std::max<int>(m_colMaxLen[c], (int)m_sorted[w].text.length()); } }
-        float currentX_base = 0;
-        for (int c = 0; c < numCols; ++c) { int len = (c >= 0 && c < m_colMaxLen.size()) ? m_colMaxLen[c] : 0; float colWidth_base = (float)len * stpw_base - (len > 0 ? sp_base : 0.f); if (colWidth_base < 0) colWidth_base = 0; currentX_base += colWidth_base + sc_base; }
-        float initialTotalGridW = currentX_base - (numCols > 0 ? sc_base : 0.f); if (initialTotalGridW < 0) initialTotalGridW = 0;
-        bool needsAdjustment = (initialTotalGridW > designW); m_currentGridLayoutScale = needsAdjustment ? UI_SCALE_MODIFIER : 1.0f;
-        float tileSpecificScaleFactor = needsAdjustment ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1.0f;
-        const float st_final = S(this, TILE_SIZE) * tileSpecificScaleFactor; const float sp_final = S(this, TILE_PAD) * m_currentGridLayoutScale; const float sc_final = S(this, COL_PAD) * m_currentGridLayoutScale;
-        const float stph_final = st_final + sp_final; const float stpw_final = st_final + sp_final;
-        float currentX_final = 0; m_colXOffset.resize(numCols);
-        for (int c = 0; c < numCols; ++c) { m_colXOffset[c] = currentX_final; int len = (c >= 0 && c < m_colMaxLen.size()) ? m_colMaxLen[c] : 0; float colWidth_final = (float)len * stpw_final - (len > 0 ? sp_final : 0.f); if (colWidth_final < 0) colWidth_final = 0; currentX_final += colWidth_final + sc_final; }
-        m_totalGridW = currentX_final - (numCols > 0 ? sc_final : 0.f); if (m_totalGridW < 0) m_totalGridW = 0;
-        m_gridStartX = designCenter.x - m_totalGridW / 2.f;
-        for (int c = 0; c < numCols; ++c) { if (c < m_colXOffset.size()) { m_colXOffset[c] += m_gridStartX; } }
-        actualGridHeight = (float)maxRowsPerCol * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f); if (actualGridHeight < 0) actualGridHeight = 0;
+        for (size_t w = 0; w < m_sorted.size(); ++w) {
+            int c = (int)w / maxRowsPerCol; if (c >= numCols) c = numCols - 1;
+            if (c >= 0 && c < m_colMaxLen.size()) { m_colMaxLen[c] = std::max<int>(m_colMaxLen[c], (int)m_sorted[w].text.length()); }
+        }
+
+        // --- 4d. Calculate Total Required Width & Height with ORIGINAL tile/pad sizes ---
+        float totalRequiredWidthUnscaled = 0;
+        for (int c = 0; c < numCols; ++c) {
+            int len = (c >= 0 && c < m_colMaxLen.size()) ? m_colMaxLen[c] : 0;
+            float colWidth_unscaled = (float)len * stpw_base_design - (len > 0 ? sp_base_design : 0.f);
+            if (colWidth_unscaled < 0) colWidth_unscaled = 0;
+            totalRequiredWidthUnscaled += colWidth_unscaled;
+        }
+        totalRequiredWidthUnscaled += (float)std::max(0, numCols - 1) * sc_base_design;
+        if (totalRequiredWidthUnscaled < 0) totalRequiredWidthUnscaled = 0;
+
+        float totalRequiredHeightUnscaled = (float)maxRowsPerCol * stph_base_design - (maxRowsPerCol > 0 ? sp_base_design : 0.f);
+        if (totalRequiredHeightUnscaled < 0) totalRequiredHeightUnscaled = 0;
+
+        // --- 4e. Calculate Scale Factor to Fit this Configuration into the Zone's Inner Area ---
+        float scaleToFitX = 1.0f;
+        if (totalRequiredWidthUnscaled > zoneInnerWidth && totalRequiredWidthUnscaled > 0) {
+            scaleToFitX = zoneInnerWidth / totalRequiredWidthUnscaled;
+        }
+        float scaleToFitY = 1.0f;
+        if (totalRequiredHeightUnscaled > zoneInnerHeight && totalRequiredHeightUnscaled > 0) {
+            scaleToFitY = zoneInnerHeight / totalRequiredHeightUnscaled;
+        }
+        gridElementsScaleFactor = std::min(scaleToFitX, scaleToFitY);
+        // Ensure we don't scale *up* beyond original TILE_SIZE if it already fits.
+        // gridElementsScaleFactor = std::min(1.0f, gridElementsScaleFactor); // This is implicitly handled if scaleToFitX/Y start at 1.0
+
+        if (sizeChanged) { // Log only on size change for clarity
+            std::cout << "  GRID ZONE: Inner W=" << zoneInnerWidth << ", Inner H=" << zoneInnerHeight << std::endl;
+            std::cout << "  GRID UNSCALED: Req W=" << totalRequiredWidthUnscaled << ", Req H=" << totalRequiredHeightUnscaled
+                << " (for " << numCols << "c x " << maxRowsPerCol << "r)" << std::endl;
+            std::cout << "  GRID SCALE FACTOR: " << gridElementsScaleFactor << std::endl;
+        }
+
+        // --- 4f. Calculate Final Scaled Tile/Padding Sizes ---
+        // These are the sizes that will be used for rendering and m_tilePos
+        const float st_final = TILE_SIZE * gridElementsScaleFactor;
+        const float sp_final = TILE_PAD * gridElementsScaleFactor;
+        const float sc_final = COL_PAD * gridElementsScaleFactor;
+        const float stph_final = st_final + sp_final; // Scaled step height
+        const float stpw_final = st_final + sp_final; // Scaled step width
+
+        // --- 4g. Calculate Final Total Grid Dimensions (width and height) with scaled elements ---
+        float currentX_final_scaled = 0;
+        m_colXOffset.resize(numCols); // Will store offset of each column from grid's local 0,0
+        for (int c = 0; c < numCols; ++c) {
+            m_colXOffset[c] = currentX_final_scaled;
+            int len = (c >= 0 && c < m_colMaxLen.size()) ? m_colMaxLen[c] : 0;
+            float colWidth_final_scaled = (float)len * stpw_final - (len > 0 ? sp_final : 0.f);
+            if (colWidth_final_scaled < 0) colWidth_final_scaled = 0;
+            currentX_final_scaled += colWidth_final_scaled + sc_final;
+        }
+        m_totalGridW = currentX_final_scaled - (numCols > 0 ? sc_final : 0.f); // Final scaled width of the grid content
+        if (m_totalGridW < 0) m_totalGridW = 0;
+
+        actualGridFinalHeight = (float)maxRowsPerCol * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f);
+        if (actualGridFinalHeight < 0) actualGridFinalHeight = 0;
+
+        // --- 4h. Calculate Grid Start Position to Center it within the Zone's Inner Area ---
+        m_gridStartX = zoneInnerX + (zoneInnerWidth - m_totalGridW) / 2.f;
+        m_gridStartY = zoneInnerY + (zoneInnerHeight - actualGridFinalHeight) / 2.f; // Vertically center too
+
+        // Adjust column offsets to be relative to the screen (design space)
+        for (int c = 0; c < numCols; ++c) {
+            if (c < m_colXOffset.size()) { m_colXOffset[c] += m_gridStartX; }
+        }
+
+        // Assign word rows/cols
         m_wordCol.resize(m_sorted.size()); m_wordRow.resize(m_sorted.size());
         for (size_t w = 0; w < m_sorted.size(); ++w) { int c = (int)w / maxRowsPerCol; int r = (int)w % maxRowsPerCol; if (c >= numCols) c = numCols - 1; m_wordCol[w] = c; m_wordRow[w] = r; }
+
+        if (sizeChanged) {
+            std::cout << "  GRID FINAL: Scaled Tile=" << st_final << ", Scaled Pad=" << sp_final << std::endl;
+            std::cout << "  GRID FINAL: Total W=" << m_totalGridW << ", Total H=" << actualGridFinalHeight << std::endl;
+            std::cout << "  GRID FINAL: StartX=" << m_gridStartX << ", StartY=" << m_gridStartY << std::endl;
+        }
+
+        // Store the calculated scale factor if m_tilePos or rendering needs it explicitly
+        // The old m_currentGridLayoutScale and GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK are now
+        // effectively replaced by this single gridElementsScaleFactor for TILE_SIZE, TILE_PAD, COL_PAD.
+        // Let's make a new member if needed, or m_tilePos can recalculate scaled sizes.
+        // For now, m_tilePos will need to know gridElementsScaleFactor or be passed st_final, sp_final.
+        // It's cleaner if m_tilePos uses this factor.
+        // We can reuse m_currentGridLayoutScale for this purpose if its previous meaning is deprecated.
+        m_currentGridLayoutScale = gridElementsScaleFactor; // Re-purpose this to store the element scale
+
     }
-    else {
-        m_gridStartX = designCenter.x; m_totalGridW = 0; actualGridHeight = 0; m_currentGridLayoutScale = 1.0f;
+    else { // Grid is empty
+        m_gridStartX = zoneInnerX + zoneInnerWidth / 2.f; // Center of empty zone
+        m_gridStartY = zoneInnerY + zoneInnerHeight / 2.f;
+        m_totalGridW = 0; actualGridFinalHeight = 0;
+        m_currentGridLayoutScale = 1.0f; // Reset scale factor
     }
+    // --- End Grid Calculation Section ---
 
 
     // 5. Determine Final Wheel Size & Position
     // ... (This section remains unchanged from your working version) ...
     const float scaledGridWheelGap = S(this, GRID_WHEEL_GAP); const float scaledWheelBottomMargin = S(this, WHEEL_BOTTOM_MARGIN); const float scaledLetterRadius = S(this, LETTER_R); const float scaledHudMinHeight = S(this, HUD_AREA_MIN_HEIGHT);
-    float gridActualBottomY = m_gridStartY + actualGridHeight; float gridAreaLimitY = gridActualBottomY + scaledGridWheelGap; float wheelCenterBottomLimit = designBottomEdge - scaledWheelBottomMargin - scaledHudMinHeight;
+    float gridActualBottomY = m_gridStartY + actualGridFinalHeight; float gridAreaLimitY = gridActualBottomY + scaledGridWheelGap; float wheelCenterBottomLimit = designBottomEdge - scaledWheelBottomMargin - scaledHudMinHeight;
     float defaultScaledWheelRadius = S(this, WHEEL_R); float availableWheelHeight = std::max(0.f, wheelCenterBottomLimit - gridAreaLimitY);
     float finalScaledWheelRadius = defaultScaledWheelRadius; float finalWheelY = 0; float absoluteMinRadius = S(this, WHEEL_R * 0.4f); absoluteMinRadius = std::max(absoluteMinRadius, scaledLetterRadius * 1.2f);
     float maxRadiusPossible = availableWheelHeight / 2.0f;
@@ -1199,6 +1400,30 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     // Position Hint 4 (RevealFirstOfEach "1st of Each")
     positionHintUIElements(m_hintRevealFirstOfEachButtonShape, m_hintRevealFirstOfEachButtonText, m_hintRevealFirstOfEachCostText);
 
+    // --- Update DEBUG Zone Shapes ---
+    if (m_showDebugZones) {
+        float scaledOutlineThickness = S(this, 2.0f);
+
+        m_debugGridZoneShape.setPosition({ GRID_ZONE_RECT_DESIGN.position.x, GRID_ZONE_RECT_DESIGN.position.y });
+        m_debugGridZoneShape.setSize({ GRID_ZONE_RECT_DESIGN.size.x, GRID_ZONE_RECT_DESIGN.size.y });
+        m_debugGridZoneShape.setOutlineThickness(scaledOutlineThickness);
+
+        m_debugHintZoneShape.setPosition({ HINT_ZONE_RECT_DESIGN.position.x, HINT_ZONE_RECT_DESIGN.position.y });
+        m_debugHintZoneShape.setSize({ HINT_ZONE_RECT_DESIGN.size.x, HINT_ZONE_RECT_DESIGN.size.y });
+        m_debugHintZoneShape.setOutlineThickness(scaledOutlineThickness);
+
+        m_debugWheelZoneShape.setPosition({ WHEEL_ZONE_RECT_DESIGN.position.x, WHEEL_ZONE_RECT_DESIGN.position.y });
+        m_debugWheelZoneShape.setSize({ WHEEL_ZONE_RECT_DESIGN.size.x, WHEEL_ZONE_RECT_DESIGN.size.y });
+        m_debugWheelZoneShape.setOutlineThickness(scaledOutlineThickness);
+
+        m_debugScoreZoneShape.setPosition({ SCORE_ZONE_RECT_DESIGN.position.x, SCORE_ZONE_RECT_DESIGN.position.y });
+        m_debugScoreZoneShape.setSize({ SCORE_ZONE_RECT_DESIGN.size.x, SCORE_ZONE_RECT_DESIGN.size.y });
+        m_debugScoreZoneShape.setOutlineThickness(scaledOutlineThickness);
+
+        m_debugTopBarZoneShape.setPosition({ TOP_BAR_ZONE_DESIGN.position.x, TOP_BAR_ZONE_DESIGN.position.y });
+        m_debugTopBarZoneShape.setSize({ TOP_BAR_ZONE_DESIGN.size.x, TOP_BAR_ZONE_DESIGN.size.y });
+        m_debugTopBarZoneShape.setOutlineThickness(scaledOutlineThickness);
+    }
 
     // --- Final Summary Log ---
     if (sizeChanged) {
@@ -1210,33 +1435,29 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
 
 sf::Vector2f Game::m_tilePos(int wordIdx, int charIdx) {
-    sf::Vector2f result = { -1000.f, -1000.f };
+    sf::Vector2f result = { -1000.f, -1000.f }; // Default off-screen
 
-    // --- Bounds checks ---
-    if (m_sorted.empty() || wordIdx < 0 || wordIdx >= m_wordCol.size() || wordIdx >= m_wordRow.size() || charIdx < 0) {
+    if (m_sorted.empty() || wordIdx < 0 || static_cast<size_t>(wordIdx) >= m_wordCol.size() ||
+        static_cast<size_t>(wordIdx) >= m_wordRow.size() || charIdx < 0) {
         return result;
     }
     int c = m_wordCol[wordIdx];
     int r = m_wordRow[wordIdx];
-    if (c < 0 || c >= m_colXOffset.size()) {
+    if (c < 0 || static_cast<size_t>(c) >= m_colXOffset.size()) {
         return result;
     }
 
-    // --- Calculate Tile/Padding/Step Sizes using Grid-Specific Scale Factors ---
+    // --- Calculate Tile/Padding/Step Sizes using the gridElementsScaleFactor ---
+    // m_currentGridLayoutScale now stores the uniform scale factor for grid elements.
+    const float scaledTileSize = TILE_SIZE * m_currentGridLayoutScale;
+    const float scaledTilePad = TILE_PAD * m_currentGridLayoutScale;
+    // Column padding is handled by m_colXOffset structure.
 
-    // Determine the scale factor for the TILE itself based on whether the grid was shrunk
-    float tileSpecificScaleFactor = (m_currentGridLayoutScale < 1.0f) ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1.0f;
-
-    // Apply appropriate scaling
-    const float scaledTileSize = S(this, TILE_SIZE) * tileSpecificScaleFactor;   // Tile size uses relative factor
-    const float scaledTilePad = S(this, TILE_PAD) * m_currentGridLayoutScale; // Padding uses full grid shrink factor
-
-    // Calculate final step width and height
     const float scaledStepWidth = scaledTileSize + scaledTilePad;
-    const float scaledStepHeight = scaledTileSize + scaledTilePad; // Assuming square tiles/padding
+    const float scaledStepHeight = scaledTileSize + scaledTilePad;
 
-    // --- Use pre-calculated adjusted offsets and the adjusted step width/height ---
-    // m_colXOffset[c] and m_gridStartY were calculated in m_updateLayout using the same logic
+    // m_colXOffset[c] is already the absolute starting X for this column in design space.
+    // m_gridStartY is the absolute starting Y for the grid content area in design space.
     float x = m_colXOffset[c] + static_cast<float>(charIdx) * scaledStepWidth;
     float y = m_gridStartY + static_cast<float>(r) * scaledStepHeight;
 
@@ -1951,15 +2172,23 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //  Draw letter grid
     //------------------------------------------------------------
     if (!m_sorted.empty()) {
-        float renderTileScaleFactor = (m_currentGridLayoutScale < 1.0f) ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1.0f;
-        const float finalRenderTileSize = S(this, TILE_SIZE) * renderTileScaleFactor;
-        const float finalRenderTileRadius = finalRenderTileSize * 0.18f;
-        const float scaledTileOutline = S(this, 1.f);
+        // --- Determine FINAL Tile Size/Radius for Rendering ---
+        // m_currentGridLayoutScale holds the calculated scale factor for grid elements
+        const float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale;
+        const float finalRenderTileRadius = finalRenderTileSize * 0.18f; // Or a fixed design radius scaled
+        // const float scaledTileOutline = S(this, 1.f); // If outline scales with m_uiScale
+        const float scaledTileOutline = 1.0f * m_currentGridLayoutScale; // If outline scales with tiles
+        // Or just a fixed design value like 1.0f
 
         RoundedRectangleShape tileBackground({ finalRenderTileSize, finalRenderTileSize }, finalRenderTileRadius, 10);
-        tileBackground.setOutlineThickness(scaledTileOutline);
+        // tileBackground.setOutlineThickness(scaledTileOutline); // Use this if you want scaled outline
+        tileBackground.setOutlineThickness(1.0f); // Or a fixed thin outline
 
-        // Use SFML 3.0 constructor for sf::Text as figured out previously
+        unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f) * m_currentGridLayoutScale));
+        // Adjust font size also by the grid element scale, on top of S() if S() is for general UI.
+        // Or more simply, if 20.f is the target font size for an unscaled TILE_SIZE:
+        // unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, 20.f * m_currentGridLayoutScale));
+
         sf::Text letterText(m_font, "", scaledGridLetterFontSize);
 
         for (std::size_t w = 0; w < m_sorted.size(); ++w) {

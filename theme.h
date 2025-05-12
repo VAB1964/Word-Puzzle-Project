@@ -1,10 +1,23 @@
+
 #ifndef THEME_H // Start of include guard
 #define THEME_H
 
-#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/Color.hpp> 
 #include <algorithm> // For std::max/min
 #include <cstdint>   // For uint8_t
+#include <vector>    // For std::vector
 
+// Helper to slightly adjust color brightness (for hover effects)
+// (Okay to keep definition in header as it's simple and templated-like usage)
+inline sf::Color adjustColorBrightness(sf::Color color, float factor) {
+    factor = std::max(0.f, factor);
+    return sf::Color(
+        static_cast<uint8_t>(std::min(255.f, static_cast<float>(color.r) * factor)),
+        static_cast<uint8_t>(std::min(255.f, static_cast<float>(color.g) * factor)),
+        static_cast<uint8_t>(std::min(255.f, static_cast<float>(color.b) * factor)),
+        color.a
+    );
+}
 //--------------------------------------------------------------------
 //  Color Theme Definition
 //--------------------------------------------------------------------
@@ -44,16 +57,4 @@ struct ColorTheme {
     sf::Color menuButtonText = sf::Color::White;
 };
 
-// Helper to slightly adjust color brightness (for hover effects)
-// (Okay to keep definition in header as it's simple and templated-like usage)
-inline sf::Color adjustColorBrightness(sf::Color color, float factor) {
-    factor = std::max(0.f, factor);
-    return sf::Color(
-        static_cast<uint8_t>(std::min(255.f, static_cast<float>(color.r) * factor)),
-        static_cast<uint8_t>(std::min(255.f, static_cast<float>(color.g) * factor)),
-        static_cast<uint8_t>(std::min(255.f, static_cast<float>(color.b) * factor)),
-        color.a
-    );
-}
-
-#endif // THEME_H // End of include guard#pragma once
+#endif // THEME_H //

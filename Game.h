@@ -1,8 +1,10 @@
-#pragma once
+//#pragma once
 #ifndef GAME_H
 #define GAME_H
 
 // Include fundamental SFML headers needed for declarations
+
+#include <SFML/Graphics.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Graphics/Font.hpp>
 #include <SFML/Graphics/Texture.hpp>
@@ -18,7 +20,8 @@
 
 // Include project headers
 #include "RoundedRectangleShape.h" // Must be included BEFORE it's used as a member type
-#include "Theme.h"
+#include "theme.h"
+#include "ThemeData.h"
 #include "GameData.h"
 #include "DecorLayer.h"
 #include "Constants.h" // Include constants used in the header (like GRID_TOP_MARGIN default)
@@ -27,7 +30,7 @@
 #include <vector>
 #include <string>
 #include <set>
-#include <memory> // For std::unique_ptr
+#include <memory> 
 
 enum class DifficultyLevel {
     None, // Default state or for modes without difficulty
@@ -121,6 +124,10 @@ private:
     RoundedRectangleShape m_hintRevealLastButtonShape;
     RoundedRectangleShape m_hintRevealFirstOfEachButtonShape;
     RoundedRectangleShape m_hintAreaBg;
+
+    // New Background Art    
+    std::unique_ptr<sf::Sprite> m_mainBackgroundSpr;
+    sf::Texture m_mainBackgroundTex;
 
     // Calculated layout properties for wheel letters
     std::vector<sf::Vector2f> m_wheelLetterRenderPos; // Final screen position for each letter circle
@@ -259,6 +266,13 @@ private:
 
     std::vector<ScoreFlourishParticle> m_scoreFlourishes;
 
+    // For Debugging Zone Layout
+    sf::RectangleShape m_debugGridZoneShape;
+    sf::RectangleShape m_debugHintZoneShape;
+    sf::RectangleShape m_debugWheelZoneShape;
+    sf::RectangleShape m_debugScoreZoneShape;
+    sf::RectangleShape m_debugTopBarZoneShape;
+    bool m_showDebugZones;
 
     // --- Private Helper Methods (Declarations only) ---
     void m_loadResources();
