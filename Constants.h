@@ -101,6 +101,22 @@ const float MAX_LETTER_RADIUS_FACTOR = 0.20f;
 const float WHEEL_LETTER_FONT_SIZE_BASE_DESIGN = 24.f;
 constexpr float WHEEL_R = 68.f;
 
+// --- Score Zone Constants ---
+const float SCORE_ZONE_PADDING_X_DESIGN = 15.f;       
+const float SCORE_ZONE_PADDING_Y_DESIGN = 26.f;       
+const float SCORE_LABEL_VALUE_GAP_DESIGN = 10.f;       
+const float SCORE_VALUE_BONUS_GAP_DESIGN = 10.f; 
+
+// Font Sizes for Score Zone (in design units, will be scaled by S())
+const unsigned int SCORE_ZONE_LABEL_FONT_SIZE = 18;   
+const unsigned int SCORE_ZONE_VALUE_FONT_SIZE = 28;   
+const unsigned int SCORE_ZONE_BONUS_FONT_SIZE = 10;   
+
+// New Color (Bluish-Green from tubes - you'll need to fine-tune this RGB)
+// Example: A bright cyan/turquoise. Adjust R,G,B to match your tube art.
+const sf::Color GLOWING_TUBE_TEXT_COLOR = sf::Color(60, 220, 200); // Brighter variant
+// const sf::Color GLOWING_TUBE_TEXT_COLOR = sf::Color(40, 180, 160); // Darker variant
+
 
 
 #endif // CONSTANTS_H

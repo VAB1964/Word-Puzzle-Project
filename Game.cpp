@@ -173,7 +173,7 @@ Game::Game() :
     m_hintRevealFirstOfEachButtonShape({ 100.f, 30.f }, 5.f, 10),
     m_hintAreaBg({ 100.f, 200.f }, 10.f, 10),
     //debug
-    m_showDebugZones(true),
+    m_showDebugZones(false),
 
     m_firstFrame(true) 
 { // --- Constructor Body Starts Here ---
@@ -495,8 +495,8 @@ void Game::m_loadResources() {
 
     // --- Create Text Objects (Link Font, Set Properties) --- *** MOVED HERE ***
     m_contTxt = std::make_unique<sf::Text>(m_font, "Continue", 24);
-    m_scoreLabelText = std::make_unique<sf::Text>(m_font, "SCORE:", 24);
-    m_scoreValueText = std::make_unique<sf::Text>(m_font, "0", 24);
+    m_scoreLabelText = std::make_unique<sf::Text>(m_font, "SCORE:", SCORE_ZONE_LABEL_FONT_SIZE);
+    m_scoreValueText = std::make_unique<sf::Text>(m_font, "0", SCORE_ZONE_VALUE_FONT_SIZE);
     m_hintCountTxt = std::make_unique<sf::Text>(m_font, "", 20);
     m_mainMenuTitle = std::make_unique<sf::Text>(m_font, "Main Menu", 36);
     m_casualButtonText = std::make_unique<sf::Text>(m_font, "Casual", 24);
@@ -519,7 +519,7 @@ void Game::m_loadResources() {
     m_hintRevealRandomCostText->setFillColor(sf::Color::White);
 
     // Button text and cost text for LAST WORD hint
-    m_hintRevealLastButtonText = std::make_unique<sf::Text>(m_font, "Last Word", 18);
+    m_hintRevealLastButtonText = std::make_unique<sf::Text>(m_font, "Full Word", 18);
     m_hintRevealLastButtonText->setFillColor(sf::Color::White);
     m_hintRevealLastCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_LAST), 16);
     m_hintRevealLastCostText->setFillColor(sf::Color::White);
@@ -1046,18 +1046,43 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     }
 
     // 3. Position Top Elements (Score Bar, Progress Meter)
-    // ... (This section remains unchanged from your working version) ...
-    const float scaledScoreBarWidth = S(this, SCORE_BAR_WIDTH); const float scaledScoreBarHeight = S(this, SCORE_BAR_HEIGHT); const float scaledScoreBarBottomMargin = S(this, SCORE_BAR_BOTTOM_MARGIN);
-    const float scoreBarX_design = designCenter.x; const float scoreBarY_design = topSectionBottomY - scaledScoreBarBottomMargin - scaledScoreBarHeight / 2.f;
-    m_scoreBar.setSize({ scaledScoreBarWidth, scaledScoreBarHeight }); m_scoreBar.setRadius(S(this, 10.f)); m_scoreBar.setOrigin({ scaledScoreBarWidth / 2.f, scaledScoreBarHeight / 2.f }); m_scoreBar.setPosition({ scoreBarX_design, scoreBarY_design }); m_scoreBar.setOutlineThickness(S(this, 1.f));
-    const float scaledMeterHeight = S(this, PROGRESS_METER_HEIGHT); const float scaledMeterWidth = S(this, PROGRESS_METER_WIDTH); const float scaledMeterScoreGap = S(this, METER_SCORE_GAP);
-    const float meterX_design = designCenter.x; const float meterY_design = scoreBarY_design - scaledScoreBarHeight / 2.f - scaledMeterScoreGap - scaledMeterHeight / 2.f;
-    m_progressMeterBg.setSize({ scaledMeterWidth, scaledMeterHeight }); m_progressMeterBg.setOrigin({ scaledMeterWidth / 2.f, scaledMeterHeight / 2.f }); m_progressMeterBg.setPosition({ meterX_design, meterY_design }); m_progressMeterBg.setOutlineThickness(S(this, PROGRESS_METER_OUTLINE));
-    m_progressMeterFill.setOrigin({ 0.f, scaledMeterHeight / 2.f }); m_progressMeterFill.setPosition({ meterX_design - scaledMeterWidth / 2.f, meterY_design });
-    if (m_progressMeterText) { const unsigned int bf = 16; unsigned int sf = (unsigned int)std::max(8.0f, S(this, (float)bf)); m_progressMeterText->setCharacterSize(sf); }
-    const float scaledScoreTextOffset = S(this, 5.f);
-    if (m_scoreValueText) { const unsigned int bf = 24; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_scoreValueText->setCharacterSize(sf); sf::FloatRect vb = m_scoreValueText->getLocalBounds(); sf::Vector2f o = { 0.f,vb.position.y + vb.size.y / 2.f }; sf::Vector2f p = { scoreBarX_design + scaledScoreTextOffset, scoreBarY_design }; m_scoreValueText->setOrigin(o); m_scoreValueText->setPosition(p); }
-    if (m_scoreLabelText) { const unsigned int bf = 24; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_scoreLabelText->setCharacterSize(sf); sf::FloatRect lb = m_scoreLabelText->getLocalBounds(); sf::Vector2f o = { lb.position.x + lb.size.x, lb.position.y + lb.size.y / 2.f }; sf::Vector2f p = { scoreBarX_design - scaledScoreTextOffset, scoreBarY_design }; m_scoreLabelText->setOrigin(o); m_scoreLabelText->setPosition(p); }
+    // --- NEW: Layout for Score Zone Elements (Label and Value) ---
+    if (m_scoreLabelText && m_scoreValueText) {
+        const float zoneX = SCORE_ZONE_RECT_DESIGN.position.x;
+        const float zoneY = SCORE_ZONE_RECT_DESIGN.position.y;
+        const float zoneWidth = SCORE_ZONE_RECT_DESIGN.size.x;
+        // const float zoneHeight = SCORE_ZONE_RECT_DESIGN.size.y; // Used by bonus text in render
+
+        const float scaledPaddingX = S(this, SCORE_ZONE_PADDING_X_DESIGN);
+        const float scaledPaddingY = S(this, SCORE_ZONE_PADDING_Y_DESIGN);
+        const float scaledLabelValueGap = S(this, SCORE_LABEL_VALUE_GAP_DESIGN);
+
+        // --- "SCORE:" Label (m_scoreLabelText) ---
+        m_scoreLabelText->setFont(m_font); // Ensure font
+        m_scoreLabelText->setString("SCORE:"); // Confirm string
+        m_scoreLabelText->setCharacterSize(static_cast<unsigned int>(S(this, SCORE_ZONE_LABEL_FONT_SIZE)));
+        m_scoreLabelText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
+        sf::FloatRect labelBounds = m_scoreLabelText->getLocalBounds();
+        m_scoreLabelText->setOrigin({ labelBounds.position.x + labelBounds.size.x / 2.f,
+                                     labelBounds.position.y });
+        m_scoreLabelText->setPosition(sf::Vector2f{ zoneX + zoneWidth / 2.f,
+                                                   zoneY + scaledPaddingY });
+
+        // --- Score Value (m_scoreValueText) ---
+        m_scoreValueText->setFont(m_font);
+        m_scoreValueText->setCharacterSize(static_cast<unsigned int>(S(this, SCORE_ZONE_VALUE_FONT_SIZE)));
+        m_scoreValueText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
+        sf::FloatRect valueBounds = m_scoreValueText->getLocalBounds(); // Re-get if string can change width
+        m_scoreValueText->setOrigin({ valueBounds.position.x + valueBounds.size.x / 2.f,
+                                     valueBounds.position.y });
+        m_scoreValueText->setPosition(sf::Vector2f{ zoneX + zoneWidth / 2.f,
+                                                   m_scoreLabelText->getPosition().y +
+                                                       (labelBounds.position.y + labelBounds.size.y) -
+                                                       m_scoreLabelText->getOrigin().y +
+                                                       scaledLabelValueGap });
+    }
+    // Bonus words text will be positioned entirely within m_renderGameScreen
+    // --- End Layout for Score Zone Elements ---
 
 
     // --- 4. Calculate Grid Layout ---
@@ -2342,11 +2367,34 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //------------------------------------------------------------
     //  Draw Score Bar
     //------------------------------------------------------------
-    m_scoreBar.setFillColor(m_currentTheme.scoreBarBg); m_scoreBar.setOutlineColor(m_currentTheme.wheelOutline); m_scoreBar.setOutlineThickness(1.f);
-    m_window.draw(m_scoreBar);
-    if (m_scoreLabelText) { m_scoreLabelText->setFillColor(m_currentTheme.scoreTextLabel); m_window.draw(*m_scoreLabelText); }
-    if (m_scoreValueText) { if (m_scoreFlourishTimer > 0.f) { float scaleFactor = 1.0f + 0.4f * std::sin((SCORE_FLOURISH_DURATION - m_scoreFlourishTimer) / SCORE_FLOURISH_DURATION * PI); m_scoreValueText->setScale({ scaleFactor, scaleFactor }); sf::FloatRect bounds = m_scoreValueText->getLocalBounds(); m_scoreValueText->setOrigin({ 0.f + bounds.position.x, bounds.position.y + bounds.size.y / 2.f }); } else { m_scoreValueText->setScale({ 1.f, 1.f }); sf::FloatRect bounds = m_scoreValueText->getLocalBounds(); m_scoreValueText->setOrigin({ 0.f + bounds.position.x, bounds.position.y + bounds.size.y / 2.f }); } m_scoreValueText->setFillColor(m_currentTheme.scoreTextValue); m_window.draw(*m_scoreValueText); }
-
+    //m_scoreBar.setFillColor(m_currentTheme.scoreBarBg); m_scoreBar.setOutlineColor(m_currentTheme.wheelOutline); m_scoreBar.setOutlineThickness(1.f);
+    //m_window.draw(m_scoreBar);
+    if (m_scoreLabelText) { m_window.draw(*m_scoreLabelText); }
+    if (m_scoreValueText) {
+        m_scoreValueText->setString(std::to_string(m_currentScore));
+        sf::FloatRect currentValueBounds = m_scoreValueText->getLocalBounds();
+        m_scoreValueText->setOrigin({ currentValueBounds.position.x + currentValueBounds.size.x / 2.f,
+                                         m_scoreValueText->getOrigin().y });
+        sf::Vector2f valOriginalPos = m_scoreValueText->getPosition();
+        sf::Vector2f valOriginalOrigin = m_scoreValueText->getOrigin();
+        sf::Vector2f valOriginalScale = m_scoreValueText->getScale();
+        if (m_scoreFlourishTimer > 0.f) {
+            float scaleFactor = 1.0f + 0.4f * std::sin((SCORE_FLOURISH_DURATION - m_scoreFlourishTimer) / SCORE_FLOURISH_DURATION * PI);
+            sf::FloatRect valLocalBoundsFlourish = m_scoreValueText->getLocalBounds();
+            float valCenterX = valLocalBoundsFlourish.position.x + valLocalBoundsFlourish.size.x / 2.f;
+            float valCenterY = valLocalBoundsFlourish.position.y + valLocalBoundsFlourish.size.y / 2.f;
+            m_scoreValueText->setOrigin({ valCenterX, valCenterY });
+            m_scoreValueText->setPosition(sf::Vector2f{ valOriginalPos.x - valOriginalOrigin.x + valCenterX,
+                                                       valOriginalPos.y - valOriginalOrigin.y + valCenterY });
+            m_scoreValueText->setScale({ scaleFactor, scaleFactor });
+        }
+        m_window.draw(*m_scoreValueText);
+        if (m_scoreFlourishTimer > 0.f) {
+            m_scoreValueText->setScale(valOriginalScale);
+            m_scoreValueText->setOrigin(valOriginalOrigin);
+            m_scoreValueText->setPosition(valOriginalPos);
+        }
+    }
     //------------------------------------------------------------
     //  Draw letter grid
     //------------------------------------------------------------
@@ -2500,13 +2548,13 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //------------------------------------------------------------
     //  Draw wheel background & letters
     //------------------------------------------------------------
-    m_wheelBg.setRadius(m_visualBgRadius); // m_visualBgRadius is set in m_updateLayout
+    /*m_wheelBg.setRadius(m_visualBgRadius); // m_visualBgRadius is set in m_updateLayout
     m_wheelBg.setOrigin({ m_visualBgRadius, m_visualBgRadius });
     m_wheelBg.setPosition(sf::Vector2f{ m_wheelX, m_wheelY });
     m_wheelBg.setFillColor(m_currentTheme.wheelBg);
     m_wheelBg.setOutlineColor(m_currentTheme.wheelOutline);
     m_wheelBg.setOutlineThickness(scaledWheelOutlineThickness);
-    m_window.draw(m_wheelBg);
+    m_window.draw(m_wheelBg); */
 
     float fontScaleRatio = 1.f;
     if (LETTER_R_BASE_DESIGN > 0.1f && m_currentLetterRenderRadius > 0.1f) {
@@ -2588,29 +2636,58 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         float bottomHudStartY = wheelVisualBottomY + scaledHudOffsetY;
         float currentTopY = bottomHudStartY;
 
-        sf::Text foundTxt(m_font, "", scaledFoundFontSize);
+/*        sf::Text foundTxt(m_font, "", scaledFoundFontSize);
         foundTxt.setString("Found: " + std::to_string(m_found.size()) + "/" + std::to_string(m_solutions.size()));
         foundTxt.setFillColor(m_currentTheme.hudTextFound);
         sf::FloatRect foundBounds = foundTxt.getLocalBounds();
         foundTxt.setOrigin({ foundBounds.position.x + foundBounds.size.x / 2.f, foundBounds.position.y }); // Use .position.y for vertical origin if aligning top
         foundTxt.setPosition({ m_wheelX, currentTopY });
         m_window.draw(foundTxt);
-        currentTopY += foundBounds.size.y + scaledHudLineSpacing;
+        currentTopY += foundBounds.size.y + scaledHudLineSpacing;*/
 
         if (!m_allPotentialSolutions.empty() || !m_foundBonusWords.empty()) {
-            int totalPossibleBonus = 0; for (const auto& potentialWordInfo : m_allPotentialSolutions) { if (!m_found.count(potentialWordInfo.text)) { totalPossibleBonus++; } }
+            int totalPossibleBonus = 0;
+            for (const auto& potentialWordInfo : m_allPotentialSolutions) {
+                if (!m_found.count(potentialWordInfo.text)) { totalPossibleBonus++; }
+            }
             std::string bonusCountStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
-            sf::Text bonusFoundTxt(m_font, bonusCountStr, scaledBonusFontSize);
-            bonusFoundTxt.setFillColor(sf::Color::Yellow);
-            float bonusTextFlourishScale = 1.0f;
-            if (m_bonusTextFlourishTimer > 0.f) { float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION; bonusTextFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); }
-            sf::FloatRect bonusBounds = bonusFoundTxt.getLocalBounds();
-            bonusFoundTxt.setOrigin({ bonusBounds.position.x + bonusBounds.size.x / 2.f, bonusBounds.position.y }); // Use .position.y for vertical origin
-            bonusFoundTxt.setPosition({ m_wheelX, currentTopY });
-            bonusFoundTxt.setScale({ bonusTextFlourishScale, bonusTextFlourishScale });
-            m_window.draw(bonusFoundTxt);
-            // currentTopY += bonusBounds.size.y * bonusTextFlourishScale + scaledHudLineSpacing; // This was in your code, ensure bonusBounds.size.y is used
+
+            sf::Text bonusWordsDisplay(m_font, bonusCountStr, static_cast<unsigned int>(S(this, SCORE_ZONE_BONUS_FONT_SIZE)));
+            bonusWordsDisplay.setFillColor(GLOWING_TUBE_TEXT_COLOR);
+
+            sf::FloatRect bonusTextBounds = bonusWordsDisplay.getLocalBounds();
+            // Origin: Bottom-Center
+            bonusWordsDisplay.setOrigin({ bonusTextBounds.position.x + bonusTextBounds.size.x / 2.f,
+                                         bonusTextBounds.position.y + bonusTextBounds.size.y });
+            // Position: Horizontally centered in Score Zone, at bottom with padding
+            bonusWordsDisplay.setPosition(sf::Vector2f{
+                SCORE_ZONE_RECT_DESIGN.position.x + SCORE_ZONE_RECT_DESIGN.size.x / 2.f,
+                SCORE_ZONE_RECT_DESIGN.position.y + SCORE_ZONE_RECT_DESIGN.size.y - S(this, SCORE_ZONE_PADDING_Y_DESIGN)
+                });
+
+            // Apply flourish (m_bonusTextFlourishTimer)
+            sf::Vector2f bonusDispOriginalPos = bonusWordsDisplay.getPosition();
+            sf::Vector2f bonusDispOriginalOrigin = bonusWordsDisplay.getOrigin();
+            sf::Vector2f bonusDispOriginalScale = bonusWordsDisplay.getScale();
+            if (m_bonusTextFlourishTimer > 0.f) {
+                float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION;
+                float bonusFlourishScaleFactor = 1.0f + 0.4f * std::sin(progress * PI);
+                sf::FloatRect bonusLocalBoundsActual = bonusWordsDisplay.getLocalBounds(); // Use bounds of the actual current string
+                float bonusCenterX = bonusLocalBoundsActual.position.x + bonusLocalBoundsActual.size.x / 2.f;
+                float bonusCenterY = bonusLocalBoundsActual.position.y + bonusLocalBoundsActual.size.y / 2.f;
+                bonusWordsDisplay.setOrigin({ bonusCenterX, bonusCenterY });
+                bonusWordsDisplay.setPosition(sf::Vector2f{ bonusDispOriginalPos.x - bonusDispOriginalOrigin.x + bonusCenterX,
+                                                           bonusDispOriginalPos.y - bonusDispOriginalOrigin.y + bonusCenterY });
+                bonusWordsDisplay.setScale({ bonusFlourishScaleFactor, bonusFlourishScaleFactor });
+            }
+            m_window.draw(bonusWordsDisplay);
+            if (m_bonusTextFlourishTimer > 0.f) { // Restore
+                bonusWordsDisplay.setScale(bonusDispOriginalScale);
+                bonusWordsDisplay.setOrigin(bonusDispOriginalOrigin);
+                bonusWordsDisplay.setPosition(bonusDispOriginalPos);
+            }
         }
+            // --- End Score Zone Elements Drawing ---
 
         // Hint "Points:" Text Display with Flourish
         if (m_hintPointsText) {
