@@ -314,25 +314,26 @@ void Game::m_updateAnims(float dt)
 
                 // --- Action on Completion ---
                 if (a.target == AnimTarget::Grid) {
-                    // Update Grid
-                    if (a.wordIdx >= 0 && a.wordIdx < m_grid.size() &&
-                        a.charIdx >= 0 && a.charIdx < m_grid[a.wordIdx].size())
+                    if (a.wordIdx >= 0 && static_cast<size_t>(a.wordIdx) < m_grid.size() &&
+                        a.charIdx >= 0 && static_cast<size_t>(a.charIdx) < m_grid[a.wordIdx].size())
                     {
-                        m_grid[a.wordIdx][a.charIdx] = a.ch;
-                        m_grid[a.wordIdx][a.charIdx] = a.ch;
+                        // The double assignment was in your original code, likely a harmless typo
+                        // m_grid[a.wordIdx][a.charIdx] = a.ch; 
+                        m_grid[a.wordIdx][a.charIdx] = a.ch; // This updates the grid data model
 
-                        // *** CALL WORD COMPLETION CHECK HERE ***
-                        std::cout << "DEBUG: Animation to grid completed for wordIdx " << a.wordIdx << ". Checking completion." << std::endl;
+                        std::cout << "DEBUG: Anim to grid: m_grid[" << a.wordIdx << "][" << a.charIdx << "] = " << a.ch << std::endl;
                         m_checkWordCompletion(a.wordIdx);
-                        // **************************************
-
                     }
                     else {
-                        std::cerr << "ERROR: Anim completion - word/char index out of bounds for grid." << std::endl;
+                        std::cerr << "ERROR: Anim completion - word/char index out of bounds for grid. "
+                            << "wordIdx=" << a.wordIdx << " (grid size=" << m_grid.size() << "), "
+                            << "charIdx=" << a.charIdx;
+                        if (static_cast<size_t>(a.wordIdx) < m_grid.size()) {
+                            std::cerr << " (grid word size=" << m_grid[a.wordIdx].size() << ")";
+                        }
+                        std::cerr << std::endl;
                     }
-
-                    if (m_placeSound) m_placeSound->play(); // Grid placement sound
-
+                    if (m_placeSound) m_placeSound->play();
                 }
                 else if (a.target == AnimTarget::Score) {
                     bool isLastOfBatch = true;
@@ -1066,13 +1067,14 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     const float zoneInnerY = GRID_ZONE_RECT_DESIGN.position.y + GRID_ZONE_PADDING_Y_DESIGN;
     const float zoneInnerWidth = GRID_ZONE_RECT_DESIGN.size.x - 2 * GRID_ZONE_PADDING_X_DESIGN;
     const float zoneInnerHeight = GRID_ZONE_RECT_DESIGN.size.y - 2 * GRID_ZONE_PADDING_Y_DESIGN;
+    float actualGridFinalHeight = 0.f;
 
     m_gridStartY = zoneInnerY; // Grid will start at the top of the padded zone area
     // This might be adjusted later if we center vertically.
 
     int numCols = 1;
     int maxRowsPerCol = m_sorted.empty() ? 1 : (int)m_sorted.size();
-    float actualGridFinalHeight = 0; // Will store the final height of the rendered grid
+    //float actualGridFinalHeight = 0; // Will store the final height of the rendered grid
     m_wordCol.clear(); m_wordRow.clear(); m_colMaxLen.clear(); m_colXOffset.clear();
 
     // This scale factor will be calculated to make the grid fit the zone.
@@ -1218,58 +1220,184 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         // It's cleaner if m_tilePos uses this factor.
         // We can reuse m_currentGridLayoutScale for this purpose if its previous meaning is deprecated.
         m_currentGridLayoutScale = gridElementsScaleFactor; // Re-purpose this to store the element scale
-
+        actualGridFinalHeight = (float)maxRowsPerCol * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f);
     }
     else { // Grid is empty
         m_gridStartX = zoneInnerX + zoneInnerWidth / 2.f; // Center of empty zone
         m_gridStartY = zoneInnerY + zoneInnerHeight / 2.f;
         m_totalGridW = 0; actualGridFinalHeight = 0;
         m_currentGridLayoutScale = 1.0f; // Reset scale factor
+        actualGridFinalHeight = 0;
     }
+    float calculatedGridActualBottomY = m_gridStartY + actualGridFinalHeight;
     // --- End Grid Calculation Section ---
 
 
     // 5. Determine Final Wheel Size & Position
     // ... (This section remains unchanged from your working version) ...
-    const float scaledGridWheelGap = S(this, GRID_WHEEL_GAP); const float scaledWheelBottomMargin = S(this, WHEEL_BOTTOM_MARGIN); const float scaledLetterRadius = S(this, LETTER_R); const float scaledHudMinHeight = S(this, HUD_AREA_MIN_HEIGHT);
-    float gridActualBottomY = m_gridStartY + actualGridFinalHeight; float gridAreaLimitY = gridActualBottomY + scaledGridWheelGap; float wheelCenterBottomLimit = designBottomEdge - scaledWheelBottomMargin - scaledHudMinHeight;
-    float defaultScaledWheelRadius = S(this, WHEEL_R); float availableWheelHeight = std::max(0.f, wheelCenterBottomLimit - gridAreaLimitY);
-    float finalScaledWheelRadius = defaultScaledWheelRadius; float finalWheelY = 0; float absoluteMinRadius = S(this, WHEEL_R * 0.4f); absoluteMinRadius = std::max(absoluteMinRadius, scaledLetterRadius * 1.2f);
-    float maxRadiusPossible = availableWheelHeight / 2.0f;
-    if (maxRadiusPossible >= absoluteMinRadius) { finalScaledWheelRadius = std::min(maxRadiusPossible, defaultScaledWheelRadius); finalScaledWheelRadius = std::max(finalScaledWheelRadius, absoluteMinRadius); }
-    else { finalScaledWheelRadius = absoluteMinRadius; }
-    finalWheelY = gridAreaLimitY + availableWheelHeight / 2.f; float minYPos = gridAreaLimitY + finalScaledWheelRadius; float maxYPos = wheelCenterBottomLimit - finalScaledWheelRadius;
-    if (minYPos > maxYPos) { finalWheelY = minYPos; }
-    else { finalWheelY = std::clamp(finalWheelY, minYPos, maxYPos); }
-    m_wheelX = designCenter.x; m_wheelY = finalWheelY; m_currentWheelRadius = finalScaledWheelRadius;
+    const float wheelZoneInnerX = WHEEL_ZONE_RECT_DESIGN.position.x + WHEEL_ZONE_PADDING_DESIGN;
+    const float wheelZoneInnerY = WHEEL_ZONE_RECT_DESIGN.position.y + WHEEL_ZONE_PADDING_DESIGN;
+    const float wheelZoneInnerWidth = WHEEL_ZONE_RECT_DESIGN.size.x - 2 * WHEEL_ZONE_PADDING_DESIGN;
+    const float wheelZoneInnerHeight = WHEEL_ZONE_RECT_DESIGN.size.y - 2 * WHEEL_ZONE_PADDING_DESIGN;
+    const float scaledGridWheelGap = S(this, GRID_WHEEL_GAP);
+    float gridAreaLimitY = calculatedGridActualBottomY + scaledGridWheelGap;
+
+    if (sizeChanged) { // Log only on size change
+        std::cout << "  WHEEL ZONE: Inner X=" << wheelZoneInnerX << ", Y=" << wheelZoneInnerY
+            << ", W=" << wheelZoneInnerWidth << ", H=" << wheelZoneInnerHeight << std::endl;
+    }
+
+    // The wheel's center will be the center of this inner zone.
+    m_wheelX = wheelZoneInnerX + wheelZoneInnerWidth / 2.f;
+    m_wheelY = wheelZoneInnerY + wheelZoneInnerHeight / 2.f;
+
+    // The wheel's radius must fit within the smaller dimension of the inner zone.
+    // This radius is for the m_wheelCentres (where letter interaction points are).
+    float maxRadiusForZone = std::min(wheelZoneInnerWidth / 2.f, wheelZoneInnerHeight / 2.f);
+
+    // Compare with your original WHEEL_R constant (which is in design units)
+    // We want the smaller of the original design radius or what fits the zone.
+    m_currentWheelRadius = std::min(maxRadiusForZone, WHEEL_R); // WHEEL_R is from Constants.h
+
+    // Ensure a minimum sensible radius, especially if the zone is tiny
+    // (LETTER_R is also a design unit constant for the visual letter radius)
+    float minSensibleRadius = LETTER_R * 1.5f; // e.g., must be at least 1.5x a letter's visual radius
+    m_currentWheelRadius = std::max(m_currentWheelRadius, minSensibleRadius);
 
 
-    // 6. Calculate Final Wheel Letter Positions
-    // ... (This section remains unchanged from your working version) ...
-    m_wheelCentres.resize(m_base.size()); if (!m_base.empty()) { float angleStep = (2.f * PI) / (float)m_base.size(); for (size_t i = 0; i < m_base.size(); ++i) { float ang = (float)i * angleStep - PI / 2.f; m_wheelCentres[i] = { m_wheelX + m_currentWheelRadius * std::cos(ang), m_wheelY + m_currentWheelRadius * std::sin(ang) }; } }
-    m_wheelLetterRenderPos.resize(m_base.size()); const float baseWheelRadius = S(this, WHEEL_R); const float scaledWheelPadding = S(this, 30.f); const float visualBgRadius = m_currentWheelRadius + scaledWheelPadding;
-    float wheelRadiusRatio = 1.0f; if (baseWheelRadius > 1.0f && m_currentWheelRadius > 0.0f) { wheelRadiusRatio = m_currentWheelRadius / baseWheelRadius; } wheelRadiusRatio = std::clamp(wheelRadiusRatio, 0.7f, 1.0f);
-    m_currentLetterRenderRadius = S(this, LETTER_R) * wheelRadiusRatio; const float letterPositionGap = S(this, 5.f); float letterPositionRadius = visualBgRadius - m_currentLetterRenderRadius - letterPositionGap; letterPositionRadius = std::max(letterPositionRadius, m_currentWheelRadius * 0.5f); letterPositionRadius = std::max(letterPositionRadius, m_currentLetterRenderRadius);
-    if (!m_base.empty()) { float angleStep = (2.f * PI) / (float)m_base.size(); for (size_t i = 0; i < m_base.size(); ++i) { float ang = (float)i * angleStep - PI / 2.f; m_wheelLetterRenderPos[i] = { m_wheelX + letterPositionRadius * std::cos(ang), m_wheelY + letterPositionRadius * std::sin(ang) }; } }
+    if (sizeChanged) {
+        std::cout << "  WHEEL FINAL: ZoneMaxR=" << maxRadiusForZone << ", DesignR=" << WHEEL_R
+            << ", Clamped CurrentR=" << m_currentWheelRadius << std::endl;
+        std::cout << "  WHEEL FINAL: Center X=" << m_wheelX << ", Y=" << m_wheelY << std::endl;
+    }
+    // --- End Wheel Size & Position Determination ---
 
+    // --- 6. Calculate Final Wheel Letter Positions & Visual Background Radius ---
+    // m_currentWheelRadius is now the definitive radius for the logical letter path,
+    // already constrained by the zone.
+
+    // --- A. Calculate Visual Size of Individual Letters (m_currentLetterRenderRadius) ---
+    if (!m_base.empty()) {
+        float radiusBasedOnCount = (PI * m_currentWheelRadius) / static_cast<float>(m_base.size());
+        radiusBasedOnCount *= 0.75f;
+
+        float scaleFactorFromDesign = 1.0f;
+        if (WHEEL_R > 0.1f) {
+            scaleFactorFromDesign = m_currentWheelRadius / WHEEL_R;
+        }
+        float radiusBasedOnOverallScale = LETTER_R_BASE_DESIGN * scaleFactorFromDesign;
+
+        m_currentLetterRenderRadius = std::min(radiusBasedOnCount, radiusBasedOnOverallScale);
+
+        float minAbsRadius = m_currentWheelRadius * MIN_LETTER_RADIUS_FACTOR;
+        float maxAbsRadius = m_currentWheelRadius * MAX_LETTER_RADIUS_FACTOR;
+        m_currentLetterRenderRadius = std::clamp(m_currentLetterRenderRadius, minAbsRadius, maxAbsRadius);
+        m_currentLetterRenderRadius = std::max(m_currentLetterRenderRadius, 5.f);
+    }
+    else {
+        m_currentLetterRenderRadius = LETTER_R_BASE_DESIGN;
+    }
+
+    // --- B. Calculate Radius for Placing Letter Centers (m_letterPositionRadius) ---
+    float calculatedLetterPositionRadius = m_currentWheelRadius;
+
+    calculatedLetterPositionRadius = std::max(calculatedLetterPositionRadius, m_currentLetterRenderRadius * 0.5f);
+    calculatedLetterPositionRadius = std::max(calculatedLetterPositionRadius, m_currentWheelRadius * 0.3f);
+
+    m_letterPositionRadius = calculatedLetterPositionRadius; 
+
+    // --- C. Calculate Visual Background for the Wheel (m_visualBgRadius) ---
+    // Ensure LETTER_R_BASE_DESIGN is not zero to avoid division by zero if m_currentLetterRenderRadius is also zero.
+    float letterSizeRatioForPadding = (LETTER_R_BASE_DESIGN > 0.01f) ? (m_currentLetterRenderRadius / LETTER_R_BASE_DESIGN) : 1.0f;
+    float calculatedVisualBgRadius = this->m_letterPositionRadius + m_currentLetterRenderRadius +
+        (WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN * letterSizeRatioForPadding);
+    this->m_visualBgRadius = calculatedVisualBgRadius; // Assign to member
+
+    // Position the actual letters on the wheel using the member m_letterPositionRadius
+    m_wheelLetterRenderPos.resize(m_base.size());
+    if (!m_base.empty()) {
+        float angleStep = (2.f * PI) / (float)m_base.size();
+        for (size_t i = 0; i < m_base.size(); ++i) {
+            float ang = (float)i * angleStep - PI / 2.f;
+            m_wheelLetterRenderPos[i] = { // This is sf::Vector2f construction, should be fine
+                m_wheelX + this->m_letterPositionRadius * std::cos(ang),
+                m_wheelY + this->m_letterPositionRadius * std::sin(ang)
+            };
+        }
+    }
+
+    // Debugging output
+    if (sizeChanged || true) {
+        std::cout << "  WHEEL PATH: m_currentWheelRadius = " << m_currentWheelRadius << std::endl;
+        std::cout << "  WHEEL LETTERS: Count=" << m_base.size()
+            << ", Visual Radius (m_currentLetterRenderRadius) = " << m_currentLetterRenderRadius << std::endl;
+        std::cout << "  WHEEL LETTERS: Placement Radius (m_letterPositionRadius) = " << this->m_letterPositionRadius << std::endl;
+        std::cout << "  WHEEL BG: Visual Radius (m_visualBgRadius) = " << this->m_visualBgRadius << std::endl;
+    }
+    // --- End Wheel Letter Positions Calculation ---
 
     // 7. Other UI Element Positions (Scramble, Continue, Guess Display)
     // ... (This section remains unchanged from your working version) ...
-    if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) { float h = S(this, SCRAMBLE_BTN_HEIGHT); float s = h / m_scrambleTex.getSize().y; m_scrambleSpr->setScale({ s,s }); m_scrambleSpr->setOrigin({ 0.f,m_scrambleTex.getSize().y / 2.f }); m_scrambleSpr->setPosition({ m_wheelX + visualBgRadius + S(this,SCRAMBLE_BTN_OFFSET_X), m_wheelY + S(this,SCRAMBLE_BTN_OFFSET_Y) }); }
-    if (m_contTxt && m_contBtn.getPointCount() > 0) { sf::Vector2f s = { S(this,200.f),S(this,50.f) }; m_contBtn.setSize(s); m_contBtn.setRadius(S(this, 10.f)); m_contBtn.setOrigin({ s.x / 2.f, 0.f }); m_contBtn.setPosition({ m_wheelX, m_wheelY + visualBgRadius + S(this,CONTINUE_BTN_OFFSET_Y) }); const unsigned int bf = 24; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_contTxt->setCharacterSize(sf); sf::FloatRect tb = m_contTxt->getLocalBounds(); m_contTxt->setOrigin({ tb.position.x + tb.size.x / 2.f, tb.position.y + tb.size.y / 2.f }); m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, s.y / 2.f }); }
-    if (m_guessDisplay_Text) { const unsigned int bf = 30; unsigned int sf = (unsigned int)std::max(10.0f, S(this, (float)bf)); m_guessDisplay_Text->setCharacterSize(sf); }
-    if (m_guessDisplay_Bg.getPointCount() > 0) { m_guessDisplay_Bg.setRadius(S(this, 8.f)); m_guessDisplay_Bg.setOutlineThickness(S(this, 1.f)); }
-    // const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y); // Used later
-    // float calculatedHudStartY = m_wheelY + visualBgRadius + scaledHudOffsetY; // Used for logging
-    // float visualWheelTopEdgeY = m_wheelY - visualBgRadius; // Used for logging
+    if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) {
+        float h = S(this, SCRAMBLE_BTN_HEIGHT);
+        // Ensure texture height is not zero to avoid division by zero
+        float texHeight = static_cast<float>(m_scrambleTex.getSize().y);
+        if (texHeight > 0.1f) {
+            float s = h / texHeight;
+            m_scrambleSpr->setScale({ s, s }); // SFML 3 style
+        }
+        m_scrambleSpr->setOrigin({ 0.f, texHeight / 2.f }); // SFML 3 style
+        // Use m_visualBgRadius here
+        m_scrambleSpr->setPosition(sf::Vector2f{ m_wheelX + m_visualBgRadius + S(this, SCRAMBLE_BTN_OFFSET_X),
+                                                m_wheelY + S(this, SCRAMBLE_BTN_OFFSET_Y) }); // Explicit sf::Vector2f
+    }
 
+    if (m_contTxt && m_contBtn.getPointCount() > 0) {
+        sf::Vector2f s_size = { S(this, 200.f), S(this, 50.f) }; // Renamed 's' to 's_size' to avoid conflict if 's' is used later
+        m_contBtn.setSize(s_size);
+        m_contBtn.setRadius(S(this, 10.f));
+        m_contBtn.setOrigin({ s_size.x / 2.f, 0.f }); // Use s_size.x
+        // Use m_visualBgRadius here
+        m_contBtn.setPosition(sf::Vector2f{ m_wheelX,
+                                           m_wheelY + m_visualBgRadius + S(this, CONTINUE_BTN_OFFSET_Y) }); // Explicit sf::Vector2f
 
-    // Position Return to Menu Button (Bottom Right)
-    // ... (This section remains unchanged from your working version) ...
-    const float returnBtnPadding = S(this, 10.f); sf::Vector2f returnBtnSize = { S(this, 80.f), S(this, 30.f) }; float returnBtnRadius = S(this, 8.f); unsigned int returnBtnFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
-    m_returnToMenuButtonShape.setSize(returnBtnSize); m_returnToMenuButtonShape.setRadius(returnBtnRadius); m_returnToMenuButtonShape.setOrigin(returnBtnSize); m_returnToMenuButtonShape.setPosition({ designW - returnBtnPadding, designH - returnBtnPadding });
-    if (m_returnToMenuButtonText) { m_returnToMenuButtonText->setCharacterSize(returnBtnFontSize); sf::FloatRect txtBounds = m_returnToMenuButtonText->getLocalBounds(); m_returnToMenuButtonText->setOrigin({ txtBounds.position.x + txtBounds.size.x / 2.f, txtBounds.position.y + txtBounds.size.y / 2.f }); sf::Vector2f btnCenter = m_returnToMenuButtonShape.getPosition() - returnBtnSize / 2.f; m_returnToMenuButtonText->setPosition(btnCenter); }
+        const unsigned int bf_cont = 24; // Renamed 'bf' to avoid conflict
+        unsigned int sf_cont = (unsigned int)std::max(10.0f, S(this, static_cast<float>(bf_cont)));
+        m_contTxt->setCharacterSize(sf_cont);
+        sf::FloatRect tb_cont = m_contTxt->getLocalBounds(); // Renamed 'tb'
+        m_contTxt->setOrigin({ tb_cont.position.x + tb_cont.size.x / 2.f,
+                              tb_cont.position.y + tb_cont.size.y / 2.f });
+        m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, s_size.y / 2.f }); // Use s_size.y
+    }
 
+    // Guess Display Text character size and Background radius/outline
+    if (m_guessDisplay_Text) {
+        const unsigned int bf_guess = 30; // Renamed 'bf'
+        unsigned int sf_guess = (unsigned int)std::max(10.0f, S(this, static_cast<float>(bf_guess)));
+        m_guessDisplay_Text->setCharacterSize(sf_guess);
+    }
+    if (m_guessDisplay_Bg.getPointCount() > 0) {
+        m_guessDisplay_Bg.setRadius(S(this, 8.f));
+        m_guessDisplay_Bg.setOutlineThickness(S(this, 1.f));
+    }
+
+    // Logging for HUD Start Y (this used local visualBgRadius before)
+    const float scaledHudOffsetY_log = S(this, HUD_TEXT_OFFSET_Y);
+    float calculatedHudStartY_log = m_wheelY + m_visualBgRadius + scaledHudOffsetY_log;
+    float visualWheelTopEdgeY_log = m_wheelY - m_visualBgRadius;
+
+    if (sizeChanged) { // Only log if size changed to reduce spam
+        std::cout << "  WHEEL/HUD INFO (updateLayout): Visual Wheel BG Top Edge Y = " << visualWheelTopEdgeY_log << std::endl;
+        std::cout << "  WHEEL/HUD INFO (updateLayout): Calculated HUD Start Y = " << calculatedHudStartY_log << std::endl;
+        if (actualGridFinalHeight > 0 && visualWheelTopEdgeY_log < calculatedGridActualBottomY - 0.1f) {
+            std::cout << "  WHEEL/HUD WARNING (updateLayout): Visual Wheel BG (Y=" << visualWheelTopEdgeY_log
+                << ") overlaps Grid Bottom (Y=" << calculatedGridActualBottomY << ")!" << std::endl;
+        }
+        if (calculatedHudStartY_log > designBottomEdge + 0.1f) {
+            std::cout << "  WHEEL/HUD WARNING (updateLayout): Calculated HUD Start Y (" << calculatedHudStartY_log
+                << ") is below Design Bottom Edge (" << designBottomEdge << ")" << std::endl;
+        }
+    }
 
     // 8. Menu Layouts
     // ... (This section remains unchanged from your working version) ...
@@ -1334,7 +1462,7 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
     // --- Stage 3: Determine Background Top-Left Position ---
     float finalBgPosX = designLeftEdge + S(this, 15.f);
-    float finalBgPosY = gridActualBottomY + gapBelowGrid;
+    float finalBgPosY = wheelZoneInnerHeight + gapBelowGrid;
 
     // --- Stage 4: Set Background Position and Size ---
     m_hintAreaBg.setSize({ bgWidth, bgHeight });
@@ -1689,17 +1817,16 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
     // --- Mouse Button Pressed ---
     if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
         if (mb->button == sf::Mouse::Button::Left) {
-            sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
+            sf::Vector2f mp = m_window.mapPixelToCoords(mb->position); // Mapped mouse position
 
             // Check Return to Menu Button
             if (m_returnToMenuButtonShape.getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
                 m_currentScreen = GameScreen::MainMenu;
-                // Optional: Stop music, reset session state if needed?
-                m_backgroundMusic.stop(); // Example
-                m_isInSession = false;    // Example
-                m_selectedDifficulty = DifficultyLevel::None; // Example
-                m_clearDragState(); // Clear guess if returning from playing
+                m_backgroundMusic.stop();
+                m_isInSession = false;
+                m_selectedDifficulty = DifficultyLevel::None;
+                m_clearDragState();
                 return; // Processed button click
             }
 
@@ -1707,8 +1834,10 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
             if (m_scrambleSpr && m_scrambleSpr->getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
                 std::shuffle(m_base.begin(), m_base.end(), Rng());
-                m_updateLayout(m_window.getSize()); // Update wheel letter positions graphically
-                m_clearDragState(); // Stop any current drag
+                // m_updateLayout(m_window.getSize()); // m_updateLayout is called in main loop's update if needed
+                                                    // or specifically after m_base changes if that's the only trigger.
+                                                    // For now, let's assume layout updates handle it.
+                m_clearDragState();
                 return; // Processed button click
             }
 
@@ -1720,14 +1849,13 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                 if (m_hintPoints >= HINT_COST_REVEAL_FIRST) {
                     std::cout << "DEBUG: Clicked Hint 1 (Reveal First)" << std::endl;
                     m_hintPoints -= HINT_COST_REVEAL_FIRST;
-                    m_activateHint(HintType::RevealFirst); // Sound is now handled within m_activateHint
-                    hintButtonClicked = true;
+                    m_activateHint(HintType::RevealFirst);
                 }
                 else {
                     std::cout << "DEBUG: Clicked Hint 1, but cannot afford." << std::endl;
                     if (m_errorWordSound) m_errorWordSound->play();
-                    hintButtonClicked = true;
                 }
+                hintButtonClicked = true;
             }
 
             // Hint 2: Reveal Random Letters
@@ -1735,14 +1863,13 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                 if (m_hintPoints >= HINT_COST_REVEAL_RANDOM) {
                     std::cout << "DEBUG: Clicked Hint 2 (Reveal Random)" << std::endl;
                     m_hintPoints -= HINT_COST_REVEAL_RANDOM;
-                    m_activateHint(HintType::RevealRandom); // Sound is now handled within m_activateHint
-                    hintButtonClicked = true;
+                    m_activateHint(HintType::RevealRandom);
                 }
                 else {
                     std::cout << "DEBUG: Clicked Hint 2, but cannot afford." << std::endl;
                     if (m_errorWordSound) m_errorWordSound->play();
-                    hintButtonClicked = true;
                 }
+                hintButtonClicked = true;
             }
 
             // Hint 3: Reveal Last Word
@@ -1750,49 +1877,76 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                 if (m_hintPoints >= HINT_COST_REVEAL_LAST) {
                     std::cout << "DEBUG: Clicked Hint 3 (Reveal Last)" << std::endl;
                     m_hintPoints -= HINT_COST_REVEAL_LAST;
-                    m_activateHint(HintType::RevealLast);   // Sound is now handled within m_activateHint
-                    hintButtonClicked = true;
+                    m_activateHint(HintType::RevealLast);
                 }
                 else {
                     std::cout << "DEBUG: Clicked Hint 3, but cannot afford." << std::endl;
                     if (m_errorWordSound) m_errorWordSound->play();
-                    hintButtonClicked = true;
                 }
+                hintButtonClicked = true;
             }
 
-            // Hint 4: Reveal First of Each (NEW)
+            // Hint 4: Reveal First of Each
             if (!hintButtonClicked && m_hintRevealFirstOfEachButtonShape.getGlobalBounds().contains(mp)) {
                 if (m_hintPoints >= HINT_COST_REVEAL_FIRST_OF_EACH) {
                     std::cout << "DEBUG: Clicked Hint 4 (Reveal First of Each)" << std::endl;
                     m_hintPoints -= HINT_COST_REVEAL_FIRST_OF_EACH;
-                    m_activateHint(HintType::RevealFirstOfEach); // Use new enum value
-                    // Sound is handled in m_activateHint or if error
+                    m_activateHint(HintType::RevealFirstOfEach);
                 }
                 else {
                     std::cout << "DEBUG: Clicked Hint 4 (First of Each), but cannot afford." << std::endl;
                     if (m_errorWordSound) m_errorWordSound->play();
                 }
-                hintButtonClicked = true; // Mark as handled (even if error/unaffordable to prevent other clicks)
+                hintButtonClicked = true;
             }
 
+
             if (hintButtonClicked) {
-                return;
+                // m_updateLayout(m_window.getSize()); // Consider if hint usage needs immediate layout update for hint points text
+                return; // Processed a hint button click
             }
             // --- End Hint Button Checks ---
 
 
-           // --- Check Letter Wheel Click ---
-            for (std::size_t i = 0; i < m_wheelCentres.size(); ++i) {
+            // --- START: DIAGNOSTIC LOGGING FOR WHEEL CLICK ---
+            std::cout << "[Click] Mouse Coords: X=" << mp.x << " Y=" << mp.y << std::endl;
+            std::cout << "[Click] m_currentLetterRenderRadius: " << m_currentLetterRenderRadius << std::endl;
+            if (!m_wheelLetterRenderPos.empty() && !m_base.empty()) { // Ensure there are letters to check
+                // Log for the first letter as an example
+                std::cout << "[Click] First Letter Target (" << m_base[0] << "): X=" << m_wheelLetterRenderPos[0].x
+                    << " Y=" << m_wheelLetterRenderPos[0].y << std::endl;
+                float distSqDebug = distSq(mp, m_wheelLetterRenderPos[0]);
+                float radiusSqDebug = m_currentLetterRenderRadius * m_currentLetterRenderRadius;
+                std::cout << "[Click] DistSq to first letter: " << distSqDebug
+                    << ", RadiusSq target: " << radiusSqDebug
+                    << (distSqDebug < radiusSqDebug ? " (INSIDE)" : " (OUTSIDE)") << std::endl;
+            }
+            else {
+                std::cout << "[Click] m_wheelLetterRenderPos or m_base is empty." << std::endl;
+            }
+            // --- END: DIAGNOSTIC LOGGING FOR WHEEL CLICK ---
+
+
+            // --- Check Letter Wheel Click ---
+            // Loop up to m_base.size() as m_wheelLetterRenderPos should be sized accordingly.
+            for (std::size_t i = 0; i < m_base.size(); ++i) {
+                if (i >= m_wheelLetterRenderPos.size()) { // Safety break if sizes somehow mismatch
+                    std::cerr << "Warning: m_base.size() and m_wheelLetterRenderPos.size() mismatch in click check!" << std::endl;
+                    break;
+                }
+
                 if (distSq(mp, m_wheelLetterRenderPos[i]) < m_currentLetterRenderRadius * m_currentLetterRenderRadius) {
+                    std::cout << "[Click] SUCCESS: Hit letter " << m_base[i] << " (index " << i << ")" << std::endl;
                     m_dragging = true;
                     m_path.clear();
-                    m_path.push_back(static_cast<int>(i));
+                    m_path.push_back(static_cast<int>(i)); // Store index of letter in m_base
                     m_currentGuess += static_cast<char>(std::toupper(m_base[i]));
                     if (m_selectSound) m_selectSound->play();
                     return; // Started drag
                 }
             }
-            // --- End Letter Wheel Click ---
+            // If no wheel letter was clicked, and no button was clicked, this click did nothing relevant.
+            // std::cout << "[Click] No UI element hit by this click." << std::endl; // Optional: for more detailed logging
 
         } // End Left Mouse Button Check
     } // End Mouse Button Pressed Check
@@ -1802,50 +1956,62 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
     else if (const auto* mm = event.getIf<sf::Event::MouseMoved>()) {
         if (m_dragging) {
             sf::Vector2f mp = m_window.mapPixelToCoords(mm->position);
-            bool actionTaken = false; // Flag to prevent multiple adds/removes per event
+            // No need for actionTaken flag here if we only process the first hovered letter.
+            // However, the original logic allowed adding a letter if not in path, or backtracking.
+            // Let's keep the structure that allows for adding/removing if mouse hovers over a letter.
 
-            for (std::size_t i = 0; i < m_wheelCentres.size(); ++i) {
-                if (actionTaken) break; // Only process the first letter hovered over this frame
+            // Iterate based on the number of letters in your base word.
+            // m_wheelLetterRenderPos should be sized accordingly by m_updateLayout.
+            for (std::size_t i = 0; i < m_base.size(); ++i) {
+                if (i >= m_wheelLetterRenderPos.size()) { // Safety check
+                    std::cerr << "Warning: m_base.size() and m_wheelLetterRenderPos.size() mismatch in MouseMoved!" << std::endl;
+                    break;
+                }
 
-                // Check if mouse is inside the circle for letter 'i'
+                // Check if mouse is inside the visual circle for letter 'i'
                 if (distSq(mp, m_wheelLetterRenderPos[i]) < m_currentLetterRenderRadius * m_currentLetterRenderRadius) {
 
-                    int currentLetterIdx = static_cast<int>(i);
+                    int letterIndexInMPath = static_cast<int>(i); // The index 'i' directly corresponds to m_base
 
-                    // Check if letter 'i' is already in the path
-                    auto it = std::find(m_path.begin(), m_path.end(), currentLetterIdx);
+                    auto it = std::find(m_path.begin(), m_path.end(), letterIndexInMPath);
                     bool alreadyInPath = (it != m_path.end());
 
                     if (!alreadyInPath) {
                         // --- Add new letter to path ---
-                        m_path.push_back(currentLetterIdx);
-                        m_currentGuess += static_cast<char>(std::toupper(m_base[i]));
+                        m_path.push_back(letterIndexInMPath);
+                        m_currentGuess += static_cast<char>(std::toupper(m_base[i])); // Use m_base[i]
                         if (m_selectSound) m_selectSound->play();
-                        actionTaken = true; // Mark that we added a letter
-
+                        // No need for actionTaken if we allow multiple letters to be evaluated per mouse move,
+                        // though usually, you only want to act on the *first one* you enter.
+                        // If you only want one action per mouse move event:
+                        // actionTaken = true; break; // Then uncomment actionTaken bool declaration
+                        // For smooth dragging, it's usually fine to process any letter you enter.
                     }
                     else {
                         // --- Letter is already in path - Check for backtracking ---
                         // Condition: Path has at least 2 letters AND
-                        //            we are hovering over the second-to-last letter added
-                        if (m_path.size() >= 2 && m_path[m_path.size() - 2] == currentLetterIdx)
-                        {
+                        //            we are hovering over the second-to-last letter ADDED to m_path
+                        if (m_path.size() >= 2 && m_path[m_path.size() - 2] == letterIndexInMPath) {
                             // Remove the *last* element from path and guess
                             m_path.pop_back();
-                            if (!m_currentGuess.empty()) { // Safety check
+                            if (!m_currentGuess.empty()) {
                                 m_currentGuess.pop_back();
                             }
-                            // Optional: Play an "unselect" or "pop" sound?
-                            // if (m_unselectSound) m_unselectSound->play();
-                            actionTaken = true; // Mark that we removed a letter
+                            // Optional: Play an "unselect" sound
+                            // actionTaken = true; break; // If only one action per move event
                         }
-                        // Else: Hovering over the current last letter, or some other
-                        //       letter already in the path (but not the second-to-last)
-                        //       -> Do nothing.
+                        // Else: Hovering over current last letter, or some other letter already in path
+                        // (but not the one that enables backtracking) -> Do nothing.
                     }
-                } // End if mouse is over letter 'i'
-            } // End for loop checking wheel letters
-        } // End if m_dragging
+                    // If you only want to process the FIRST letter the mouse is over in this event frame:
+                    // break; // Exit the for loop after handling one letter.
+                    // If you don't break, and mouse is large enough to cover two letters, both might be processed.
+                    // For typical dragging, breaking after the first interaction is common.
+                    // Let's assume for now we process the first letter we find ourselves over.
+                    break;
+                }
+            }
+        }
     } // End Mouse Moved Check
 
 
@@ -1905,14 +2071,32 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                             m_hintsAvailable++; m_wordsSolvedSinceHint = 0;
                             if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
                         }
-                        for (std::size_t c = 0; c < m_currentGuess.length(); ++c) { // Animation Logic
-                            if (c < m_path.size()) {
-                                int pathNodeIdx = m_path[c];
-                                if (pathNodeIdx >= 0 && pathNodeIdx < m_wheelCentres.size()) {
-                                    sf::Vector2f startPos = m_wheelCentres[pathNodeIdx];
-                                    sf::Vector2f endPos = m_tilePos(wordIndexMatched, static_cast<int>(c));
-                                    endPos.x += TILE_SIZE / 2.f; endPos.y += TILE_SIZE / 2.f;
-                                    m_anims.push_back({ m_currentGuess[c], startPos, endPos, 0.f - (c * 0.03f), wordIndexMatched, static_cast<int>(c), AnimTarget::Grid });
+                        for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
+                            if (c < m_path.size()) { // m_path stores indices of letters from m_base
+                                int pathNodeIdx = m_path[c]; // This is the index in m_base
+                                // Ensure pathNodeIdx is valid for m_wheelLetterRenderPos (it should be if m_base matches)
+                                if (pathNodeIdx >= 0 && static_cast<size_t>(pathNodeIdx) < m_wheelLetterRenderPos.size() &&
+                                    static_cast<size_t>(pathNodeIdx) < m_base.size()) {
+
+                                    sf::Vector2f startPos = m_wheelLetterRenderPos[pathNodeIdx]; // Animation STARTS from visual letter pos
+                                    sf::Vector2f endPos = m_tilePos(wordIndexMatched, static_cast<int>(c)); // wordIndexMatched is index in m_sorted
+
+                                    // Critical: Adjust endPos to be the CENTER of the tile for visual appeal
+                                    // Assuming m_tilePos gives top-left of the tile
+                                    float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale; // Get current scaled tile size
+                                    endPos.x += finalRenderTileSize / 2.f;
+                                    endPos.y += finalRenderTileSize / 2.f;
+
+                                    // Ensure m_currentGuess[c] is correct char, wordIndexMatched for m_sorted, c for char in word
+                                    m_anims.push_back({
+                                        m_currentGuess[c], // Character being animated
+                                        startPos,
+                                        endPos,
+                                        0.f - (c * 0.03f), // Staggered start time
+                                        wordIndexMatched,      // Word index in m_grid / m_sorted
+                                        static_cast<int>(c),   // Character index in that word
+                                        AnimTarget::Grid
+                                        });
                                 }
                             }
                         }
@@ -2109,7 +2293,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //------------------------------------------------------------
     //  Calculate common scaled values ONCE (using base m_uiScale)
     //------------------------------------------------------------
-    const float scaledLetterRadius = S(this, LETTER_R);
+    // const float scaledLetterRadius = S(this, LETTER_R); // m_currentLetterRenderRadius is used now
     const float scaledWheelOutlineThickness = S(this, 3.f);
     const float scaledLetterCircleOutline = S(this, 2.f);
     const float scaledPathThickness = S(this, 5.0f);
@@ -2118,21 +2302,17 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     const float scaledGuessDisplayPadY = S(this, 5.f);
     const float scaledGuessDisplayRadius = S(this, 8.f);
     const float scaledGuessDisplayOutline = S(this, 1.f);
-    const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y);
+    const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y); // Gap below wheel for HUD
     const float scaledHudLineSpacing = S(this, HUD_LINE_SPACING);
-    // const float scaledHintOffsetX = S(this, 10.f); // Not directly used in this function render logic for m_hintPointsText
-    // const float scaledHintOffsetY = S(this, 5.f); // Not directly used here
 
     // Scaled Font Sizes (ensure minimum usable size)
-    const unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
+    const unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f) * m_currentGridLayoutScale)); // Font scales with grid tiles
     const unsigned int scaledFlyingLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
     const unsigned int scaledGuessDisplayFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 30.f)));
     const unsigned int scaledFoundFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
     const unsigned int scaledBonusFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 18.f)));
-    // const unsigned int scaledHintFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f))); // m_hintPointsText size set in layout
     const unsigned int scaledSolvedFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 26.f)));
     const unsigned int scaledContinueFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 24.f)));
-
 
     //------------------------------------------------------------
     //  Draw Progress Meter (If in session)
@@ -2147,8 +2327,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     }
 
     // --- Draw Return to Menu Button ---
-    if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)
-    {
+    if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) {
         bool returnHover = m_returnToMenuButtonShape.getGlobalBounds().contains(mousePos);
         sf::Color returnBaseColor = m_currentTheme.menuButtonNormal;
         sf::Color returnHoverColor = m_currentTheme.menuButtonHover;
@@ -2172,57 +2351,58 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     //  Draw letter grid
     //------------------------------------------------------------
     if (!m_sorted.empty()) {
-        // --- Determine FINAL Tile Size/Radius for Rendering ---
-        // m_currentGridLayoutScale holds the calculated scale factor for grid elements
-        const float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale;
-        const float finalRenderTileRadius = finalRenderTileSize * 0.18f; // Or a fixed design radius scaled
-        // const float scaledTileOutline = S(this, 1.f); // If outline scales with m_uiScale
-        const float scaledTileOutline = 1.0f * m_currentGridLayoutScale; // If outline scales with tiles
-        // Or just a fixed design value like 1.0f
+        const float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale; // m_currentGridLayoutScale is gridElementsScaleFactor
+        const float finalRenderTileRadius = finalRenderTileSize * 0.18f;
+        const float tileOutlineRenderThickness = 1.0f; // Fixed or scaled: 1.0f * m_currentGridLayoutScale;
 
         RoundedRectangleShape tileBackground({ finalRenderTileSize, finalRenderTileSize }, finalRenderTileRadius, 10);
-        // tileBackground.setOutlineThickness(scaledTileOutline); // Use this if you want scaled outline
-        tileBackground.setOutlineThickness(1.0f); // Or a fixed thin outline
-
-        unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f) * m_currentGridLayoutScale));
-        // Adjust font size also by the grid element scale, on top of S() if S() is for general UI.
-        // Or more simply, if 20.f is the target font size for an unscaled TILE_SIZE:
-        // unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, 20.f * m_currentGridLayoutScale));
-
+        tileBackground.setOutlineThickness(tileOutlineRenderThickness);
         sf::Text letterText(m_font, "", scaledGridLetterFontSize);
 
         for (std::size_t w = 0; w < m_sorted.size(); ++w) {
             int wordRarity = m_sorted[w].rarity;
             if (w >= m_grid.size()) continue;
-
             for (std::size_t c = 0; c < m_sorted[w].text.length(); ++c) {
                 if (c >= m_grid[w].size()) continue;
-
                 sf::Vector2f p = m_tilePos(static_cast<int>(w), static_cast<int>(c));
                 bool isFilled = (m_grid[w][c] != '_');
                 tileBackground.setPosition(p);
-                if (isFilled) {
-                    tileBackground.setFillColor(m_currentTheme.gridFilledTile);
-                    tileBackground.setOutlineColor(m_currentTheme.gridFilledTile);
-                }
-                else {
-                    tileBackground.setFillColor(m_currentTheme.gridEmptyTile);
-                    tileBackground.setOutlineColor(m_currentTheme.gridEmptyTile);
-                }
+                if (isFilled) { tileBackground.setFillColor(m_currentTheme.gridFilledTile); tileBackground.setOutlineColor(m_currentTheme.gridFilledTile); }
+                else { tileBackground.setFillColor(m_currentTheme.gridEmptyTile); tileBackground.setOutlineColor(m_currentTheme.gridEmptyTile); }
                 m_window.draw(tileBackground);
 
                 if (!isFilled) {
                     sf::Sprite* gemSprite = nullptr;
-                    switch (wordRarity) {
-                    case 1: break;
-                    case 2: if (m_sapphireSpr) gemSprite = m_sapphireSpr.get(); break;
-                    case 3: if (m_rubySpr) gemSprite = m_rubySpr.get(); break;
-                    case 4: if (m_diamondSpr) gemSprite = m_diamondSpr.get(); break;
+                    const sf::Texture* gemTexture = nullptr; // Pointer to the relevant texture
+
+                    if (wordRarity == 2 && m_sapphireSpr) {
+                        gemSprite = m_sapphireSpr.get();
+                        gemTexture = &m_sapphireTex; // Get address of the texture object
                     }
-                    if (gemSprite != nullptr) {
-                        float tileCenterX = p.x + finalRenderTileSize / 2.f;
-                        float tileCenterY = p.y + finalRenderTileSize / 2.f;
-                        gemSprite->setPosition({ tileCenterX, tileCenterY });
+                    else if (wordRarity == 3 && m_rubySpr) {
+                        gemSprite = m_rubySpr.get();
+                        gemTexture = &m_rubyTex;
+                    }
+                    else if (wordRarity == 4 && m_diamondSpr) {
+                        gemSprite = m_diamondSpr.get();
+                        gemTexture = &m_diamondTex;
+                    }
+
+                    if (gemSprite && gemTexture) { // Check both sprite and its intended texture
+                        float desiredGemHeight = finalRenderTileSize * 0.60f; // Scale gem relative to new tile size
+
+                        // Get texture dimensions using the dot operator on the texture object
+                        // (or -> if gemTexture was a pointer to a texture, but here it's const sf::Texture*)
+                        if (gemTexture->getSize().y > 0) { // Use -> because gemTexture is a pointer
+                            float gemScale = desiredGemHeight / static_cast<float>(gemTexture->getSize().y);
+                            gemSprite->setScale({ gemScale, gemScale }); // SFML 3
+                            // Origin is usually set once at load based on original texture dimensions
+                            // If you want to ensure it's always center of the *original* texture:
+                            gemSprite->setOrigin({ static_cast<float>(gemTexture->getSize().x) / 2.f,
+                                                  static_cast<float>(gemTexture->getSize().y) / 2.f });
+                        }
+
+                        gemSprite->setPosition({ p.x + finalRenderTileSize / 2.f, p.y + finalRenderTileSize / 2.f });
                         m_window.draw(*gemSprite);
                     }
                 }
@@ -2230,17 +2410,16 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                     bool isAnimatingToTile = false;
                     for (const auto& anim : m_anims) { if (anim.target == AnimTarget::Grid && anim.wordIdx == w && anim.charIdx == c && anim.t < 1.0f) { isAnimatingToTile = true; break; } }
                     if (!isAnimatingToTile) {
-                        float currentFlourishScale = 1.0f;
-                        bool isFlourishing = false;
+                        float currentFlourishScale = 1.0f; bool isFlourishing = false;
                         for (const auto& flourish : m_gridFlourishes) { if (flourish.wordIdx == w && flourish.charIdx == c) { float progress = (GRID_FLOURISH_DURATION - flourish.timer) / GRID_FLOURISH_DURATION; currentFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); isFlourishing = true; break; } }
                         letterText.setString(std::string(1, m_grid[w][c]));
                         letterText.setFillColor(m_currentTheme.gridLetter);
                         sf::FloatRect b = letterText.getLocalBounds();
                         letterText.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
-                        letterText.setPosition(p + sf::Vector2f{ finalRenderTileSize / 2.f, finalRenderTileSize / 2.f });
+                        letterText.setPosition(p + sf::Vector2f(finalRenderTileSize / 2.f, finalRenderTileSize / 2.f));
                         letterText.setScale({ currentFlourishScale, currentFlourishScale });
                         m_window.draw(letterText);
-                        if (!isFlourishing) { letterText.setScale({ 1.f, 1.f }); } // Reset for next use if not default
+                        if (!isFlourishing) letterText.setScale({ 1.f, 1.f });
                     }
                 }
             }
@@ -2248,20 +2427,123 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     }
 
     //------------------------------------------------------------
+ //  Draw Path lines (BEFORE Wheel Letters)
+ //------------------------------------------------------------
+    if (m_dragging && !m_path.empty()) {
+        const float halfThickness = scaledPathThickness / 2.0f; // scaledPathThickness from top of function
+        const sf::PrimitiveType stripType = sf::PrimitiveType::TriangleStrip;
+        const sf::Color pathColor = m_currentTheme.dragLine;
+
+        // Draw lines between selected letters in the path
+        if (m_path.size() >= 2) {
+            sf::VertexArray finalPathStrip(stripType); // Dynamically add vertices
+            // finalPathStrip.resize((m_path.size() - 1) * 4); // Old pre-sizing, dynamic is safer
+
+            for (size_t i = 0; i < m_path.size() - 1; ++i) {
+                int path_idx1 = m_path[i]; // Index for m_base and m_wheelLetterRenderPos
+                int path_idx2 = m_path[i + 1];
+
+                // Use m_wheelLetterRenderPos for coordinates
+                if (path_idx1 < 0 || static_cast<size_t>(path_idx1) >= m_wheelLetterRenderPos.size() ||
+                    path_idx2 < 0 || static_cast<size_t>(path_idx2) >= m_wheelLetterRenderPos.size()) {
+                    std::cerr << "Warning: Path index out of bounds for m_wheelLetterRenderPos (Path Segment)" << std::endl;
+                    continue;
+                }
+                sf::Vector2f p1 = m_wheelLetterRenderPos[path_idx1];
+                sf::Vector2f p2 = m_wheelLetterRenderPos[path_idx2];
+
+                sf::Vector2f direction = p2 - p1;
+                float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+                if (length < 0.1f) continue; // Avoid division by zero for tiny segments
+
+                sf::Vector2f unitDirection = direction / length;
+                sf::Vector2f unitPerpendicular = { -unitDirection.y, unitDirection.x }; // SFML 3: Direct init
+                sf::Vector2f offset = unitPerpendicular * halfThickness;
+
+                // Add vertices for this segment
+                finalPathStrip.append(sf::Vertex(p1 - offset, pathColor));
+                finalPathStrip.append(sf::Vertex(p1 + offset, pathColor));
+                finalPathStrip.append(sf::Vertex(p2 - offset, pathColor));
+                finalPathStrip.append(sf::Vertex(p2 + offset, pathColor));
+            }
+            if (finalPathStrip.getVertexCount() > 0) {
+                m_window.draw(finalPathStrip);
+            }
+        }
+
+        // Draw "rubber band" line from last selected letter to mouse cursor
+        // m_path is guaranteed not empty here due to outer if condition
+        int lastPathIdx = m_path.back();
+        if (lastPathIdx >= 0 && static_cast<size_t>(lastPathIdx) < m_wheelLetterRenderPos.size()) {
+            sf::Vector2f p1 = m_wheelLetterRenderPos[lastPathIdx]; // Use visual position
+            sf::Vector2f p2 = mousePos; // mousePos is already mapped in m_renderGameScreen
+
+            sf::Vector2f direction = p2 - p1;
+            float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+
+            if (length > 0.1f) { // Only draw if there's some length
+                sf::Vector2f unitDirection = direction / length;
+                sf::Vector2f unitPerpendicular = { -unitDirection.y, unitDirection.x }; // SFML 3
+                sf::Vector2f offset = unitPerpendicular * halfThickness;
+
+                sf::VertexArray rubberBandStrip(stripType, 4);
+                rubberBandStrip[0].position = p1 - offset;
+                rubberBandStrip[1].position = p1 + offset;
+                rubberBandStrip[2].position = p2 - offset;
+                rubberBandStrip[3].position = p2 + offset;
+                for (unsigned int k = 0; k < 4; ++k) rubberBandStrip[k].color = pathColor;
+                m_window.draw(rubberBandStrip);
+            }
+        }
+    }
+
+    //------------------------------------------------------------
     //  Draw wheel background & letters
     //------------------------------------------------------------
-    const float currentWheelRadiusVal = m_currentWheelRadius; // Use member m_currentWheelRadius
-    const float scaledWheelPaddingVal = S(this, 30.f);
-    m_wheelBg.setRadius(currentWheelRadiusVal + scaledWheelPaddingVal);
+    m_wheelBg.setRadius(m_visualBgRadius); // m_visualBgRadius is set in m_updateLayout
+    m_wheelBg.setOrigin({ m_visualBgRadius, m_visualBgRadius });
+    m_wheelBg.setPosition(sf::Vector2f{ m_wheelX, m_wheelY });
     m_wheelBg.setFillColor(m_currentTheme.wheelBg);
     m_wheelBg.setOutlineColor(m_currentTheme.wheelOutline);
     m_wheelBg.setOutlineThickness(scaledWheelOutlineThickness);
-    m_wheelBg.setOrigin({ m_wheelBg.getRadius(), m_wheelBg.getRadius() });
-    m_wheelBg.setPosition({ m_wheelX, m_wheelY });
     m_window.draw(m_wheelBg);
 
+    float fontScaleRatio = 1.f;
+    if (LETTER_R_BASE_DESIGN > 0.1f && m_currentLetterRenderRadius > 0.1f) {
+        fontScaleRatio = m_currentLetterRenderRadius / LETTER_R_BASE_DESIGN;
+    }
+    // Clamp to prevent excessively tiny or huge fonts relative to original design.
+    fontScaleRatio = std::clamp(fontScaleRatio, 0.5f, 1.5f);
+
+    // S(this, ...) scales the base font size by the overall m_uiScale.
+    // fontScaleRatio further refines it based on the letter circle's current relative size.
+    unsigned int actualScaledWheelLetterFontSize = static_cast<unsigned int>(
+        std::max(8.0f, S(this, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN) * fontScaleRatio)
+        );
+
+    sf::Text chTxt(m_font, "", actualScaledWheelLetterFontSize);
+
+    for (std::size_t i = 0; i < m_base.size(); ++i) {
+        if (i >= m_wheelLetterRenderPos.size()) continue;
+        bool isHilited = std::find(m_path.begin(), m_path.end(), static_cast<int>(i)) != m_path.end();
+        sf::Vector2f renderPos = m_wheelLetterRenderPos[i];
+        sf::CircleShape letterCircle(m_currentLetterRenderRadius);
+        letterCircle.setOrigin({ m_currentLetterRenderRadius, m_currentLetterRenderRadius });
+        letterCircle.setPosition(renderPos);
+        letterCircle.setFillColor(isHilited ? m_currentTheme.wheelOutline : m_currentTheme.letterCircleNormal);
+        letterCircle.setOutlineColor(m_currentTheme.wheelOutline);
+        letterCircle.setOutlineThickness(scaledLetterCircleOutline);
+        m_window.draw(letterCircle);
+        chTxt.setString(std::string(1, static_cast<char>(std::toupper(m_base[i]))));
+        chTxt.setFillColor(isHilited ? m_currentTheme.letterTextHighlight : m_currentTheme.letterTextNormal);
+        sf::FloatRect txtBounds_ch = chTxt.getLocalBounds();
+        chTxt.setOrigin({ txtBounds_ch.position.x + txtBounds_ch.size.x / 2.f, txtBounds_ch.position.y + txtBounds_ch.size.y / 2.f });
+        chTxt.setPosition(renderPos);
+        m_window.draw(chTxt);
+    }
+
     // --- DRAW FLYING LETTER ANIMATIONS ---
-    sf::Text flyingLetterText(m_font, "", scaledFlyingLetterFontSize); // SFML 3.0 constructor
+    sf::Text flyingLetterText(m_font, "", scaledFlyingLetterFontSize);
     sf::Color flyColorBase = m_currentTheme.gridLetter;
     for (const auto& a : m_anims) { sf::Color currentFlyColor = flyColorBase; if (a.target == AnimTarget::Score) { currentFlyColor = sf::Color::Yellow; } float alpha_ratio = 1.0f; if (a.t > 0.7f) { alpha_ratio = (1.0f - a.t) / 0.3f; alpha_ratio = std::max(0.0f, std::min(1.0f, alpha_ratio)); } currentFlyColor.a = static_cast<std::uint8_t>(255.f * alpha_ratio); flyingLetterText.setFillColor(currentFlyColor); float eased_t = a.t * a.t * (3.f - 2.f * a.t); sf::Vector2f p_anim = a.start + (a.end - a.start) * eased_t; flyingLetterText.setString(std::string(1, a.ch)); sf::FloatRect bounds_fly = flyingLetterText.getLocalBounds(); flyingLetterText.setOrigin({ bounds_fly.position.x + bounds_fly.size.x / 2.f, bounds_fly.position.y + bounds_fly.size.y / 2.f }); flyingLetterText.setPosition(p_anim); m_window.draw(flyingLetterText); }
 
@@ -2271,18 +2553,16 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     // --- DRAW HINT POINT ANIMATIONS (+1 flying to Points text) ---
     m_renderHintPointAnims(m_window);
 
-    //------------------------------------------------------------
-    //  Draw Path lines (BEFORE Wheel Letters)
-    //------------------------------------------------------------
-    if (m_dragging && !m_path.empty()) { const float halfThickness = scaledPathThickness / 2.0f; const sf::PrimitiveType stripType = sf::PrimitiveType::TriangleStrip; const sf::Color pathColor = m_currentTheme.dragLine; if (m_path.size() >= 2) { sf::VertexArray finalPathStrip(stripType, (m_path.size() - 1) * 4); size_t currentVertex = 0; for (size_t i = 0; i < m_path.size() - 1; ++i) { int idx1 = m_path[i]; int idx2 = m_path[i + 1]; if (idx1 < 0 || static_cast<size_t>(idx1) >= m_wheelCentres.size() || idx2 < 0 || static_cast<size_t>(idx2) >= m_wheelCentres.size()) { continue; } sf::Vector2f p1 = m_wheelCentres[idx1]; sf::Vector2f p2 = m_wheelCentres[idx2]; sf::Vector2f direction = p2 - p1; float length = std::sqrt(direction.x * direction.x + direction.y * direction.y); if (length < 0.1f) continue; sf::Vector2f unitDirection = direction / length; sf::Vector2f unitPerpendicular = { -unitDirection.y, unitDirection.x }; sf::Vector2f offset = unitPerpendicular * halfThickness; if (currentVertex + 3 < finalPathStrip.getVertexCount()) { finalPathStrip[currentVertex].position = p1 - offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p1 + offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p2 - offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; finalPathStrip[currentVertex].position = p2 + offset; finalPathStrip[currentVertex].color = pathColor; currentVertex++; } else { std::cerr << "VertexArray index out of bounds!" << std::endl; break; } } finalPathStrip.resize(currentVertex); if (finalPathStrip.getVertexCount() > 0) { m_window.draw(finalPathStrip); } } if (!m_path.empty()) { int lastIdx = m_path.back(); if (lastIdx >= 0 && static_cast<size_t>(lastIdx) < m_wheelCentres.size()) { sf::Vector2f p1 = m_wheelCentres[lastIdx]; sf::Vector2f p2 = mousePos; sf::Vector2f direction = p2 - p1; float length = std::sqrt(direction.x * direction.x + direction.y * direction.y); if (length > 0.1f) { sf::Vector2f unitDirection = direction / length; sf::Vector2f unitPerpendicular = { -unitDirection.y, unitDirection.x }; sf::Vector2f offset = unitPerpendicular * halfThickness; sf::VertexArray rubberBandStrip(stripType, 4); rubberBandStrip[0].position = p1 - offset; rubberBandStrip[1].position = p1 + offset; rubberBandStrip[2].position = p2 - offset; rubberBandStrip[3].position = p2 + offset; rubberBandStrip[0].color = pathColor; rubberBandStrip[1].color = pathColor; rubberBandStrip[2].color = pathColor; rubberBandStrip[3].color = pathColor; m_window.draw(rubberBandStrip); } } } }
-
-    // --- START: Draw Guess Display ---
+ 
+    // --- Draw Guess Display ---
     if (m_gameState == GState::Playing && !m_currentGuess.empty() && m_guessDisplay_Text && m_guessDisplay_Bg.getPointCount() > 0) {
-        m_guessDisplay_Text->setCharacterSize(scaledGuessDisplayFontSize); // m_guessDisplay_Text is a unique_ptr, set its properties
+        m_guessDisplay_Text->setCharacterSize(scaledGuessDisplayFontSize);
         m_guessDisplay_Text->setString(m_currentGuess);
         sf::FloatRect textBounds_guess = m_guessDisplay_Text->getLocalBounds();
-        sf::Vector2f bgSize_guess = { textBounds_guess.position.x + textBounds_guess.size.x + 2 * scaledGuessDisplayPadX, textBounds_guess.position.y + textBounds_guess.size.y + 2 * scaledGuessDisplayPadY };
-        float guessY_val = m_wheelY - (currentWheelRadiusVal + scaledWheelPaddingVal) - (bgSize_guess.y / 2.f) - scaledGuessDisplayGap;
+        sf::Vector2f bgSize_guess = { textBounds_guess.position.x + textBounds_guess.size.x + 2 * scaledGuessDisplayPadX,
+                                     textBounds_guess.position.y + textBounds_guess.size.y + 2 * scaledGuessDisplayPadY };
+        float wheelVisualTopY = m_wheelY - m_visualBgRadius; // m_visualBgRadius is correct here
+        float guessY_val = wheelVisualTopY - (bgSize_guess.y / 2.f) - scaledGuessDisplayGap;
         m_guessDisplay_Bg.setSize(bgSize_guess);
         m_guessDisplay_Bg.setRadius(scaledGuessDisplayRadius);
         m_guessDisplay_Bg.setFillColor(m_currentTheme.gridFilledTile);
@@ -2290,108 +2570,78 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         m_guessDisplay_Bg.setOutlineThickness(scaledGuessDisplayOutline);
         m_guessDisplay_Bg.setOrigin({ bgSize_guess.x / 2.f, bgSize_guess.y / 2.f });
         m_guessDisplay_Bg.setPosition({ m_wheelX, guessY_val });
-        m_guessDisplay_Text->setOrigin({ textBounds_guess.position.x + textBounds_guess.size.x / 2.f, textBounds_guess.position.y + textBounds_guess.size.y / 2.f });
+        m_guessDisplay_Text->setOrigin({ textBounds_guess.position.x + textBounds_guess.size.x / 2.f,
+                                         textBounds_guess.position.y + textBounds_guess.size.y / 2.f });
         m_guessDisplay_Text->setPosition({ m_wheelX, guessY_val });
         m_guessDisplay_Text->setFillColor(m_currentTheme.gridLetter);
         m_window.draw(m_guessDisplay_Bg);
         m_window.draw(*m_guessDisplay_Text);
     }
 
-    // --- Draw Wheel Letters ---
-    const float baseWheelRadius = S(this, WHEEL_R); float wheelRadiusRatio = 1.0f; if (baseWheelRadius > 1.0f && currentWheelRadiusVal > 0.0f) { wheelRadiusRatio = currentWheelRadiusVal / baseWheelRadius; } wheelRadiusRatio = std::clamp(wheelRadiusRatio, 0.7f, 1.0f);
-    const unsigned int scaledWheelLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 25.f) * wheelRadiusRatio));
-    const float letterCircleRadius = m_currentLetterRenderRadius; // Use member m_currentLetterRenderRadius
-    sf::Text chTxt(m_font, "", scaledWheelLetterFontSize); // SFML 3.0 constructor
-    for (std::size_t i = 0; i < m_base.size(); ++i) { if (i >= m_wheelLetterRenderPos.size()) continue; bool isHilited = std::find(m_path.begin(), m_path.end(), static_cast<int>(i)) != m_path.end(); sf::Vector2f renderPos = m_wheelLetterRenderPos[i]; sf::CircleShape letterCircle(letterCircleRadius); letterCircle.setOrigin({ letterCircleRadius, letterCircleRadius }); letterCircle.setPosition(renderPos); letterCircle.setFillColor(isHilited ? m_currentTheme.wheelOutline : m_currentTheme.letterCircleNormal); letterCircle.setOutlineColor(m_currentTheme.wheelOutline); letterCircle.setOutlineThickness(scaledLetterCircleOutline); m_window.draw(letterCircle); chTxt.setString(std::string(1, static_cast<char>(std::toupper(m_base[i])))); chTxt.setFillColor(isHilited ? m_currentTheme.letterTextHighlight : m_currentTheme.letterTextNormal); sf::FloatRect txtBounds_ch = chTxt.getLocalBounds(); chTxt.setOrigin({ txtBounds_ch.position.x + txtBounds_ch.size.x / 2.f, txtBounds_ch.position.y + txtBounds_ch.size.y / 2.f }); chTxt.setPosition(renderPos); m_window.draw(chTxt); }
-
     //------------------------------------------------------------
-    //  Draw UI Buttons / Hover (Scramble Button)
+    //  Draw UI Buttons / HUD
     //------------------------------------------------------------
     if (m_gameState == GState::Playing) {
         if (m_scrambleSpr) { bool scrambleHover = m_scrambleSpr->getGlobalBounds().contains(mousePos); m_scrambleSpr->setColor(scrambleHover ? sf::Color::White : sf::Color(255, 255, 255, 200)); m_window.draw(*m_scrambleSpr); }
 
-        //------------------------------------------------------------
-        //  Draw HUD (Found, Bonus, Hint "Points:")
-        //------------------------------------------------------------
-        float bottomHudStartY = m_wheelY + (currentWheelRadiusVal + scaledWheelPaddingVal) + scaledHudOffsetY;
+        float wheelVisualBottomY = m_wheelY + m_visualBgRadius; // m_visualBgRadius is correct here
+        float bottomHudStartY = wheelVisualBottomY + scaledHudOffsetY;
         float currentTopY = bottomHudStartY;
 
-        // Found Text
-        sf::Text foundTxt(m_font, "", scaledFoundFontSize); // SFML 3.0 constructor
+        sf::Text foundTxt(m_font, "", scaledFoundFontSize);
         foundTxt.setString("Found: " + std::to_string(m_found.size()) + "/" + std::to_string(m_solutions.size()));
         foundTxt.setFillColor(m_currentTheme.hudTextFound);
         sf::FloatRect foundBounds = foundTxt.getLocalBounds();
-        foundTxt.setOrigin({ foundBounds.position.x + foundBounds.size.x / 2.f, foundBounds.position.y });
+        foundTxt.setOrigin({ foundBounds.position.x + foundBounds.size.x / 2.f, foundBounds.position.y }); // Use .position.y for vertical origin if aligning top
         foundTxt.setPosition({ m_wheelX, currentTopY });
         m_window.draw(foundTxt);
         currentTopY += foundBounds.size.y + scaledHudLineSpacing;
 
-        // Bonus Word Counter (with Flourish for "Bonus Words: X/Y" text)
         if (!m_allPotentialSolutions.empty() || !m_foundBonusWords.empty()) {
             int totalPossibleBonus = 0; for (const auto& potentialWordInfo : m_allPotentialSolutions) { if (!m_found.count(potentialWordInfo.text)) { totalPossibleBonus++; } }
             std::string bonusCountStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
-
-            sf::Text bonusFoundTxt(m_font, bonusCountStr, scaledBonusFontSize); // SFML 3.0 constructor
+            sf::Text bonusFoundTxt(m_font, bonusCountStr, scaledBonusFontSize);
             bonusFoundTxt.setFillColor(sf::Color::Yellow);
             float bonusTextFlourishScale = 1.0f;
             if (m_bonusTextFlourishTimer > 0.f) { float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION; bonusTextFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); }
             sf::FloatRect bonusBounds = bonusFoundTxt.getLocalBounds();
-            bonusFoundTxt.setOrigin({ bonusBounds.position.x + bonusBounds.size.x / 2.f, bonusBounds.position.y });
+            bonusFoundTxt.setOrigin({ bonusBounds.position.x + bonusBounds.size.x / 2.f, bonusBounds.position.y }); // Use .position.y for vertical origin
             bonusFoundTxt.setPosition({ m_wheelX, currentTopY });
             bonusFoundTxt.setScale({ bonusTextFlourishScale, bonusTextFlourishScale });
             m_window.draw(bonusFoundTxt);
-            currentTopY += bonusBounds.size.y * bonusTextFlourishScale + scaledHudLineSpacing;
+            // currentTopY += bonusBounds.size.y * bonusTextFlourishScale + scaledHudLineSpacing; // This was in your code, ensure bonusBounds.size.y is used
         }
 
-        // --- START: Hint "Points:" Text Display with Flourish ---
-        // This section assumes m_hintPointsText is a std::unique_ptr<sf::Text> member,
-        // and its basic properties (font, character size) are set in m_updateLayout or m_loadResources.
+        // Hint "Points:" Text Display with Flourish
         if (m_hintPointsText) {
-            // 1. Ensure the string content is up-to-date
             m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
-            // Ensure color is set (m_updateLayout likely handles initial color, or set here)
-            m_hintPointsText->setFillColor(m_currentTheme.hudTextFound); // Match theme
-
-            // 2. Apply flourish effect IF the timer is active
-            sf::Vector2f originalPosition = m_hintPointsText->getPosition(); // Position set by m_updateLayout
-            sf::Vector2f originalOrigin = m_hintPointsText->getOrigin();     // Origin set by m_updateLayout
-            sf::Vector2f originalScale = m_hintPointsText->getScale();       // Usually {1,1} unless layout scales it
-
+            m_hintPointsText->setFillColor(m_currentTheme.hudTextFound);
+            sf::Vector2f originalPosition = m_hintPointsText->getPosition();
+            sf::Vector2f originalOrigin = m_hintPointsText->getOrigin();
+            sf::Vector2f originalScale = m_hintPointsText->getScale();
             if (m_hintPointsTextFlourishTimer > 0.f) {
                 float progress = (HINT_POINT_TEXT_FLOURISH_DURATION - m_hintPointsTextFlourishTimer) / HINT_POINT_TEXT_FLOURISH_DURATION;
                 float flourishScaleFactor = 1.0f + 0.3f * std::sin(progress * PI);
-
                 sf::FloatRect localBounds = m_hintPointsText->getLocalBounds();
                 float centerX = localBounds.position.x + localBounds.size.x / 2.f;
                 float centerY = localBounds.position.y + localBounds.size.y / 2.f;
-
                 m_hintPointsText->setOrigin({ centerX, centerY });
-                // Adjust position to keep the new center where the old origin's point + center offset was
-                m_hintPointsText->setPosition({ originalPosition.x + (centerX - originalOrigin.x),
-                                               originalPosition.y + (centerY - originalOrigin.y) });
+                m_hintPointsText->setPosition({ originalPosition.x + (centerX - originalOrigin.x), originalPosition.y + (centerY - originalOrigin.y) });
                 m_hintPointsText->setScale({ flourishScaleFactor, flourishScaleFactor });
             }
-
-            // 3. Draw the text
             m_window.draw(*m_hintPointsText);
-
-            // 4. Reset scale, origin, and position if they were changed by the flourish
             if (m_hintPointsTextFlourishTimer > 0.f) {
                 m_hintPointsText->setScale(originalScale);
                 m_hintPointsText->setOrigin(originalOrigin);
                 m_hintPointsText->setPosition(originalPosition);
             }
         }
-        // --- END: Hint "Points:" Text Display with Flourish ---
 
-        // --- Draw Hint UI Buttons and Cost Text (already handled by m_updateLayout for positioning) ---
-        // Affordability and hover colors are applied here.
+        // Draw Hint UI Background and Buttons
         m_hintAreaBg.setFillColor(sf::Color(200, 200, 200, 50));
         m_hintAreaBg.setOutlineColor(sf::Color(220, 220, 220, 100));
         m_hintAreaBg.setOutlineThickness(S(this, 1.f));
         m_window.draw(m_hintAreaBg);
-
-        // (m_hintPointsText is drawn above with flourish logic)
 
         sf::Color affordableColor = m_currentTheme.menuButtonNormal;
         sf::Color affordableHoverColor = m_currentTheme.menuButtonHover;
@@ -2400,52 +2650,39 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         sf::Color unaffordableTextColor = sf::Color(180, 180, 180, 200);
 
         bool canAffordFirst = m_hintPoints >= HINT_COST_REVEAL_FIRST;
-        bool canAffordRandom = m_hintPoints >= HINT_COST_REVEAL_RANDOM;
-        bool canAffordLast = m_hintPoints >= HINT_COST_REVEAL_LAST;
-
-        // Hint 1: Reveal First
         bool hoverFirst = m_hintRevealFirstButtonShape.getGlobalBounds().contains(mousePos);
         m_hintRevealFirstButtonShape.setFillColor(canAffordFirst ? (hoverFirst ? affordableHoverColor : affordableColor) : unaffordableColor);
         m_window.draw(m_hintRevealFirstButtonShape);
         if (m_hintRevealFirstButtonText) { m_hintRevealFirstButtonText->setFillColor(canAffordFirst ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstButtonText); }
         if (m_hintRevealFirstCostText) { m_hintRevealFirstCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_FIRST)); m_hintRevealFirstCostText->setFillColor(canAffordFirst ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstCostText); }
 
-        // Hint 2: Reveal Random
+        bool canAffordRandom = m_hintPoints >= HINT_COST_REVEAL_RANDOM;
         bool hoverRandom = m_hintRevealRandomButtonShape.getGlobalBounds().contains(mousePos);
         m_hintRevealRandomButtonShape.setFillColor(canAffordRandom ? (hoverRandom ? affordableHoverColor : affordableColor) : unaffordableColor);
         m_window.draw(m_hintRevealRandomButtonShape);
         if (m_hintRevealRandomButtonText) { m_hintRevealRandomButtonText->setFillColor(canAffordRandom ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealRandomButtonText); }
         if (m_hintRevealRandomCostText) { m_hintRevealRandomCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_RANDOM)); m_hintRevealRandomCostText->setFillColor(canAffordRandom ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealRandomCostText); }
 
-        // Hint 3: Reveal Last Word
+        bool canAffordLast = m_hintPoints >= HINT_COST_REVEAL_LAST;
         bool hoverLast = m_hintRevealLastButtonShape.getGlobalBounds().contains(mousePos);
         m_hintRevealLastButtonShape.setFillColor(canAffordLast ? (hoverLast ? affordableHoverColor : affordableColor) : unaffordableColor);
         m_window.draw(m_hintRevealLastButtonShape);
         if (m_hintRevealLastButtonText) { m_hintRevealLastButtonText->setFillColor(canAffordLast ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealLastButtonText); }
         if (m_hintRevealLastCostText) { m_hintRevealLastCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_LAST)); m_hintRevealLastCostText->setFillColor(canAffordLast ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealLastCostText); }
 
-        // --- Hint 4: Reveal First of Each (NEW) ---
         bool canAffordFirstOfEach = m_hintPoints >= HINT_COST_REVEAL_FIRST_OF_EACH;
         bool hoverFirstOfEach = m_hintRevealFirstOfEachButtonShape.getGlobalBounds().contains(mousePos);
         m_hintRevealFirstOfEachButtonShape.setFillColor(canAffordFirstOfEach ? (hoverFirstOfEach ? affordableHoverColor : affordableColor) : unaffordableColor);
         m_window.draw(m_hintRevealFirstOfEachButtonShape);
-
-        if (m_hintRevealFirstOfEachButtonText) {
-            m_hintRevealFirstOfEachButtonText->setFillColor(canAffordFirstOfEach ? affordableTextColor : unaffordableTextColor);
-            m_window.draw(*m_hintRevealFirstOfEachButtonText);
-        }
-        if (m_hintRevealFirstOfEachCostText) {
-            m_hintRevealFirstOfEachCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_FIRST_OF_EACH)); // Update cost string
-            m_hintRevealFirstOfEachCostText->setFillColor(canAffordFirstOfEach ? affordableTextColor : unaffordableTextColor);
-            m_window.draw(*m_hintRevealFirstOfEachCostText);
-        }
-    } // End if (m_gameState == GState::Playing)
+        if (m_hintRevealFirstOfEachButtonText) { m_hintRevealFirstOfEachButtonText->setFillColor(canAffordFirstOfEach ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstOfEachButtonText); }
+        if (m_hintRevealFirstOfEachCostText) { m_hintRevealFirstOfEachCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_FIRST_OF_EACH)); m_hintRevealFirstOfEachCostText->setFillColor(canAffordFirstOfEach ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstOfEachCostText); }
+    }
 
     //------------------------------------------------------------
     //  Draw Solved State overlay
     //------------------------------------------------------------
     if (m_currentScreen == GameScreen::GameOver) {
-        sf::Text winTxt(m_font, "Puzzle Solved!", scaledSolvedFontSize); // SFML 3.0 constructor
+        sf::Text winTxt(m_font, "Puzzle Solved!", scaledSolvedFontSize);
         winTxt.setFillColor(m_currentTheme.hudTextSolved);
         winTxt.setStyle(sf::Text::Bold);
         sf::FloatRect winTxtBounds = winTxt.getLocalBounds();
@@ -2465,18 +2702,16 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         float contBtnPosY = winTxtCenterY + (winTxtBounds.size.y / 2.f) + scaledSpacing;
         winTxt.setOrigin({ winTxtBounds.position.x + winTxtBounds.size.x / 2.f, winTxtBounds.position.y + winTxtBounds.size.y / 2.f });
         winTxt.setPosition({ overlayCenter.x, winTxtCenterY });
-        if (m_contTxt) // m_contTxt is a unique_ptr
-        {
+        if (m_contTxt) {
             m_contTxt->setCharacterSize(scaledContinueFontSize);
             sf::FloatRect contTxtBounds = m_contTxt->getLocalBounds();
             m_contTxt->setOrigin({ contTxtBounds.position.x + contTxtBounds.size.x / 2.f, contTxtBounds.position.y + contTxtBounds.size.y / 2.f });
-            m_contBtn.setOrigin({ contBtnSize.x / 2.f, 0.f }); // Assuming m_contBtn is a direct member or properly initialized shape
+            m_contBtn.setOrigin({ contBtnSize.x / 2.f, 0.f });
             m_contBtn.setPosition({ overlayCenter.x, contBtnPosY });
             m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, contBtnSize.y / 2.f });
         }
         bool contHover = m_contBtn.getGlobalBounds().contains(mousePos); sf::Color continueHoverColor = adjustColorBrightness(m_currentTheme.continueButton, 1.2f);
         m_contBtn.setFillColor(contHover ? continueHoverColor : m_currentTheme.continueButton);
-
         m_window.draw(m_solvedOverlay);
         m_window.draw(winTxt);
         m_window.draw(m_contBtn);

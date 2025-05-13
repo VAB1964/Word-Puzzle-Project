@@ -55,6 +55,9 @@ public:
 
 private:
 
+    float m_letterPositionRadius;      // Radius on which letter circles are centered
+    float m_visualBgRadius;            // Radius of the m_wheelBg circle
+
     // --- Flourish State ---
     struct GridLetterFlourish {
         int wordIdx;       // Index in m_sorted
