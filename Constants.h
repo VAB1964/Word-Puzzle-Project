@@ -50,7 +50,6 @@ const int HINT_COST_REVEAL_RANDOM = 5;
 const int HINT_COST_REVEAL_LAST = 15;
 const int HINT_COST_REVEAL_FIRST_OF_EACH = 10;
 
-constexpr unsigned int INITIAL_HINTS = 999;
 constexpr unsigned int WORDS_PER_HINT = 5;
 
 const float SCORE_BAR_BOTTOM_MARGIN = 10.f;
@@ -80,11 +79,13 @@ const float HINT_POINT_ANIM_SPEED = 1.0f;
 
 // DEBUG: ---- Assuming REF_W = 1000, REF_H = 800 for these example values:
 const sf::FloatRect GRID_ZONE_RECT_DESIGN = { { 90.f,  122.f}, {815.f, 273.f} }; // Large central area for the word grid
-const sf::FloatRect HINT_ZONE_RECT_DESIGN = { { 95.f, 500.f}, {272.f, 195.f} }; // Bottom-left area for hints
+const sf::FloatRect HINT_ZONE_RECT_DESIGN = { { 110.f, 475.f}, {243.f, 245.f} }; // Bottom-left area for hints
 const sf::FloatRect WHEEL_ZONE_RECT_DESIGN = { {374.f, 450.f}, {285.f, 285.f} }; // Bottom-middle for letter wheel
 const sf::FloatRect SCORE_ZONE_RECT_DESIGN = { {660.f, 500.f}, {243.f, 195.f} }; // Bottom-right for score/bonus
 const sf::FloatRect TOP_BAR_ZONE_DESIGN = { { 50.f,  10.f}, {900.f,  30.f} }; // Area for current "Score: XXX" and "1/5"
 
+const float HINT_BG_PADDING_X = 5;
+const float HINT_BG_PADDING_Y = 2;
 const float GRID_ZONE_PADDING_X_DESIGN = 2.f; 
 const float GRID_ZONE_PADDING_Y_DESIGN = 2.f;
 const float WHEEL_ZONE_PADDING_DESIGN = 10.f;

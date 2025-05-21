@@ -112,14 +112,13 @@ Game::Game() :
     m_lastLayoutSize({ 0, 0 }),
     m_celebrationEffectTimer(0.f),
     m_currentScreen(GameScreen::MainMenu),
-    m_gameState(GState::Playing),
-    m_hintsAvailable(INITIAL_HINTS),         // Use constant directly here
+    m_gameState(GState::Playing),         
     m_wordsSolvedSinceHint(0),
     m_currentScore(0),
     m_scoreFlourishTimer(0.f),
     m_bonusTextFlourishTimer(0.f),
     m_dragging(false),
-    m_decor(10),                             // Initialize DecorLayer
+    m_decor(10),                             
     m_selectedDifficulty(DifficultyLevel::None),
     m_puzzlesPerSession(0),
     m_currentPuzzleIndex(0),
@@ -963,7 +962,7 @@ void Game::m_rebuild() {
 
     // --- Reset Score/Hints ---
     if (m_currentPuzzleIndex == 0 && m_isInSession) { /* ... reset score/hints ... */
-        m_currentScore = 0; m_hintsAvailable = INITIAL_HINTS; m_wordsSolvedSinceHint = 0;
+        m_currentScore = 0; m_wordsSolvedSinceHint = 0;
         std::cout << "DEBUG: First puzzle of session - Resetting score, hints, and words solved count." << std::endl;
     }
     else if (m_isInSession) { /* ... reset words solved count ... */
@@ -1486,15 +1485,15 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     float bgRadius = hintUiInternalScale * 10.f;
 
     // --- Stage 3: Determine Background Top-Left Position ---
-    float finalBgPosX = designLeftEdge + S(this, 15.f);
-    float finalBgPosY = wheelZoneInnerHeight + gapBelowGrid;
+    float finalBgPosX = HINT_ZONE_RECT_DESIGN.position.x + HINT_BG_PADDING_X;
+    float finalBgPosY = HINT_ZONE_RECT_DESIGN.position.y + HINT_BG_PADDING_Y;
 
     // --- Stage 4: Set Background Position and Size ---
     m_hintAreaBg.setSize({ bgWidth, bgHeight });
     m_hintAreaBg.setRadius(bgRadius);
     m_hintAreaBg.setOrigin({ 0.f, 0.f });
     m_hintAreaBg.setPosition({ finalBgPosX, finalBgPosY });
-
+    
     // --- Stage 5: Position Elements INSIDE the Background Frame ---
     float elementStartX = finalBgPosX + hintAreaPadding;
     float currentElementY = finalBgPosY + hintAreaPadding; // Start Y for the first element
