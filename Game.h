@@ -277,6 +277,13 @@ private:
     sf::RectangleShape m_debugTopBarZoneShape;
     bool m_showDebugZones;
 
+    bool m_isHoveringHintPointsText; // True if mouse is over the hint points text
+    std::vector<WordInfo> m_cachedBonusWords; // Cache for bonus words
+    bool m_bonusWordsCacheIsValid;
+
+    void m_renderBonusWordsPopup(sf::RenderTarget& target); // Declaration
+    bool isGridSolution(const std::string& wordText) const;
+
     // --- Private Helper Methods (Declarations only) ---
     void m_loadResources();
     void m_processEvents();

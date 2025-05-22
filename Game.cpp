@@ -58,6 +58,16 @@ namespace { // Anonymous namespace for local helper
 } // end anonymous namespace
 // --- END: Anonymous Namespace for Helper Function ---
 
+namespace { // Anonymous namespace for helper struct
+    struct PopupDrawItem {
+        std::string textDisplay; // Actual text to show ('word' or '***')
+        bool isTitle;
+        float height;
+        float width;
+        sf::Color color; // To handle found/unfound colors
+    };
+}
+
 
 //--------------------------------------------------------------------
 //  ★ SCALE BLOCK 2 –  view that letter‑boxes (no brace‑init lists)
@@ -171,6 +181,8 @@ Game::Game() :
     m_hintRevealFirstButtonShape({ 100.f, 30.f }, 5.f, 10), 
     m_hintRevealFirstOfEachButtonShape({ 100.f, 30.f }, 5.f, 10),
     m_hintAreaBg({ 100.f, 200.f }, 10.f, 10),
+    m_isHoveringHintPointsText(false),
+    m_bonusWordsCacheIsValid(false),
     //debug
     m_showDebugZones(false),
 
@@ -697,6 +709,12 @@ void Game::m_render() {
         else { m_renderGameScreen(mpos); }
     }
 
+    // --- Draw Bonus Words Popup (if hovering over hint points text) ---
+    // Must be after m_renderGameScreen has potentially set m_isHoveringHintPointsText true
+    if (m_isHoveringHintPointsText && (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)) {
+        m_renderBonusWordsPopup(m_window); // Pass m_window as the RenderTarget
+    }
+
     // --- Draw Debug Zones (draw them last to see on top of everything) ---
     if (m_showDebugZones) {
         m_window.draw(m_debugGridZoneShape);
@@ -934,6 +952,9 @@ void Game::m_rebuild() {
     // Assign final lists for game state
     m_solutions = final_solutions; // UNIQUE list
     m_sorted = Words::sortForGrid(m_solutions);
+
+    m_bonusWordsCacheIsValid = false;
+    m_cachedBonusWords.clear();
 
     // --- Debug Print ---
     std::cout << "DEBUG: m_rebuild - Final Base: '" << m_base << "', FINAL m_solutions count (Grid Target): " << m_solutions.size() << ", m_sorted count: " << m_sorted.size() << std::endl;
@@ -2646,32 +2667,38 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
 
         if (!m_allPotentialSolutions.empty() || !m_foundBonusWords.empty()) {
             int totalPossibleBonus = 0;
+            // Iterate through all words that *could* be formed from the base letters
             for (const auto& potentialWordInfo : m_allPotentialSolutions) {
-                if (!m_found.count(potentialWordInfo.text)) { totalPossibleBonus++; }
+                // A word is a "possible bonus word" if it's NOT a main grid solution
+                if (!isGridSolution(potentialWordInfo.text)) { // <<< USE THE HELPER HERE
+                    totalPossibleBonus++;
+                }
             }
+            // m_foundBonusWords correctly counts how many of these *actual* bonus words have been found by the player.
+            // This assumes that when a bonus word is added to m_foundBonusWords, it's already confirmed not to be a grid solution.
+
             std::string bonusCountStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
 
             sf::Text bonusWordsDisplay(m_font, bonusCountStr, static_cast<unsigned int>(S(this, SCORE_ZONE_BONUS_FONT_SIZE)));
-            bonusWordsDisplay.setFillColor(GLOWING_TUBE_TEXT_COLOR);
+            bonusWordsDisplay.setFillColor(GLOWING_TUBE_TEXT_COLOR); // Or your theme color
 
             sf::FloatRect bonusTextBounds = bonusWordsDisplay.getLocalBounds();
-            // Origin: Bottom-Center
             bonusWordsDisplay.setOrigin({ bonusTextBounds.position.x + bonusTextBounds.size.x / 2.f,
                                          bonusTextBounds.position.y + bonusTextBounds.size.y });
-            // Position: Horizontally centered in Score Zone, at bottom with padding
             bonusWordsDisplay.setPosition(sf::Vector2f{
                 SCORE_ZONE_RECT_DESIGN.position.x + SCORE_ZONE_RECT_DESIGN.size.x / 2.f,
                 SCORE_ZONE_RECT_DESIGN.position.y + SCORE_ZONE_RECT_DESIGN.size.y - S(this, SCORE_ZONE_PADDING_Y_DESIGN)
                 });
 
             // Apply flourish (m_bonusTextFlourishTimer)
+            // ... (flourish logic for bonusWordsDisplay remains the same) ...
             sf::Vector2f bonusDispOriginalPos = bonusWordsDisplay.getPosition();
             sf::Vector2f bonusDispOriginalOrigin = bonusWordsDisplay.getOrigin();
             sf::Vector2f bonusDispOriginalScale = bonusWordsDisplay.getScale();
             if (m_bonusTextFlourishTimer > 0.f) {
                 float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION;
                 float bonusFlourishScaleFactor = 1.0f + 0.4f * std::sin(progress * PI);
-                sf::FloatRect bonusLocalBoundsActual = bonusWordsDisplay.getLocalBounds(); // Use bounds of the actual current string
+                sf::FloatRect bonusLocalBoundsActual = bonusWordsDisplay.getLocalBounds();
                 float bonusCenterX = bonusLocalBoundsActual.position.x + bonusLocalBoundsActual.size.x / 2.f;
                 float bonusCenterY = bonusLocalBoundsActual.position.y + bonusLocalBoundsActual.size.y / 2.f;
                 bonusWordsDisplay.setOrigin({ bonusCenterX, bonusCenterY });
@@ -2711,6 +2738,22 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                 m_hintPointsText->setOrigin(originalOrigin);
                 m_hintPointsText->setPosition(originalPosition);
             }
+        }
+
+        // Update hover state for bonus words popup trigger
+        if (m_hintPointsText && m_currentScreen == GameScreen::Playing) { // Only if text exists and on playing screen
+            // Convert m_hintPointsText's local bounds to global bounds for accurate hover check
+            // This assumes m_hintPointsText is already positioned correctly by m_updateLayout
+            sf::FloatRect hintTextGlobalBounds = m_hintPointsText->getGlobalBounds();
+            if (hintTextGlobalBounds.contains(mousePos)) {
+                m_isHoveringHintPointsText = true;
+            }
+            else {
+                m_isHoveringHintPointsText = false;
+            }
+        }
+        else {
+            m_isHoveringHintPointsText = false; // Not hovering if text doesn't exist or not on playing screen
         }
 
         // Draw Hint UI Background and Buttons
@@ -3701,5 +3744,353 @@ void Game::m_renderHintPointAnims(sf::RenderTarget& target) {
         renderText.setOrigin({ textBounds.position.x + textBounds.size.x / 2.f,
                               textBounds.position.y + textBounds.size.y / 2.f });
         target.draw(renderText);
+    }
+}
+
+// Helper function (can be a private static method or in an anonymous namespace if preferred)
+// to check if a word is a main grid solution.
+bool Game::isGridSolution(const std::string& wordText) const { // Ensure Game:: is present
+    for (const auto& solInfo : m_solutions) { // m_solutions is a member
+        if (solInfo.text == wordText) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// In Game.cpp
+
+// (Ensure PopupDrawItem struct is defined, e.g., in an anonymous namespace)
+// namespace {
+//     struct PopupDrawItem { /* ... */ };
+// }
+
+// In Game.cpp
+
+// (PopupDrawItem struct should be defined, e.g., in an anonymous namespace)
+
+// In Game.cpp
+
+// (PopupDrawItem struct should be defined)
+
+void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
+    if (m_font.getInfo().family.empty()) return;
+
+    // --- Constants ---
+    const float POPUP_PADDING_BASE = 12.f;         // Padding around the entire pop-up
+    const float MAJOR_COL_SPACING_BASE = 10.f;   // Horizontal space between major length groups (3-letter, 4-letter)
+    const float MINOR_COL_SPACING_BASE = 8.f;    // Horizontal space between word columns *within* a length group
+    const float TITLE_BOTTOM_MARGIN_BASE = 5.f;  // Space below a group title (e.g., "3-Letter Words:")
+    const float WORD_LINE_SPACING_BASE = 4.f;    // Vertical space between words in a minor column
+    const unsigned int POPUP_WORD_FONT_SIZE_BASE = 13; // Slightly smaller for density
+    const unsigned int POPUP_TITLE_FONT_SIZE_BASE = 15;
+    const float POPUP_MAX_WIDTH_DESIGN_RATIO = 0.8f;   // Can use more width now
+    const float POPUP_MAX_HEIGHT_DESIGN_RATIO = 0.8f;  // Can use more height
+    const float POPUP_MIN_TEXT_SCALE = 0.40f;
+    const float POPUP_CORNER_RADIUS_BASE = 8.f;
+    const int MAX_MINOR_COLS_PER_GROUP = 3; // Max vertical columns for words under one title
+
+    // --- 1. Prepare Data (Cache if needed) ---
+    // (This section remains the same)
+    if (!m_bonusWordsCacheIsValid) {
+        m_cachedBonusWords.clear();
+        std::set<std::string> uniqueBonusWordTexts;
+        for (const auto& wordInfo : m_allPotentialSolutions) {
+            if (!isGridSolution(wordInfo.text)) {
+                if (uniqueBonusWordTexts.insert(wordInfo.text).second) {
+                    m_cachedBonusWords.push_back(wordInfo);
+                }
+            }
+        }
+        std::sort(m_cachedBonusWords.begin(), m_cachedBonusWords.end(),
+            [](const WordInfo& a, const WordInfo& b) {
+                if (a.text.length() != b.text.length()) {
+                    return a.text.length() < b.text.length();
+                }
+                return a.text < b.text;
+            });
+        m_bonusWordsCacheIsValid = true;
+    }
+    if (m_cachedBonusWords.empty()) return;
+
+    // Group words by length (still useful)
+    std::map<int, std::vector<WordInfo>> bonusWordsByLength;
+    for (const auto& wi : m_cachedBonusWords) {
+        bonusWordsByLength[static_cast<int>(wi.text.length())].push_back(wi);
+    }
+
+    // --- 2. Determine Text Scale ---
+    // This requires estimating the layout with a trial scale.
+    // We need to estimate total width if all groups were side-by-side,
+    // and max height of any group.
+
+    float textRenderScale = 1.0f;
+    const float maxPopupDesignWidth = static_cast<float>(REF_W) * POPUP_MAX_WIDTH_DESIGN_RATIO;
+    const float maxPopupDesignHeight = static_cast<float>(REF_H) * POPUP_MAX_HEIGHT_DESIGN_RATIO;
+    const float actualPadding = S(this, POPUP_PADDING_BASE); // Padding for the whole popup
+
+    // Estimate required width and height at scale 1.0
+    float estimatedTotalWidthAtScale1 = 0;
+    float estimatedMaxGroupHeightAtScale1 = 0;
+    sf::Text measureText(m_font, "", 10);
+
+    bool firstMajorCol = true;
+    for (const auto& pair_len_words : bonusWordsByLength) {
+        int length = pair_len_words.first;
+        const std::vector<WordInfo>& words = pair_len_words.second;
+        if (words.empty()) continue;
+
+        if (!firstMajorCol) {
+            estimatedTotalWidthAtScale1 += S(this, MAJOR_COL_SPACING_BASE);
+        }
+        firstMajorCol = false;
+
+        // Title
+        measureText.setString(std::to_string(length) + "-Letter Words:");
+        measureText.setCharacterSize(S(this, static_cast<float>(POPUP_TITLE_FONT_SIZE_BASE)));
+        sf::FloatRect titleBounds = measureText.getLocalBounds();
+        float currentGroupWidth = titleBounds.position.x + titleBounds.size.x;
+        float currentGroupHeight = titleBounds.position.y + titleBounds.size.y + S(this, TITLE_BOTTOM_MARGIN_BASE);
+
+        // Words (assume 1 minor column for this initial width estimate for the group)
+        float maxWordWidthInGroup = 0;
+        int wordCountInGroup = 0;
+        for (const auto& wordInfo : words) {
+            wordCountInGroup++;
+            std::string tempDisp = std::string(wordInfo.text.length(), '*'); // Use stars for width
+            measureText.setString(tempDisp);
+            measureText.setCharacterSize(S(this, static_cast<float>(POPUP_WORD_FONT_SIZE_BASE)));
+            sf::FloatRect wordB = measureText.getLocalBounds();
+            maxWordWidthInGroup = std::max(maxWordWidthInGroup, wordB.position.x + wordB.size.x);
+            currentGroupHeight += (wordB.position.y + wordB.size.y);
+            if (wordCountInGroup < words.size()) currentGroupHeight += S(this, WORD_LINE_SPACING_BASE);
+        }
+        currentGroupWidth = std::max(currentGroupWidth, maxWordWidthInGroup);
+        estimatedTotalWidthAtScale1 += currentGroupWidth;
+        estimatedMaxGroupHeightAtScale1 = std::max(estimatedMaxGroupHeightAtScale1, currentGroupHeight);
+    }
+    estimatedTotalWidthAtScale1 += 2 * actualPadding; // Add padding for the whole pop-up
+    estimatedMaxGroupHeightAtScale1 += 2 * actualPadding;
+
+    // Calculate scale based on width and height constraints
+    float scaleBasedOnWidth = 1.0f;
+    if (estimatedTotalWidthAtScale1 > maxPopupDesignWidth && maxPopupDesignWidth > 0) {
+        float contentWidth = estimatedTotalWidthAtScale1 - 2 * actualPadding;
+        float targetContentWidth = maxPopupDesignWidth - 2 * actualPadding;
+        if (contentWidth > 0 && targetContentWidth > 0) {
+            scaleBasedOnWidth = targetContentWidth / contentWidth;
+        }
+        else if (targetContentWidth <= 0) {
+            scaleBasedOnWidth = POPUP_MIN_TEXT_SCALE * 0.8f;
+        }
+    }
+    float scaleBasedOnHeight = 1.0f;
+    if (estimatedMaxGroupHeightAtScale1 > maxPopupDesignHeight && maxPopupDesignHeight > 0) {
+        float contentHeight = estimatedMaxGroupHeightAtScale1 - 2 * actualPadding;
+        float targetContentHeight = maxPopupDesignHeight - 2 * actualPadding;
+        if (contentHeight > 0 && targetContentHeight > 0) {
+            scaleBasedOnHeight = targetContentHeight / contentHeight;
+        }
+        else if (targetContentHeight <= 0) {
+            scaleBasedOnHeight = POPUP_MIN_TEXT_SCALE * 0.8f;
+        }
+    }
+    textRenderScale = std::min({ scaleBasedOnWidth, scaleBasedOnHeight, 1.0f });
+    textRenderScale = std::max(textRenderScale, POPUP_MIN_TEXT_SCALE);
+
+    // --- 3. Prepare Final Scaled Items & Layout Info for Each Major Group ---
+    const unsigned int finalWordFontSize = static_cast<unsigned int>(S(this, static_cast<float>(POPUP_WORD_FONT_SIZE_BASE)) * textRenderScale);
+    const unsigned int finalTitleFontSize = static_cast<unsigned int>(S(this, static_cast<float>(POPUP_TITLE_FONT_SIZE_BASE)) * textRenderScale);
+
+    // Scaled spacing values (these are scaled by textRenderScale as they are relative to text size)
+    const float actualMajorColSpacing = S(this, MAJOR_COL_SPACING_BASE) * textRenderScale;
+    const float actualMinorColSpacing = S(this, MINOR_COL_SPACING_BASE) * textRenderScale;
+    const float actualTitleBottomMargin = S(this, TITLE_BOTTOM_MARGIN_BASE) * textRenderScale;
+    const float actualWordLineSpacing = S(this, WORD_LINE_SPACING_BASE) * textRenderScale;
+
+    struct MajorGroupRenderData {
+        std::string title;
+        sf::Vector2f titleSize;
+        std::vector<std::vector<PopupDrawItem>> minorColumns; // Words distributed into minor columns
+        float totalWidth;  // Total width of this major group (title or widest minor col sum)
+        float totalHeight; // Total height of this major group
+    };
+    std::vector<MajorGroupRenderData> majorGroups;
+    float finalTotalContentWidth = 0;
+    float finalMaxContentHeight = 0;
+
+    firstMajorCol = true; // Reset for this pass
+    for (const auto& pair_len_words : bonusWordsByLength) {
+        int length = pair_len_words.first;
+        const std::vector<WordInfo>& wordsInGroup = pair_len_words.second;
+        if (wordsInGroup.empty()) continue;
+
+        if (!firstMajorCol) {
+            finalTotalContentWidth += actualMajorColSpacing;
+        }
+        firstMajorCol = false;
+
+        MajorGroupRenderData currentGroup;
+        currentGroup.title = std::to_string(length) + "-Letter Words:";
+        measureText.setString(currentGroup.title);
+        measureText.setCharacterSize(finalTitleFontSize);
+        sf::FloatRect titleB = measureText.getLocalBounds();
+        currentGroup.titleSize = { titleB.position.x + titleB.size.x, titleB.position.y + titleB.size.y };
+
+        currentGroup.totalHeight = currentGroup.titleSize.y + actualTitleBottomMargin;
+        float maxWordTextWidthThisGroup = 0;
+
+        // Prepare word items for this group
+        std::vector<PopupDrawItem> wordsToDistribute;
+        for (const auto& wordInfo : wordsInGroup) {
+            std::string displayText;
+            bool isFound = m_foundBonusWords.count(wordInfo.text);
+            if (isFound) {
+                displayText = wordInfo.text;
+                std::transform(displayText.begin(), displayText.end(), displayText.begin(),
+                    [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+            }
+            else {
+                displayText = std::string(wordInfo.text.length(), '*');
+            }
+            measureText.setString(displayText);
+            measureText.setCharacterSize(finalWordFontSize);
+            sf::FloatRect wordB = measureText.getLocalBounds();
+            wordsToDistribute.push_back({ displayText, false, wordB.position.y + wordB.size.y, wordB.position.x + wordB.size.x, (isFound ? m_currentTheme.hudTextFound : m_currentTheme.menuButtonText) });
+            maxWordTextWidthThisGroup = std::max(maxWordTextWidthThisGroup, wordB.position.x + wordB.size.x);
+        }
+
+        // Distribute wordsToDistribute into minor columns for this major group
+        int numMinorCols = 1;
+        float totalWordListHeight = 0;
+        for (size_t i = 0; i < wordsToDistribute.size(); ++i) {
+            totalWordListHeight += wordsToDistribute[i].height;
+            if (i < wordsToDistribute.size() - 1) totalWordListHeight += actualWordLineSpacing;
+        }
+
+        float maxContentHeightForMinorCols = maxPopupDesignHeight - 2 * actualPadding - currentGroup.titleSize.y - actualTitleBottomMargin;
+
+        if (totalWordListHeight > maxContentHeightForMinorCols && wordsToDistribute.size() > 1) { // only try more cols if it's too tall for 1 AND there's more than 1 word
+            for (int tryMinor = 2; tryMinor <= MAX_MINOR_COLS_PER_GROUP; ++tryMinor) {
+                if ((totalWordListHeight / tryMinor) + ((wordsToDistribute.size() / tryMinor - 1) * actualWordLineSpacing / tryMinor) < maxContentHeightForMinorCols) {
+                    numMinorCols = tryMinor;
+                    break;
+                }
+                if (tryMinor == MAX_MINOR_COLS_PER_GROUP) numMinorCols = MAX_MINOR_COLS_PER_GROUP; // Use max if still no fit
+            }
+        }
+
+        currentGroup.minorColumns.resize(numMinorCols);
+        std::vector<float> minorColumnHeights(numMinorCols, 0.f);
+        int currentMinorColIdx = 0;
+        for (size_t i = 0; i < wordsToDistribute.size(); ++i) {
+            const auto& wordItem = wordsToDistribute[i];
+            // Simple distribution: fill columns one by one
+            // A better approach might be to find the shortest column, but for fixed maxMinorCols, this is simpler
+            if (currentMinorColIdx >= numMinorCols) currentMinorColIdx = 0; // Should not happen with good logic but safety.
+
+            // Check if adding to currentMinorColIdx would overflow (simplified check)
+            if (minorColumnHeights[currentMinorColIdx] > 0 && // if not the first item in this col
+                minorColumnHeights[currentMinorColIdx] + actualWordLineSpacing + wordItem.height > maxContentHeightForMinorCols &&
+                currentMinorColIdx < numMinorCols - 1) {
+                currentMinorColIdx++;
+            }
+
+            currentGroup.minorColumns[currentMinorColIdx].push_back(wordItem);
+            if (minorColumnHeights[currentMinorColIdx] > 0) minorColumnHeights[currentMinorColIdx] += actualWordLineSpacing;
+            minorColumnHeights[currentMinorColIdx] += wordItem.height;
+
+            if (i < wordsToDistribute.size() - 1 && currentMinorColIdx == numMinorCols - 1 && currentGroup.minorColumns[currentMinorColIdx].size() >= (wordsToDistribute.size() / numMinorCols)) {
+                // If filling last column and it's getting its share, try to wrap to first for next item
+                // This attempts a more balanced fill if strict height limit is hit.
+                // This part is tricky and might need refinement. For now, stick to simpler fill.
+            }
+            if (currentMinorColIdx < numMinorCols - 1 && // If not last column
+                minorColumnHeights[currentMinorColIdx] >= (totalWordListHeight / numMinorCols)) { // And it received its "fair share"
+                currentMinorColIdx++; // Move to next minor column
+            }
+
+        }
+
+        float thisGroupMinorColsWidth = numMinorCols * maxWordTextWidthThisGroup + (numMinorCols > 1 ? (numMinorCols - 1) * actualMinorColSpacing : 0);
+        currentGroup.totalWidth = std::max(currentGroup.titleSize.x, thisGroupMinorColsWidth);
+
+        float maxMinorColH = 0;
+        for (float h : minorColumnHeights) maxMinorColH = std::max(maxMinorColH, h);
+        currentGroup.totalHeight += maxMinorColH; // Add height of the tallest minor column
+
+        majorGroups.push_back(currentGroup);
+        finalTotalContentWidth += currentGroup.totalWidth;
+        finalMaxContentHeight = std::max(finalMaxContentHeight, currentGroup.totalHeight);
+    }
+
+    // --- 4. Final Pop-up Dimensions ---
+    float finalPopupWidth = finalTotalContentWidth + 2 * actualPadding;
+    float finalPopupHeight = finalMaxContentHeight + 2 * actualPadding;
+
+    // Cap overall popup size
+    finalPopupWidth = std::min(finalPopupWidth, maxPopupDesignWidth);
+    finalPopupHeight = std::min(finalPopupHeight, maxPopupDesignHeight);
+
+    float popupX = (static_cast<float>(REF_W) - finalPopupWidth) / 2.f;
+    float popupY = (static_cast<float>(REF_H) - finalPopupHeight) / 2.f;
+
+    // --- 5. Draw Background ---
+    RoundedRectangleShape popupBackground({ finalPopupWidth, finalPopupHeight }, S(this, POPUP_CORNER_RADIUS_BASE), 10);
+    popupBackground.setPosition({ popupX, popupY });
+    popupBackground.setFillColor(m_currentTheme.menuBg);
+    popupBackground.setOutlineColor(m_currentTheme.menuButtonHover);
+    popupBackground.setOutlineThickness(S(this, 1.5f));
+    target.draw(popupBackground);
+
+    // --- 6. Draw Content ---
+    sf::Text drawTextObj(m_font, "", 10);
+    float currentMajorColX = popupX + actualPadding;
+
+    for (const auto& group : majorGroups) {
+        if (currentMajorColX + group.totalWidth > popupX + finalPopupWidth - actualPadding + 1.f) break; // Stop if no more horizontal space
+
+        float currentDrawY = popupY + actualPadding;
+
+        // Draw Title for Major Group
+        drawTextObj.setString(group.title);
+        drawTextObj.setCharacterSize(finalTitleFontSize);
+        drawTextObj.setFillColor(m_currentTheme.menuTitleText);
+        sf::FloatRect titleB_draw = drawTextObj.getLocalBounds();
+        drawTextObj.setPosition({ currentMajorColX - titleB_draw.position.x, currentDrawY - titleB_draw.position.y });
+        target.draw(drawTextObj);
+        currentDrawY += group.titleSize.y + actualTitleBottomMargin;
+
+        // Draw Minor Columns for this Major Group
+        float currentMinorColX = currentMajorColX;
+        float maxWordWidthInThisGroup = 0; // Find max word width for this group for minor col spacing
+        for (const auto& minorCol : group.minorColumns) {
+            for (const auto& item : minorCol) {
+                if (!item.isTitle) maxWordWidthInThisGroup = std::max(maxWordWidthInThisGroup, item.width);
+            }
+        }
+
+
+        for (const auto& minorCol : group.minorColumns) {
+            float minorColDrawY = currentDrawY; // Each minor col starts below the title
+            if (currentMinorColX + maxWordWidthInThisGroup > popupX + finalPopupWidth - actualPadding + 1.f && &minorCol != &group.minorColumns[0]) break; // Stop if no space for this minor col
+
+            for (const auto& item : minorCol) {
+                if (minorColDrawY + item.height > popupY + finalPopupHeight - actualPadding + 1.f) break; // Vertical clipping
+
+                drawTextObj.setString(item.textDisplay);
+                drawTextObj.setCharacterSize(finalWordFontSize); // All items in minor cols are words
+                drawTextObj.setFillColor(item.color);
+                sf::FloatRect itemTextBounds = drawTextObj.getLocalBounds();
+                drawTextObj.setPosition({
+                    currentMinorColX - itemTextBounds.position.x,
+                    minorColDrawY - itemTextBounds.position.y
+                    });
+                target.draw(drawTextObj);
+                minorColDrawY += item.height + actualWordLineSpacing;
+            }
+            currentMinorColX += maxWordWidthInThisGroup + actualMinorColSpacing;
+        }
+        currentMajorColX += group.totalWidth + actualMajorColSpacing;
     }
 }
