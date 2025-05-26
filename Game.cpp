@@ -68,6 +68,29 @@ namespace { // Anonymous namespace for helper struct
     };
 }
 
+namespace { // Anonymous namespace for helper functions
+    void centerTextOnShape_General(sf::Text& text, const sf::Shape& shape) {
+        // 1. Set the text's origin to its own visual center.
+        sf::FloatRect textLocalBounds = text.getLocalBounds();
+        text.setOrigin(sf::Vector2f( // Pass a single sf::Vector2f
+            textLocalBounds.position.x + textLocalBounds.size.x / 2.f,
+            textLocalBounds.position.y + textLocalBounds.size.y / 2.f
+        ));
+
+        // 2. Get the shape's global (visual) bounding box on the screen.
+        sf::FloatRect shapeGlobalBounds = shape.getGlobalBounds();
+
+        // 3. Calculate the visual center of the shape on the screen.
+        sf::Vector2f shapeVisualCenter(
+            shapeGlobalBounds.position.x + shapeGlobalBounds.size.x / 2.f,
+            shapeGlobalBounds.position.y + shapeGlobalBounds.size.y / 2.f
+        );
+
+        // 4. Position the text (whose origin is now its center) at the shape's visual center.
+        text.setPosition(shapeVisualCenter); // setPosition also takes a single sf::Vector2f
+    }
+}
+
 
 //--------------------------------------------------------------------
 //  ★ SCALE BLOCK 2 –  view that letter‑boxes (no brace‑init lists)
@@ -119,16 +142,16 @@ Game::Game() :
     m_window(),                              // Default construct window
     m_font(),                                // Default construct font (will be loaded)
     m_clock(),
-    m_lastLayoutSize({ 0, 0 }),
+    m_lastLayoutSize({ 0, 0 }), 
     m_celebrationEffectTimer(0.f),
     m_currentScreen(GameScreen::MainMenu),
-    m_gameState(GState::Playing),         
+    m_gameState(GState::Playing),
     m_wordsSolvedSinceHint(0),
     m_currentScore(0),
     m_scoreFlourishTimer(0.f),
     m_bonusTextFlourishTimer(0.f),
     m_dragging(false),
-    m_decor(10),                             
+    m_decor(10),
     m_selectedDifficulty(DifficultyLevel::None),
     m_puzzlesPerSession(0),
     m_currentPuzzleIndex(0),
@@ -136,93 +159,80 @@ Game::Game() :
     m_uiScale(1.f),
     m_hintPoints(999),
     m_scoreFlourishes(),
-    m_hintPointAnims(), 
+    m_hintPointAnims(),
     m_hintPointsTextFlourishTimer(0.f),
-
-    // Resource Handles (default construct textures/buffers - loaded later)
+    m_newHintPanelSpr(nullptr),
+    m_hintIndicatorLightSprs(4),
+    m_hintClickableRegions(4),
     m_scrambleTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
     m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), m_errorWordBuffer(),
-    // Sounds (will be unique_ptr, initialize to nullptr or default construct)
     m_selectSound(nullptr), m_placeSound(nullptr), m_winSound(nullptr), m_clickSound(nullptr), m_hintUsedSound(nullptr), m_errorWordSound(nullptr),
-    // Music (default construct - file loaded later)
     m_backgroundMusic(),
-    // Sprites (will be unique_ptr, initialize to nullptr or default construct)
     m_scrambleSpr(nullptr), m_sapphireSpr(nullptr), m_rubySpr(nullptr), m_diamondSpr(nullptr),
-    // Texts (will be unique_ptr, initialize to nullptr or default construct)
     m_contTxt(nullptr), m_scoreLabelText(nullptr), m_scoreValueText(nullptr), m_hintCountTxt(nullptr),
     m_mainMenuTitle(nullptr), m_casualButtonText(nullptr), m_competitiveButtonText(nullptr), m_quitButtonText(nullptr),
     m_casualMenuTitle(nullptr), m_easyButtonText(nullptr), m_mediumButtonText(nullptr), m_hardButtonText(nullptr), m_returnButtonText(nullptr),
     m_guessDisplay_Text(nullptr),
     m_progressMeterText(nullptr),
     m_mainBackgroundSpr(nullptr),
-    m_returnToMenuButtonText(nullptr), // Added for return button
-    // UI Shapes (can use constructor directly)
-    m_contBtn({ 200.f, 50.f }, 10.f, 10),
-    m_solvedOverlay({ 100.f, 50.f }, 10.f, 10),
-    m_scoreBar({ 100.f, 30.f }, 10.f, 10),
-    m_guessDisplay_Bg({ 50.f, 30.f }, 5.f, 10),
+    m_returnToMenuButtonText(nullptr),
+
+    m_contBtn(sf::Vector2f(200.f, 50.f), 10.f, 10), // Explicit sf::Vector2f
+    m_solvedOverlay(sf::Vector2f(100.f, 50.f), 10.f, 10),
+    m_scoreBar(sf::Vector2f(100.f, 30.f), 10.f, 10),
+    m_guessDisplay_Bg(sf::Vector2f(50.f, 30.f), 5.f, 10),
     m_debugDrawCircleMode(false),
     m_needsLayoutUpdate(false),
-    m_lastKnownSize(0, 0),
-    m_mainMenuBg({ 300.f, 300.f }, 15.f, 10),
-    m_casualButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_competitiveButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_quitButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_casualMenuBg({ 300.f, 400.f }, 15.f, 10),
-    m_easyButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_mediumButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_hardButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_returnButtonShape({ 250.f, 50.f }, 10.f, 10),
-    m_progressMeterBg({ 100.f, 20.f }),
-    m_progressMeterFill({ 100.f, 20.f }),
-    m_returnToMenuButtonShape({ 100.f, 40.f }, 8.f, 10), 
-    m_hintRevealRandomButtonShape({ 100.f, 30.f }, 5.f, 10),
-    m_hintRevealLastButtonShape({ 100.f, 30.f }, 5.f, 10),
-    m_hintRevealFirstButtonShape({ 100.f, 30.f }, 5.f, 10), 
-    m_hintRevealFirstOfEachButtonShape({ 100.f, 30.f }, 5.f, 10),
-    m_hintAreaBg({ 100.f, 200.f }, 10.f, 10),
+    m_lastKnownSize(sf::Vector2u(0, 0)), // Explicit sf::Vector2u
+    m_mainMenuBg(sf::Vector2f(300.f, 300.f), 15.f, 10),
+    m_casualButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_competitiveButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_quitButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_casualMenuBg(sf::Vector2f(300.f, 400.f), 15.f, 10),
+    m_easyButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_mediumButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_hardButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_returnButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_progressMeterBg(sf::Vector2f(100.f, 20.f)),
+    m_progressMeterFill(sf::Vector2f(100.f, 20.f)),
+    m_returnToMenuButtonShape(sf::Vector2f(100.f, 40.f), 8.f, 10),
     m_isHoveringHintPointsText(false),
     m_bonusWordsCacheIsValid(false),
-    //debug
     m_showDebugZones(false),
-
-    m_firstFrame(true) 
-{ // --- Constructor Body Starts Here ---
-
-    //----------------------------------------------------------------
-    // ★★★ REVERTED: Create window at desired size, capped by desktop.
-    //----------------------------------------------------------------
-    const sf::Vector2u desiredInitialSize{ 1000u, 800u }; // Your original desired size
+    m_firstFrame(true)
+{
+    const sf::Vector2u desiredInitialSize{ 1000u, 800u };
     sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
-
-    // Calculate initial size, ensuring it's not larger than the desktop
     unsigned int initialWidth = std::min(desiredInitialSize.x, desktop.size.x);
     unsigned int initialHeight = std::min(desiredInitialSize.y, desktop.size.y);
 
-    // Create the window with the calculated initial size and default style
-    m_window.create(sf::VideoMode({ initialWidth, initialHeight }),
-        "Word Puzzle",
-        sf::Style::Default); // Or Fullscreen if you prefer
+    m_window.create(sf::VideoMode({ initialWidth, initialHeight }), "Word Puzzle", sf::Style::Default); // Pass sf::Vector2u directly
     m_window.setFramerateLimit(60);
     m_window.setVerticalSyncEnabled(true);
 
-    m_loadResources(); // Load resources
+    m_loadResources();
 
-    // --- Resource Setup (Sounds, Sprites) ---
-    // (Sounds)
     if (m_selectBuffer.getSampleCount() > 0) m_selectSound = std::make_unique<sf::Sound>(m_selectBuffer);
     if (m_placeBuffer.getSampleCount() > 0) m_placeSound = std::make_unique<sf::Sound>(m_placeBuffer);
     if (m_winBuffer.getSampleCount() > 0) m_winSound = std::make_unique<sf::Sound>(m_winBuffer);
     if (m_clickBuffer.getSampleCount() > 0) m_clickSound = std::make_unique<sf::Sound>(m_clickBuffer);
     if (m_hintUsedBuffer.getSampleCount() > 0) m_hintUsedSound = std::make_unique<sf::Sound>(m_hintUsedBuffer);
     if (m_errorWordBuffer.getSampleCount() > 0) m_errorWordSound = std::make_unique<sf::Sound>(m_errorWordBuffer);
-    // (Sprites)
+
     if (m_scrambleTex.getSize().x > 0) m_scrambleSpr = std::make_unique<sf::Sprite>(m_scrambleTex);
     if (m_sapphireTex.getSize().x > 0) m_sapphireSpr = std::make_unique<sf::Sprite>(m_sapphireTex);
     if (m_rubyTex.getSize().x > 0) m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
     if (m_diamondTex.getSize().x > 0) m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
 
-    // --- Set initial sprite properties ---
+    if (m_newHintPanelTex.getSize().x > 0) {
+        m_newHintPanelSpr = std::make_unique<sf::Sprite>(m_newHintPanelTex);
+    }
+    if (m_hintIndicatorLightTex.getSize().x > 0) {
+        for (size_t i = 0; i < m_hintIndicatorLightSprs.size(); ++i) {
+            m_hintIndicatorLightSprs[i] = std::make_unique<sf::Sprite>(m_hintIndicatorLightTex);
+        }
+    }
+
     if (m_contTxt) m_contTxt->setFillColor(sf::Color::White);
     // (Gems)
     if (m_sapphireSpr && m_sapphireTex.getSize().y > 0) {
@@ -246,38 +256,21 @@ Game::Game() :
         m_scrambleSpr->setScale({ scrambleScale, scrambleScale });
     }
 
-    //DEBUG:
-    sf::Color debugColor = sf::Color(255, 0, 0, 100); // Semi-transparent red
-    float outlineThickness = 5.0f; // In design units (will be scaled by m_uiScale via S())
-
+    sf::Color debugColor = sf::Color(255, 0, 0, 100);
     m_debugGridZoneShape.setFillColor(sf::Color::Transparent);
     m_debugGridZoneShape.setOutlineColor(debugColor);
-   
-
     m_debugHintZoneShape.setFillColor(sf::Color::Transparent);
     m_debugHintZoneShape.setOutlineColor(debugColor);
-
     m_debugWheelZoneShape.setFillColor(sf::Color::Transparent);
     m_debugWheelZoneShape.setOutlineColor(debugColor);
-
     m_debugScoreZoneShape.setFillColor(sf::Color::Transparent);
     m_debugScoreZoneShape.setOutlineColor(debugColor);
-
     m_debugTopBarZoneShape.setFillColor(sf::Color::Transparent);
     m_debugTopBarZoneShape.setOutlineColor(debugColor);
 
-
-    // --- Initial Setup Order ---
-    // 1. Set the view based on the NEW window size.
     m_updateView(m_window.getSize());
-
-    // 2. Rebuild game state (includes an internal call to m_updateLayout).
     m_rebuild();
-
-    // 3. ★★★ ADDED: Explicitly update layout AGAIN after rebuild. ★★★
-    // This ensures layout calculations use the finalized view and window state.
     m_updateLayout(m_window.getSize());
-
 }
 
 // --- Main Game Loop ---
@@ -395,210 +388,185 @@ void Game::m_updateScoreAnims(float dt) // No longer need to pass RenderTarget
 void Game::m_loadResources() {
     // --- Font ---
     if (!m_font.openFromFile("fonts/arialbd.ttf")) {
-        if (!m_font.openFromFile("E:/UdemyCoursesProjects/WordPuzzle/SFML_TestProject/fonts/arialbd.ttf")) {
+        if (!m_font.openFromFile("E:/UdemyCoursesProjects/WordPuzzle/SFML_TestProject/fonts/arialbd.ttf")) { // Fallback path
             std::cerr << "FATAL Error loading font. Exiting.\n"; exit(1);
         }
     }
-    // --- Textures ---
-    
-    // --- Load New Main Background Texture ---
-    if (!m_mainBackgroundTex.loadFromFile("assets/BackgroundandFrame.png")) { 
-        std::cerr << "CRITICAL ERROR: Could not load main background texture!" << std::endl;
-        exit(1); 
-    }
-    m_mainBackgroundTex.setSmooth(true); // Optional, but good for detailed art if scaled    
 
-    // Load scramble button texture (Example - adjust path as needed)
+    // --- Load New Hint Panel Textures ---
+    if (!m_newHintPanelTex.loadFromFile("assets/HintButtonFrame.png")) { // Make sure this path is correct
+        std::cerr << "CRITICAL ERROR: Could not load new hint panel texture (HintButtonFrame.png)!" << std::endl;
+        // Consider fallback or exit
+    }
+    else {
+        m_newHintPanelTex.setSmooth(true);
+    }
+
+    if (!m_hintIndicatorLightTex.loadFromFile("assets/LightOn_small.png")) { // Make sure this path is correct
+        std::cerr << "CRITICAL ERROR: Could not load hint indicator light texture (LightOn_small.png)!" << std::endl;
+        // Consider fallback or exit
+    }
+    else {
+        m_hintIndicatorLightTex.setSmooth(true);
+    }
+    // --- End New Hint Panel Textures ---
+
+    // --- Load New Main Background Texture ---
+    if (!m_mainBackgroundTex.loadFromFile("assets/BackgroundandFrame.png")) {
+        std::cerr << "CRITICAL ERROR: Could not load main background texture!" << std::endl;
+        exit(1);
+    }
+    m_mainBackgroundTex.setSmooth(true);
+
+    // Load scramble button texture
     if (!m_scrambleTex.loadFromFile("assets/scramble.png")) {
         std::cerr << "Error loading scramble texture!" << std::endl;
-        // Consider exiting or using a fallback visual
     }
     else {
         m_scrambleTex.setSmooth(true);
     }
-    // Return to menu button
+
+    // --- Create Text Objects FIRST (as some might be used by other resource setups) ---
+    // (Moved some text creation higher as good practice, though not strictly necessary for this error)
     m_returnToMenuButtonText = std::make_unique<sf::Text>(m_font, "Menu", 20);
+    m_progressMeterText = std::make_unique<sf::Text>(m_font, "", 16);
+    m_progressMeterText->setFillColor(sf::Color::White);
+    m_guessDisplay_Text = std::make_unique<sf::Text>(m_font, "", 30);
+    m_guessDisplay_Text->setFillColor(sf::Color::White);
+    m_contTxt = std::make_unique<sf::Text>(m_font, "Continue", 24);
+    m_scoreLabelText = std::make_unique<sf::Text>(m_font, "SCORE:", SCORE_ZONE_LABEL_FONT_SIZE);
+    m_scoreValueText = std::make_unique<sf::Text>(m_font, "0", SCORE_ZONE_VALUE_FONT_SIZE);
+    m_hintCountTxt = std::make_unique<sf::Text>(m_font, "", 20); // Potentially redundant with m_hintPointsText
+    m_mainMenuTitle = std::make_unique<sf::Text>(m_font, "Main Menu", 36);
+    m_casualButtonText = std::make_unique<sf::Text>(m_font, "Casual", 24);
+    m_competitiveButtonText = std::make_unique<sf::Text>(m_font, "Competitive", 24);
+    m_quitButtonText = std::make_unique<sf::Text>(m_font, "Quit", 24);
+    m_hintRevealFirstButtonText = std::make_unique<sf::Text>(m_font, "Letter", 18);
+    m_hintRevealFirstButtonText->setFillColor(sf::Color::White);
+    m_hintPointsText = std::make_unique<sf::Text>(m_font, "Points: 0", 20);
+    m_hintPointsText->setFillColor(sf::Color::White);
+    m_hintRevealFirstCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_FIRST), 16);
+    m_hintRevealFirstCostText->setFillColor(sf::Color::White);
+    m_hintRevealRandomButtonText = std::make_unique<sf::Text>(m_font, "Random", 18);
+    m_hintRevealRandomButtonText->setFillColor(sf::Color::White);
+    m_hintRevealRandomCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_RANDOM), 16);
+    m_hintRevealRandomCostText->setFillColor(sf::Color::White);
+    m_hintRevealLastButtonText = std::make_unique<sf::Text>(m_font, "Full Word", 18);
+    m_hintRevealLastButtonText->setFillColor(sf::Color::White);
+    m_hintRevealLastCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_LAST), 16);
+    m_hintRevealLastCostText->setFillColor(sf::Color::White);
+    m_hintRevealFirstOfEachButtonText = std::make_unique<sf::Text>(m_font, "1st of Each", 18);
+    m_hintRevealFirstOfEachButtonText->setFillColor(sf::Color::White);
+    m_hintRevealFirstOfEachCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_FIRST_OF_EACH), 16);
+    m_hintRevealFirstOfEachCostText->setFillColor(sf::Color::White);
+    m_casualMenuTitle = std::make_unique<sf::Text>(m_font, "Casual", 36);
+    m_easyButtonText = std::make_unique<sf::Text>(m_font, "Easy", 24);
+    m_mediumButtonText = std::make_unique<sf::Text>(m_font, "Medium", 24);
+    m_hardButtonText = std::make_unique<sf::Text>(m_font, "Hard", 24);
+    m_returnButtonText = std::make_unique<sf::Text>(m_font, "Return", 24);
+    if (m_contTxt) m_contTxt->setFillColor(sf::Color::White); // Example of setting color after creation
+    if (m_returnToMenuButtonText) m_returnToMenuButtonText->setFillColor(sf::Color::White);
 
-	//Progess Meter Elements
-    m_progressMeterText = std::make_unique<sf::Text>(m_font, "", 16); // Smaller font size?
-    m_progressMeterText->setFillColor(sf::Color::White); // Default color
 
-    m_guessDisplay_Text = std::make_unique<sf::Text>(m_font, "", 30); 
-    m_guessDisplay_Text->setFillColor(sf::Color::White); 
-
-    // *** ADD GEM TEXTURE LOADING HERE ***
-    // Make sure these paths are correct relative to your executable
-    // or use absolute paths if necessary.
-    if (!m_sapphireTex.loadFromFile("assets/emerald.png")) { // <-- ADJUST PATH
+    // Gem Textures
+    if (!m_sapphireTex.loadFromFile("assets/emerald.png")) {
         std::cerr << "Error loading sapphire texture (assets/emerald.png)!" << std::endl;
-        // Handle error (exit, default color, etc.)
     }
-    else {
-        m_sapphireTex.setSmooth(true); // Optional: Smooth scaling
-    }
-
-    if (!m_rubyTex.loadFromFile("assets/ruby.png")) { // <-- ADJUST PATH
+    else { m_sapphireTex.setSmooth(true); }
+    if (!m_rubyTex.loadFromFile("assets/ruby.png")) {
         std::cerr << "Error loading ruby texture (assets/ruby.png)!" << std::endl;
-        // Handle error
     }
-    else {
-        m_rubyTex.setSmooth(true);
-    }
-
-    if (!m_diamondTex.loadFromFile("assets/diamond.png")) { // <-- ADJUST PATH
+    else { m_rubyTex.setSmooth(true); }
+    if (!m_diamondTex.loadFromFile("assets/diamond.png")) {
         std::cerr << "Error loading diamond texture (assets/diamond.png)!" << std::endl;
-        // Handle error
     }
-    else {
-        m_diamondTex.setSmooth(true);
-    }
-    // *** END OF GEM TEXTURE LOADING ***
+    else { m_diamondTex.setSmooth(true); }
 
-    // --- Sound Buffers ---
-    // Load directly into MEMBER buffers
+    // Sound Buffers
     bool selectLoaded = m_selectBuffer.loadFromFile("assets/sounds/select_letter.wav");
     if (!selectLoaded) { std::cerr << "Error loading select_letter sound\n"; }
-
     bool placeLoaded = m_placeBuffer.loadFromFile("assets/sounds/place_letter.wav");
     if (!placeLoaded) { std::cerr << "Error loading place_letter sound\n"; }
-
     bool winLoaded = m_winBuffer.loadFromFile("assets/sounds/puzzle_solved.wav");
     if (!winLoaded) { std::cerr << "Error loading puzzle_solved sound\n"; }
-
     bool clickLoaded = m_clickBuffer.loadFromFile("assets/sounds/button_click.wav");
     if (!clickLoaded) { std::cerr << "Error loading button_click sound\n"; }
-
-    bool hintUsedLoaded = m_hintUsedBuffer.loadFromFile("assets/sounds/button_click.wav"); 
+    bool hintUsedLoaded = m_hintUsedBuffer.loadFromFile("assets/sounds/button_click.wav"); // Same as click for now
     if (!hintUsedLoaded) { std::cerr << "Error loading hint_used sound\n"; }
+    bool errorWordLoaded = m_errorWordBuffer.loadFromFile("assets/sounds/hint_used.mp3"); // This was hint_used.mp3, maybe error.wav?
+    if (!errorWordLoaded) { std::cerr << "Error loading error_word sound (hint_used.mp3)\n"; }
 
-    bool errorWordLoaded = m_errorWordBuffer.loadFromFile("assets/sounds/hint_used.mp3");
-    if (!errorWordLoaded) { std::cerr << "Error loading hint_used sound\n"; }
 
-    
-    // --- Create Sounds (Link Buffers) ---
-    // Only create sound object IF the corresponding MEMBER buffer loaded successfully
+    // Create Sounds (Link Buffers)
     if (selectLoaded) { m_selectSound = std::make_unique<sf::Sound>(m_selectBuffer); }
     if (placeLoaded) { m_placeSound = std::make_unique<sf::Sound>(m_placeBuffer); }
     if (winLoaded) { m_winSound = std::make_unique<sf::Sound>(m_winBuffer); }
     if (clickLoaded) { m_clickSound = std::make_unique<sf::Sound>(m_clickBuffer); }
     if (hintUsedLoaded) { m_hintUsedSound = std::make_unique<sf::Sound>(m_hintUsedBuffer); }
     if (errorWordLoaded) { m_errorWordSound = std::make_unique<sf::Sound>(m_errorWordBuffer); }
-    // Note: If a buffer fails to load, the corresponding unique_ptr remains nullptr
 
+    // Create Sprites (Link Textures)
+    // Note: m_newHintPanelSpr and m_hintIndicatorLightSprs are created in the constructor
+    // *after* m_loadResources is called, using the now-loaded m_newHintPanelTex and m_hintIndicatorLightTex.
+    if (m_scrambleTex.getSize().x > 0) m_scrambleSpr = std::make_unique<sf::Sprite>(m_scrambleTex);
+    if (m_sapphireTex.getSize().x > 0) m_sapphireSpr = std::make_unique<sf::Sprite>(m_sapphireTex);
+    if (m_rubyTex.getSize().x > 0) m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
+    if (m_diamondTex.getSize().x > 0) m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
 
-    // --- Create Sprites (Link Textures) ---
-    m_scrambleSpr = std::make_unique<sf::Sprite>(m_scrambleTex);
-    m_sapphireSpr = std::make_unique<sf::Sprite>(m_sapphireTex);
-    m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
-    m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
-
-    // --- Create and set up the main background sprite ---
-    m_mainBackgroundSpr = std::make_unique<sf::Sprite>(m_mainBackgroundTex);
-    if (m_mainBackgroundSpr) {
-        m_mainBackgroundSpr->setTexture(m_mainBackgroundTex);
-        m_mainBackgroundSpr->setPosition({ 0.f, 0.f });
+    if (m_mainBackgroundTex.getSize().x > 0) { // Ensure texture loaded before creating sprite
+        m_mainBackgroundSpr = std::make_unique<sf::Sprite>(m_mainBackgroundTex);
+        if (m_mainBackgroundSpr) {
+            // m_mainBackgroundSpr->setTexture(m_mainBackgroundTex); // Already done by constructor
+            m_mainBackgroundSpr->setPosition(sf::Vector2f(0.f, 0.f)); // SFML3: Pass sf::Vector2f
+        }
+        else {
+            std::cerr << "ERROR: Failed to create m_mainBackgroundSpr unique_ptr!" << std::endl;
+            exit(1);
+        }
     }
     else {
-        std::cerr << "ERROR: Failed to create m_mainBackgroundSpr unique_ptr!" << std::endl;
-        exit(1); // Critical error
+        std::cerr << "ERROR: Main background texture not loaded, cannot create sprite." << std::endl;
+        exit(1);
     }
 
 
-    // --- Create Text Objects (Link Font, Set Properties) --- *** MOVED HERE ***
-    m_contTxt = std::make_unique<sf::Text>(m_font, "Continue", 24);
-    m_scoreLabelText = std::make_unique<sf::Text>(m_font, "SCORE:", SCORE_ZONE_LABEL_FONT_SIZE);
-    m_scoreValueText = std::make_unique<sf::Text>(m_font, "0", SCORE_ZONE_VALUE_FONT_SIZE);
-    m_hintCountTxt = std::make_unique<sf::Text>(m_font, "", 20);
-    m_mainMenuTitle = std::make_unique<sf::Text>(m_font, "Main Menu", 36);
-    m_casualButtonText = std::make_unique<sf::Text>(m_font, "Casual", 24);
-    m_competitiveButtonText = std::make_unique<sf::Text>(m_font, "Competitive", 24);
-    m_quitButtonText = std::make_unique<sf::Text>(m_font, "Quit", 24);
+    // Set initial Sprite properties (Example - some of these are already handled in m_updateLayout or constructor)
+    if (m_sapphireSpr && m_sapphireTex.getSize().y > 0) { // Check sprite ptr and tex
+        float desiredGemHeight_load = TILE_SIZE * 0.60f; // Use local var name
+        float gemScale_load = desiredGemHeight_load / static_cast<float>(m_sapphireTex.getSize().y);
+        m_sapphireSpr->setScale(sf::Vector2f(gemScale_load, gemScale_load));
+        m_sapphireSpr->setOrigin(sf::Vector2f(static_cast<float>(m_sapphireTex.getSize().x) / 2.f, static_cast<float>(m_sapphireTex.getSize().y) / 2.f));
+    }
+    // ... similar for ruby and diamond ...
+    if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) { // Check sprite ptr and tex
+        const float scrambleBtnHeight_load = SCRAMBLE_BTN_HEIGHT;
+        float scrambleScale_load = scrambleBtnHeight_load / static_cast<float>(m_scrambleTex.getSize().y);
+        m_scrambleSpr->setScale(sf::Vector2f(scrambleScale_load, scrambleScale_load));
+    }
 
-    m_hintRevealFirstButtonText = std::make_unique<sf::Text>(m_font, "Letter", 18); // Set text to "Letter"
-    m_hintRevealFirstButtonText->setFillColor(sf::Color::White);
-    m_hintPointsText = std::make_unique<sf::Text>(m_font, "Points: 0", 20); // Initial text
-    m_hintPointsText->setFillColor(sf::Color::White); // Or use theme color
-
-    // Cost text for the FIRST hint (using existing sprite button)
-    m_hintRevealFirstCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_FIRST), 16);
-    m_hintRevealFirstCostText->setFillColor(sf::Color::White); // Or theme color
-
-    // Button text and cost text for RANDOM hint
-    m_hintRevealRandomButtonText = std::make_unique<sf::Text>(m_font, "Random", 18);
-    m_hintRevealRandomButtonText->setFillColor(sf::Color::White);
-    m_hintRevealRandomCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_RANDOM), 16);
-    m_hintRevealRandomCostText->setFillColor(sf::Color::White);
-
-    // Button text and cost text for LAST WORD hint
-    m_hintRevealLastButtonText = std::make_unique<sf::Text>(m_font, "Full Word", 18);
-    m_hintRevealLastButtonText->setFillColor(sf::Color::White);
-    m_hintRevealLastCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_LAST), 16);
-    m_hintRevealLastCostText->setFillColor(sf::Color::White);
-
-    // Button text and cost text for FIRST OF EACH hint
-    m_hintRevealFirstOfEachButtonText = std::make_unique<sf::Text>(m_font, "1st of Each", 18); // Shorter label
-    m_hintRevealFirstOfEachButtonText->setFillColor(sf::Color::White);
-    m_hintRevealFirstOfEachCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_FIRST_OF_EACH), 16);
-    m_hintRevealFirstOfEachCostText->setFillColor(sf::Color::White);
-
-    // Create Casual Menu Text
-    m_casualMenuTitle = std::make_unique<sf::Text>(m_font, "Casual", 36);
-    m_easyButtonText = std::make_unique<sf::Text>(m_font, "Easy", 24);
-    m_mediumButtonText = std::make_unique<sf::Text>(m_font, "Medium", 24);
-    m_hardButtonText = std::make_unique<sf::Text>(m_font, "Hard", 24);
-    m_returnButtonText = std::make_unique<sf::Text>(m_font, "Return", 24);
-
-    // Set initial text colors (or do it based on theme later)
-    m_contTxt->setFillColor(sf::Color::White);
-    // Add ->setFillColor for other text elements if needed
-
-    // --- Set initial Sprite properties ---
-    float desiredGemHeight = TILE_SIZE * 0.60f; float gemScale = desiredGemHeight / m_sapphireTex.getSize().y;
-    m_sapphireSpr->setScale({ gemScale, gemScale }); m_rubySpr->setScale({ gemScale, gemScale }); m_diamondSpr->setScale({ gemScale, gemScale });
-    m_sapphireSpr->setOrigin({ m_sapphireTex.getSize().x / 2.f, m_sapphireTex.getSize().y / 2.f });
-    m_rubySpr->setOrigin({ m_rubyTex.getSize().x / 2.f, m_rubyTex.getSize().y / 2.f });
-    m_diamondSpr->setOrigin({ m_diamondTex.getSize().x / 2.f, m_diamondTex.getSize().y / 2.f });
-    const float scrambleBtnHeight = SCRAMBLE_BTN_HEIGHT; // Use constant
-    const float hintBtnHeight = HINT_BTN_HEIGHT;         // Use constant
-    float scrambleScale = scrambleBtnHeight / static_cast<float>(m_scrambleTex.getSize().y); m_scrambleSpr->setScale({ scrambleScale, scrambleScale });
-
-
-
-    // --- Load Music Files List ---
+    // Load Music Files List
     m_musicFiles = { "assets/music/track1.mp3", "assets/music/track2.mp3", "assets/music/track3.mp3", "assets/music/track4.mp3", "assets/music/track5.mp3" };
     m_backgroundMusic.setVolume(40.f);
 
-
-
-    // --- Load Word List ---
+    // Load Word List
     m_fullWordList = Words::loadProcessedWordList("words_processed.csv");
     if (m_fullWordList.empty()) { std::cerr << "Failed to load word list or list is empty. Exiting." << std::endl; exit(1); }
-    m_roots.clear(); // Start with an empty list
-    std::vector<int> potentialBaseLengths = { 4, 5, 6, 7 }; // Define the lengths we might need
-
+    m_roots.clear();
+    std::vector<int> potentialBaseLengths = { 4, 5, 6, 7 };
     for (int len : potentialBaseLengths) {
         std::vector<WordInfo> wordsOfLength = Words::withLength(m_fullWordList, len);
-        // Append these words to the main m_roots list
         m_roots.insert(m_roots.end(), wordsOfLength.begin(), wordsOfLength.end());
     }
     if (m_roots.empty()) { std::cerr << "No suitable root words found in list. Exiting." << std::endl; exit(1); }
     std::cout << "DEBUG: Populated m_roots with " << m_roots.size() << " potential base words (lengths 4-7)." << std::endl;
-    // --- End m_roots creation ---
 
-    // --- Load Color Themes ---
+    // Load Color Themes
     m_themes.clear();
     m_themes = loadThemes();
-    //m_themes[0] = m_currentTheme;
-
-    // Check if loading failed or returned empty
     if (m_themes.empty()) {
         std::cerr << "CRITICAL Warning: loadThemes() returned empty vector. Using fallback default theme.\n";
-        m_themes.push_back({}); // Add a default-constructed theme as a fallback
+        m_themes.push_back({});
     }
-    if (m_returnToMenuButtonText) m_returnToMenuButtonText->setFillColor(sf::Color::White);
-
-    
-
 }
 
 
@@ -1012,597 +980,541 @@ void Game::m_rebuild() {
 
 
 // ***** START OF COMPLETE Game::m_updateLayout FUNCTION *****
-
-
-// ***** START OF COMPLETE Game::m_updateLayout FUNCTION (Corrected Rect Access) *****
-
 void Game::m_updateLayout(sf::Vector2u windowSize) {
 
     // 1. Calculate Global UI Scale
-    m_uiScale = std::min(windowSize.x / static_cast<float>(REF_W),
-        windowSize.y / static_cast<float>(REF_H));
+    m_uiScale = std::min(static_cast<float>(windowSize.x) / static_cast<float>(REF_W),
+        static_cast<float>(windowSize.y) / static_cast<float>(REF_H));
     m_uiScale = std::clamp(m_uiScale, 0.65f, 1.6f);
 
-    // 2. Define Design Space References & Sections
+    // 2. Define Design Space References
     const float designW = static_cast<float>(REF_W);
     const float designH = static_cast<float>(REF_H);
-    const sf::Vector2f designCenter = { designW / 2.f, designH / 2.f };
-    const float designTopEdge = 0.f;
-    const float designLeftEdge = 0.f;
-    const float designBottomEdge = designH;
-    const float topSectionHeight = designH * 0.15f;
-    const float wheelSectionHeight = designH * 0.35f;
-    const float gridSectionHeight = designH - topSectionHeight - wheelSectionHeight;
-    const float topSectionBottomY = designTopEdge + topSectionHeight;
-    const float gridSectionTopY = topSectionBottomY;
-    const float gridSectionBottomY = gridSectionTopY + gridSectionHeight;
-    // const float wheelSectionTopY = gridSectionBottomY; // Not directly used later for wheel pos
-    // const float wheelSectionBottomY = designBottomEdge; // Not directly used later for wheel pos
+    // const sf::Vector2f designCenter = sf::Vector2f(designW / 2.f, designH / 2.f); // Defined in original but not used in direct copy
 
     bool sizeChanged = (windowSize != m_lastLayoutSize);
     if (sizeChanged) {
         std::cout << "--- Layout Update (" << windowSize.x << "x" << windowSize.y << ") ---" << std::endl;
-        // ... (other initial log messages)
     }
 
-    // --- Update Main Background Sprite to fill the design view ---
-    if (m_mainBackgroundSpr && m_mainBackgroundTex.getSize().x > 0) { // <<< CHECK m_mainBackgroundSpr POINTER
-        m_mainBackgroundSpr->setPosition({ 0.f, 0.f }); 
-
-        float scaleX = static_cast<float>(REF_W) / m_mainBackgroundTex.getSize().x;
-        float scaleY = static_cast<float>(REF_H) / m_mainBackgroundTex.getSize().y;
-
-        m_mainBackgroundSpr->setScale({ scaleX, scaleY });
-
-        float designAspect = static_cast<float>(REF_W) / REF_H;
-        float bgAspect = static_cast<float>(m_mainBackgroundTex.getSize().x) / m_mainBackgroundTex.getSize().y;
-        if (bgAspect > designAspect) { // Background is wider than design space
-            m_mainBackgroundSpr->setScale({ scaleY, scaleY });
-            m_mainBackgroundSpr->setPosition({ (REF_W - m_mainBackgroundTex.getSize().x * scaleY) / 2.f, 0.f });
-         } else { 
-            m_mainBackgroundSpr->setScale({ scaleX, scaleX }); // Scale by width, height will be cropped
-            m_mainBackgroundSpr->setPosition({ 0.f, (REF_H - m_mainBackgroundTex.getSize().y * scaleX) / 2.f }); // Center vertically
-         }
+    // --- Update Main Background Sprite ---
+    if (m_mainBackgroundSpr && m_mainBackgroundTex.getSize().x > 0) {
+        m_mainBackgroundSpr->setPosition(sf::Vector2f(0.f, 0.f));
+        float texOriginalWidth = static_cast<float>(m_mainBackgroundTex.getSize().x);
+        float texOriginalHeight = static_cast<float>(m_mainBackgroundTex.getSize().y);
+        float scaleX = designW / texOriginalWidth;
+        float scaleY = designH / texOriginalHeight;
+        float designAspect = designW / designH;
+        float bgAspect = texOriginalWidth / texOriginalHeight;
+        if (bgAspect > designAspect) {
+            m_mainBackgroundSpr->setScale(sf::Vector2f(scaleY, scaleY));
+            m_mainBackgroundSpr->setPosition(sf::Vector2f((designW - texOriginalWidth * scaleY) / 2.f, 0.f));
+        }
+        else {
+            m_mainBackgroundSpr->setScale(sf::Vector2f(scaleX, scaleX));
+            m_mainBackgroundSpr->setPosition(sf::Vector2f(0.f, (designH - texOriginalHeight * scaleX) / 2.f));
+        }
     }
 
-    // 3. Position Top Elements (Score Bar, Progress Meter)
-    // --- NEW: Layout for Score Zone Elements (Label and Value) ---
+    // 3. Position Top Elements (Score Bar, Progress Meter, Return Button)
+    // --- Score Zone Elements ---
     if (m_scoreLabelText && m_scoreValueText) {
-        const float zoneX = SCORE_ZONE_RECT_DESIGN.position.x;
-        const float zoneY = SCORE_ZONE_RECT_DESIGN.position.y;
-        const float zoneWidth = SCORE_ZONE_RECT_DESIGN.size.x;
-        // const float zoneHeight = SCORE_ZONE_RECT_DESIGN.size.y; // Used by bonus text in render
+        const float zoneX_score = SCORE_ZONE_RECT_DESIGN.position.x;
+        const float zoneY_score = SCORE_ZONE_RECT_DESIGN.position.y;
+        const float zoneWidth_score = SCORE_ZONE_RECT_DESIGN.size.x;
+        const float scaledPaddingY_score = S(this, SCORE_ZONE_PADDING_Y_DESIGN);
+        const float scaledLabelValueGap_score = S(this, SCORE_LABEL_VALUE_GAP_DESIGN);
 
-        const float scaledPaddingX = S(this, SCORE_ZONE_PADDING_X_DESIGN);
-        const float scaledPaddingY = S(this, SCORE_ZONE_PADDING_Y_DESIGN);
-        const float scaledLabelValueGap = S(this, SCORE_LABEL_VALUE_GAP_DESIGN);
-
-        // --- "SCORE:" Label (m_scoreLabelText) ---
-        m_scoreLabelText->setFont(m_font); // Ensure font
-        m_scoreLabelText->setString("SCORE:"); // Confirm string
+        m_scoreLabelText->setFont(m_font);
+        m_scoreLabelText->setString("SCORE:");
         m_scoreLabelText->setCharacterSize(static_cast<unsigned int>(S(this, SCORE_ZONE_LABEL_FONT_SIZE)));
         m_scoreLabelText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
-        sf::FloatRect labelBounds = m_scoreLabelText->getLocalBounds();
-        m_scoreLabelText->setOrigin({ labelBounds.position.x + labelBounds.size.x / 2.f,
-                                     labelBounds.position.y });
-        m_scoreLabelText->setPosition(sf::Vector2f{ zoneX + zoneWidth / 2.f,
-                                                   zoneY + scaledPaddingY });
+        sf::FloatRect labelBounds_score = m_scoreLabelText->getLocalBounds();
+        m_scoreLabelText->setOrigin(sf::Vector2f(labelBounds_score.position.x + labelBounds_score.size.x / 2.f,
+            labelBounds_score.position.y));
+        m_scoreLabelText->setPosition(sf::Vector2f(zoneX_score + zoneWidth_score / 2.f,
+            zoneY_score + scaledPaddingY_score));
 
-        // --- Score Value (m_scoreValueText) ---
         m_scoreValueText->setFont(m_font);
         m_scoreValueText->setCharacterSize(static_cast<unsigned int>(S(this, SCORE_ZONE_VALUE_FONT_SIZE)));
         m_scoreValueText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
-        sf::FloatRect valueBounds = m_scoreValueText->getLocalBounds(); // Re-get if string can change width
-        m_scoreValueText->setOrigin({ valueBounds.position.x + valueBounds.size.x / 2.f,
-                                     valueBounds.position.y });
-        m_scoreValueText->setPosition(sf::Vector2f{ zoneX + zoneWidth / 2.f,
-                                                   m_scoreLabelText->getPosition().y +
-                                                       (labelBounds.position.y + labelBounds.size.y) -
-                                                       m_scoreLabelText->getOrigin().y +
-                                                       scaledLabelValueGap });
+        // String is set in render, so getLocalBounds for origin might be tricky here if string changes width a lot.
+        // For now, assume it's handled by re-centering in render or that this initial origin is okay.
+        sf::FloatRect valueBounds_score = m_scoreValueText->getLocalBounds();
+        m_scoreValueText->setOrigin(sf::Vector2f(valueBounds_score.position.x + valueBounds_score.size.x / 2.f,
+            valueBounds_score.position.y));
+        m_scoreValueText->setPosition(sf::Vector2f(zoneX_score + zoneWidth_score / 2.f,
+            m_scoreLabelText->getPosition().y +
+            (labelBounds_score.position.y + labelBounds_score.size.y) -
+            m_scoreLabelText->getOrigin().y +
+            scaledLabelValueGap_score));
     }
-    // Bonus words text will be positioned entirely within m_renderGameScreen
-    // --- End Layout for Score Zone Elements ---
-
+    // --- Progress Meter ---
+    if (m_progressMeterBg.getPointCount() > 0 && m_progressMeterFill.getPointCount() > 0) {
+        const float meterWidth_prog = S(this, TOP_BAR_ZONE_DESIGN.size.x * 0.4f);
+        const float meterHeight_prog = S(this, PROGRESS_METER_HEIGHT_DESIGN);
+        m_progressMeterBg.setSize(sf::Vector2f(meterWidth_prog, meterHeight_prog));
+        m_progressMeterBg.setOrigin(sf::Vector2f(meterWidth_prog / 2.f, meterHeight_prog / 2.f));
+        m_progressMeterBg.setPosition(sf::Vector2f(
+            TOP_BAR_ZONE_DESIGN.position.x + TOP_BAR_ZONE_DESIGN.size.x / 2.f,
+            TOP_BAR_ZONE_DESIGN.position.y + TOP_BAR_ZONE_DESIGN.size.y / 2.f
+        ));
+        m_progressMeterFill.setSize(sf::Vector2f(0.f, meterHeight_prog));
+        m_progressMeterFill.setOrigin(sf::Vector2f(0.f, meterHeight_prog / 2.f));
+        m_progressMeterFill.setPosition(sf::Vector2f(
+            m_progressMeterBg.getPosition().x - meterWidth_prog / 2.f,
+            m_progressMeterBg.getPosition().y
+        ));
+        if (m_progressMeterText) { // Text positioning is usually in render to update string
+            m_progressMeterText->setCharacterSize(static_cast<unsigned int>(S(this, 16.f))); // Example size
+            // Centering logic would be similar to other texts, typically after string is set
+        }
+    }
+    // --- Return to Menu Button ---
+    if (m_returnToMenuButtonShape.getPointCount() > 0 && m_returnToMenuButtonText) {
+        const float btnWidth_return = S(this, RETURN_BTN_WIDTH_DESIGN);
+        const float btnHeight_return = S(this, RETURN_BTN_HEIGHT_DESIGN);
+        m_returnToMenuButtonShape.setSize(sf::Vector2f(btnWidth_return, btnHeight_return));
+        m_returnToMenuButtonShape.setRadius(S(this, 8.f));
+        m_returnToMenuButtonShape.setOrigin(sf::Vector2f(0.f, 0.f));
+        m_returnToMenuButtonShape.setPosition(sf::Vector2f(
+            TOP_BAR_ZONE_DESIGN.position.x + S(this, TOP_BAR_PADDING_X_DESIGN),
+            TOP_BAR_ZONE_DESIGN.position.y + (TOP_BAR_ZONE_DESIGN.size.y - btnHeight_return) / 2.f
+        ));
+        m_returnToMenuButtonText->setCharacterSize(static_cast<unsigned int>(S(this, RETURN_BTN_FONT_SIZE_DESIGN)));
+        centerTextOnShape_General(*m_returnToMenuButtonText, m_returnToMenuButtonShape);
+    }
 
     // --- 4. Calculate Grid Layout ---
-    // --- 4a. Define Grid Zone's Inner boundaries and Original m_gridStartY ---
-    // These are in design coordinates. The sf::View handles overall scaling to window.
-    const float zoneInnerX = GRID_ZONE_RECT_DESIGN.position.x + GRID_ZONE_PADDING_X_DESIGN;
-    const float zoneInnerY = GRID_ZONE_RECT_DESIGN.position.y + GRID_ZONE_PADDING_Y_DESIGN;
-    const float zoneInnerWidth = GRID_ZONE_RECT_DESIGN.size.x - 2 * GRID_ZONE_PADDING_X_DESIGN;
-    const float zoneInnerHeight = GRID_ZONE_RECT_DESIGN.size.y - 2 * GRID_ZONE_PADDING_Y_DESIGN;
-    float actualGridFinalHeight = 0.f;
+    const float zoneInnerX_grid = GRID_ZONE_RECT_DESIGN.position.x + GRID_ZONE_PADDING_X_DESIGN;
+    const float zoneInnerY_grid = GRID_ZONE_RECT_DESIGN.position.y + GRID_ZONE_PADDING_Y_DESIGN;
+    const float zoneInnerWidth_grid = GRID_ZONE_RECT_DESIGN.size.x - 2 * GRID_ZONE_PADDING_X_DESIGN;
+    const float zoneInnerHeight_grid = GRID_ZONE_RECT_DESIGN.size.y - 2 * GRID_ZONE_PADDING_Y_DESIGN;
+    float actualGridFinalHeight = 0.f; // To be calculated
 
-    m_gridStartY = zoneInnerY; // Grid will start at the top of the padded zone area
-    // This might be adjusted later if we center vertically.
-
+    m_gridStartY = zoneInnerY_grid; // Initial value, might be adjusted by vertical centering
     int numCols = 1;
-    int maxRowsPerCol = m_sorted.empty() ? 1 : (int)m_sorted.size();
-    //float actualGridFinalHeight = 0; // Will store the final height of the rendered grid
+    int maxRowsPerCol = m_sorted.empty() ? 1 : static_cast<int>(m_sorted.size());
     m_wordCol.clear(); m_wordRow.clear(); m_colMaxLen.clear(); m_colXOffset.clear();
-
-    // This scale factor will be calculated to make the grid fit the zone.
-    // It will be <= 1.0. If 1.0, it means original TILE_SIZE fits.
     float gridElementsScaleFactor = 1.0f;
 
     if (!m_sorted.empty()) {
-        // --- 4b. Heuristic: Find best column/row count using ORIGINAL (unscaled) design constants ---
-        // TILE_SIZE, TILE_PAD, COL_PAD are base design values.
-        const float st_base_design = TILE_SIZE; // Original tile size from Constants.h
-        const float sp_base_design = TILE_PAD;  // Original tile padding
-        const float sc_base_design = COL_PAD;   // Original column padding
-
+        const float st_base_design = TILE_SIZE;
+        const float sp_base_design = TILE_PAD;
+        const float sc_base_design = COL_PAD;
         const float stph_base_design = st_base_design + sp_base_design;
         const float stpw_base_design = st_base_design + sp_base_design;
 
-        // The heuristic itself for choosing column/row counts can largely remain.
-        // It prioritizes fitting MAX_ROWS_LIMIT and then being narrow.
-        // We are NOT using zoneInnerHeight directly in *this* heuristic pass,
-        // because we'll scale the result later.
-        int bestFitCols = 1; int bestFitRows = (int)m_sorted.size();
-        // float minWidthVertFit = std::numeric_limits<float>::max(); bool foundVerticalFit = false; // Old variables
-        int narrowestOverallCols = 1; int narrowestOverallRows = (int)m_sorted.size(); float minWidthOverall = std::numeric_limits<float>::max();
-        int maxPossibleCols = std::min(8, std::max(1, (int)m_sorted.size()));
+        int narrowestOverallCols = 1; int narrowestOverallRows = static_cast<int>(m_sorted.size()); float minWidthOverall = std::numeric_limits<float>::max();
+        int maxPossibleCols = std::min(8, std::max(1, static_cast<int>(m_sorted.size())));
 
         for (int tryCols = 1; tryCols <= maxPossibleCols; ++tryCols) {
-            int rowsNeeded = ((int)m_sorted.size() + tryCols - 1) / tryCols; if (rowsNeeded <= 0) rowsNeeded = 1;
+            int rowsNeeded = (static_cast<int>(m_sorted.size()) + tryCols - 1) / tryCols; if (rowsNeeded <= 0) rowsNeeded = 1;
             std::vector<int> currentTryColMaxLen(tryCols, 0); float currentTryWidthUnscaled = 0;
-            for (size_t w = 0; w < m_sorted.size(); ++w) { int c = (int)w / rowsNeeded; if (c >= 0 && c < tryCols) { currentTryColMaxLen[c] = std::max<int>(currentTryColMaxLen[c], (int)m_sorted[w].text.length()); } }
-            for (int len : currentTryColMaxLen) { currentTryWidthUnscaled += (float)len * stpw_base_design - (len > 0 ? sp_base_design : 0.f); }
-            currentTryWidthUnscaled += (float)std::max(0, tryCols - 1) * sc_base_design; if (currentTryWidthUnscaled < 0) currentTryWidthUnscaled = 0;
-
-            // float currentTryHeightUnscaled = (float)rowsNeeded * stph_base_design - (rowsNeeded > 0 ? sp_base_design : 0.f); // Not strictly needed for selection here
-
-            if (currentTryWidthUnscaled < minWidthOverall) { // Prioritize narrowness
-                minWidthOverall = currentTryWidthUnscaled;
-                narrowestOverallCols = tryCols;
-                narrowestOverallRows = rowsNeeded;
-            }
+            for (size_t w = 0; w < m_sorted.size(); ++w) { int c = static_cast<int>(w) / rowsNeeded; if (c >= 0 && c < tryCols) { currentTryColMaxLen[c] = std::max<int>(currentTryColMaxLen[c], static_cast<int>(m_sorted[w].text.length())); } }
+            for (int len : currentTryColMaxLen) { currentTryWidthUnscaled += static_cast<float>(len) * stpw_base_design - (len > 0 ? sp_base_design : 0.f); }
+            currentTryWidthUnscaled += static_cast<float>(std::max(0, tryCols - 1)) * sc_base_design; if (currentTryWidthUnscaled < 0) currentTryWidthUnscaled = 0;
+            if (currentTryWidthUnscaled < minWidthOverall) { minWidthOverall = currentTryWidthUnscaled; narrowestOverallCols = tryCols; narrowestOverallRows = rowsNeeded; }
         }
         int chosenCols = narrowestOverallCols;
         int chosenRows = narrowestOverallRows;
-
-        // Apply MAX_ROWS_LIMIT override (this is a hard constraint on rows per column)
-        const int MAX_ROWS_LIMIT = 5; // Keep your existing limit
-        if (chosenRows > MAX_ROWS_LIMIT) {
-            chosenRows = MAX_ROWS_LIMIT;
-            chosenCols = ((int)m_sorted.size() + chosenRows - 1) / chosenRows;
+        const int MAX_ROWS_LIMIT_GRID = 5; // Using unique name from original
+        if (chosenRows > MAX_ROWS_LIMIT_GRID) {
+            chosenRows = MAX_ROWS_LIMIT_GRID;
+            chosenCols = (static_cast<int>(m_sorted.size()) + chosenRows - 1) / chosenRows;
             if (chosenCols <= 0) chosenCols = 1;
         }
         numCols = chosenCols;
         maxRowsPerCol = chosenRows;
 
-        // --- 4c. Calculate Max Length per Column (using final numCols) ---
         m_colMaxLen.assign(numCols, 0);
         for (size_t w = 0; w < m_sorted.size(); ++w) {
-            int c = (int)w / maxRowsPerCol; if (c >= numCols) c = numCols - 1;
-            if (c >= 0 && c < m_colMaxLen.size()) { m_colMaxLen[c] = std::max<int>(m_colMaxLen[c], (int)m_sorted[w].text.length()); }
+            int c = static_cast<int>(w) / maxRowsPerCol; if (c >= numCols) c = numCols - 1;
+            if (c >= 0 && static_cast<size_t>(c) < m_colMaxLen.size()) { m_colMaxLen[c] = std::max<int>(m_colMaxLen[c], static_cast<int>(m_sorted[w].text.length())); }
         }
 
-        // --- 4d. Calculate Total Required Width & Height with ORIGINAL tile/pad sizes ---
         float totalRequiredWidthUnscaled = 0;
         for (int c = 0; c < numCols; ++c) {
-            int len = (c >= 0 && c < m_colMaxLen.size()) ? m_colMaxLen[c] : 0;
-            float colWidth_unscaled = (float)len * stpw_base_design - (len > 0 ? sp_base_design : 0.f);
+            int len = (c >= 0 && static_cast<size_t>(c) < m_colMaxLen.size()) ? m_colMaxLen[c] : 0;
+            float colWidth_unscaled = static_cast<float>(len) * stpw_base_design - (len > 0 ? sp_base_design : 0.f);
             if (colWidth_unscaled < 0) colWidth_unscaled = 0;
             totalRequiredWidthUnscaled += colWidth_unscaled;
         }
-        totalRequiredWidthUnscaled += (float)std::max(0, numCols - 1) * sc_base_design;
+        totalRequiredWidthUnscaled += static_cast<float>(std::max(0, numCols - 1)) * sc_base_design;
         if (totalRequiredWidthUnscaled < 0) totalRequiredWidthUnscaled = 0;
 
-        float totalRequiredHeightUnscaled = (float)maxRowsPerCol * stph_base_design - (maxRowsPerCol > 0 ? sp_base_design : 0.f);
+        float totalRequiredHeightUnscaled = static_cast<float>(maxRowsPerCol) * stph_base_design - (maxRowsPerCol > 0 ? sp_base_design : 0.f);
         if (totalRequiredHeightUnscaled < 0) totalRequiredHeightUnscaled = 0;
 
-        // --- 4e. Calculate Scale Factor to Fit this Configuration into the Zone's Inner Area ---
         float scaleToFitX = 1.0f;
-        if (totalRequiredWidthUnscaled > zoneInnerWidth && totalRequiredWidthUnscaled > 0) {
-            scaleToFitX = zoneInnerWidth / totalRequiredWidthUnscaled;
+        if (totalRequiredWidthUnscaled > zoneInnerWidth_grid && totalRequiredWidthUnscaled > 0) {
+            scaleToFitX = zoneInnerWidth_grid / totalRequiredWidthUnscaled;
         }
         float scaleToFitY = 1.0f;
-        if (totalRequiredHeightUnscaled > zoneInnerHeight && totalRequiredHeightUnscaled > 0) {
-            scaleToFitY = zoneInnerHeight / totalRequiredHeightUnscaled;
+        if (totalRequiredHeightUnscaled > zoneInnerHeight_grid && totalRequiredHeightUnscaled > 0) {
+            scaleToFitY = zoneInnerHeight_grid / totalRequiredHeightUnscaled;
         }
         gridElementsScaleFactor = std::min(scaleToFitX, scaleToFitY);
-        // Ensure we don't scale *up* beyond original TILE_SIZE if it already fits.
-        // gridElementsScaleFactor = std::min(1.0f, gridElementsScaleFactor); // This is implicitly handled if scaleToFitX/Y start at 1.0
 
-        if (sizeChanged) { // Log only on size change for clarity
-            std::cout << "  GRID ZONE: Inner W=" << zoneInnerWidth << ", Inner H=" << zoneInnerHeight << std::endl;
-            std::cout << "  GRID UNSCALED: Req W=" << totalRequiredWidthUnscaled << ", Req H=" << totalRequiredHeightUnscaled
-                << " (for " << numCols << "c x " << maxRowsPerCol << "r)" << std::endl;
-            std::cout << "  GRID SCALE FACTOR: " << gridElementsScaleFactor << std::endl;
+        if (sizeChanged) {
+            std::cout << "  GRID ZONE: Inner W=" << zoneInnerWidth_grid << ", Inner H=" << zoneInnerHeight_grid << std::endl;
+            // ... other grid logging
         }
 
-        // --- 4f. Calculate Final Scaled Tile/Padding Sizes ---
-        // These are the sizes that will be used for rendering and m_tilePos
         const float st_final = TILE_SIZE * gridElementsScaleFactor;
         const float sp_final = TILE_PAD * gridElementsScaleFactor;
         const float sc_final = COL_PAD * gridElementsScaleFactor;
-        const float stph_final = st_final + sp_final; // Scaled step height
-        const float stpw_final = st_final + sp_final; // Scaled step width
+        const float stph_final = st_final + sp_final;
+        const float stpw_final = st_final + sp_final;
 
-        // --- 4g. Calculate Final Total Grid Dimensions (width and height) with scaled elements ---
         float currentX_final_scaled = 0;
-        m_colXOffset.resize(numCols); // Will store offset of each column from grid's local 0,0
+        m_colXOffset.resize(numCols);
         for (int c = 0; c < numCols; ++c) {
             m_colXOffset[c] = currentX_final_scaled;
-            int len = (c >= 0 && c < m_colMaxLen.size()) ? m_colMaxLen[c] : 0;
-            float colWidth_final_scaled = (float)len * stpw_final - (len > 0 ? sp_final : 0.f);
+            int len = (c >= 0 && static_cast<size_t>(c) < m_colMaxLen.size()) ? m_colMaxLen[c] : 0;
+            float colWidth_final_scaled = static_cast<float>(len) * stpw_final - (len > 0 ? sp_final : 0.f);
             if (colWidth_final_scaled < 0) colWidth_final_scaled = 0;
             currentX_final_scaled += colWidth_final_scaled + sc_final;
         }
-        m_totalGridW = currentX_final_scaled - (numCols > 0 ? sc_final : 0.f); // Final scaled width of the grid content
+        m_totalGridW = currentX_final_scaled - (numCols > 0 ? sc_final : 0.f);
         if (m_totalGridW < 0) m_totalGridW = 0;
 
-        actualGridFinalHeight = (float)maxRowsPerCol * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f);
+        actualGridFinalHeight = static_cast<float>(maxRowsPerCol) * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f);
         if (actualGridFinalHeight < 0) actualGridFinalHeight = 0;
 
-        // --- 4h. Calculate Grid Start Position to Center it within the Zone's Inner Area ---
-        m_gridStartX = zoneInnerX + (zoneInnerWidth - m_totalGridW) / 2.f;
-        m_gridStartY = zoneInnerY + (zoneInnerHeight - actualGridFinalHeight) / 2.f; // Vertically center too
+        m_gridStartX = zoneInnerX_grid + (zoneInnerWidth_grid - m_totalGridW) / 2.f;
+        m_gridStartY = zoneInnerY_grid + (zoneInnerHeight_grid - actualGridFinalHeight) / 2.f;
 
-        // Adjust column offsets to be relative to the screen (design space)
         for (int c = 0; c < numCols; ++c) {
-            if (c < m_colXOffset.size()) { m_colXOffset[c] += m_gridStartX; }
+            if (static_cast<size_t>(c) < m_colXOffset.size()) { m_colXOffset[c] += m_gridStartX; }
         }
 
-        // Assign word rows/cols
         m_wordCol.resize(m_sorted.size()); m_wordRow.resize(m_sorted.size());
-        for (size_t w = 0; w < m_sorted.size(); ++w) { int c = (int)w / maxRowsPerCol; int r = (int)w % maxRowsPerCol; if (c >= numCols) c = numCols - 1; m_wordCol[w] = c; m_wordRow[w] = r; }
-
-        if (sizeChanged) {
-            std::cout << "  GRID FINAL: Scaled Tile=" << st_final << ", Scaled Pad=" << sp_final << std::endl;
-            std::cout << "  GRID FINAL: Total W=" << m_totalGridW << ", Total H=" << actualGridFinalHeight << std::endl;
-            std::cout << "  GRID FINAL: StartX=" << m_gridStartX << ", StartY=" << m_gridStartY << std::endl;
-        }
-
-        // Store the calculated scale factor if m_tilePos or rendering needs it explicitly
-        // The old m_currentGridLayoutScale and GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK are now
-        // effectively replaced by this single gridElementsScaleFactor for TILE_SIZE, TILE_PAD, COL_PAD.
-        // Let's make a new member if needed, or m_tilePos can recalculate scaled sizes.
-        // For now, m_tilePos will need to know gridElementsScaleFactor or be passed st_final, sp_final.
-        // It's cleaner if m_tilePos uses this factor.
-        // We can reuse m_currentGridLayoutScale for this purpose if its previous meaning is deprecated.
-        m_currentGridLayoutScale = gridElementsScaleFactor; // Re-purpose this to store the element scale
-        actualGridFinalHeight = (float)maxRowsPerCol * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f);
+        for (size_t w = 0; w < m_sorted.size(); ++w) { int c = static_cast<int>(w) / maxRowsPerCol; int r = static_cast<int>(w) % maxRowsPerCol; if (c >= numCols) c = numCols - 1; m_wordCol[w] = c; m_wordRow[w] = r; }
+        m_currentGridLayoutScale = gridElementsScaleFactor;
+        // actualGridFinalHeight = static_cast<float>(maxRowsPerCol) * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f); // Recalculate just in case, though should be same
     }
-    else { // Grid is empty
-        m_gridStartX = zoneInnerX + zoneInnerWidth / 2.f; // Center of empty zone
-        m_gridStartY = zoneInnerY + zoneInnerHeight / 2.f;
+    else {
+        m_gridStartX = zoneInnerX_grid + zoneInnerWidth_grid / 2.f;
+        m_gridStartY = zoneInnerY_grid + zoneInnerHeight_grid / 2.f;
         m_totalGridW = 0; actualGridFinalHeight = 0;
-        m_currentGridLayoutScale = 1.0f; // Reset scale factor
-        actualGridFinalHeight = 0;
+        m_currentGridLayoutScale = 1.0f;
     }
     float calculatedGridActualBottomY = m_gridStartY + actualGridFinalHeight;
-    // --- End Grid Calculation Section ---
 
 
     // 5. Determine Final Wheel Size & Position
-    // ... (This section remains unchanged from your working version) ...
-    const float wheelZoneInnerX = WHEEL_ZONE_RECT_DESIGN.position.x + WHEEL_ZONE_PADDING_DESIGN;
-    const float wheelZoneInnerY = WHEEL_ZONE_RECT_DESIGN.position.y + WHEEL_ZONE_PADDING_DESIGN;
-    const float wheelZoneInnerWidth = WHEEL_ZONE_RECT_DESIGN.size.x - 2 * WHEEL_ZONE_PADDING_DESIGN;
-    const float wheelZoneInnerHeight = WHEEL_ZONE_RECT_DESIGN.size.y - 2 * WHEEL_ZONE_PADDING_DESIGN;
-    const float scaledGridWheelGap = S(this, GRID_WHEEL_GAP);
-    float gridAreaLimitY = calculatedGridActualBottomY + scaledGridWheelGap;
+    const float wheelZoneInnerX_val = WHEEL_ZONE_RECT_DESIGN.position.x + WHEEL_ZONE_PADDING_DESIGN;
+    const float wheelZoneInnerY_val = WHEEL_ZONE_RECT_DESIGN.position.y + WHEEL_ZONE_PADDING_DESIGN;
+    const float wheelZoneInnerWidth_val = WHEEL_ZONE_RECT_DESIGN.size.x - 2 * WHEEL_ZONE_PADDING_DESIGN;
+    const float wheelZoneInnerHeight_val = WHEEL_ZONE_RECT_DESIGN.size.y - 2 * WHEEL_ZONE_PADDING_DESIGN;
+    // const float scaledGridWheelGap = S(this, GRID_WHEEL_GAP); // From original, ensure GRID_WHEEL_GAP is float
+    // float gridAreaLimitY = calculatedGridActualBottomY + scaledGridWheelGap; // From original
 
-    if (sizeChanged) { // Log only on size change
-        std::cout << "  WHEEL ZONE: Inner X=" << wheelZoneInnerX << ", Y=" << wheelZoneInnerY
-            << ", W=" << wheelZoneInnerWidth << ", H=" << wheelZoneInnerHeight << std::endl;
+    if (sizeChanged) {
+        std::cout << "  WHEEL ZONE: Inner X=" << wheelZoneInnerX_val << ", Y=" << wheelZoneInnerY_val
+            << ", W=" << wheelZoneInnerWidth_val << ", H=" << wheelZoneInnerHeight_val << std::endl;
     }
 
-    // The wheel's center will be the center of this inner zone.
-    m_wheelX = wheelZoneInnerX + wheelZoneInnerWidth / 2.f;
-    m_wheelY = wheelZoneInnerY + wheelZoneInnerHeight / 2.f;
-
-    // The wheel's radius must fit within the smaller dimension of the inner zone.
-    // This radius is for the m_wheelCentres (where letter interaction points are).
-    float maxRadiusForZone = std::min(wheelZoneInnerWidth / 2.f, wheelZoneInnerHeight / 2.f);
-
-    // Compare with your original WHEEL_R constant (which is in design units)
-    // We want the smaller of the original design radius or what fits the zone.
-    m_currentWheelRadius = std::min(maxRadiusForZone, WHEEL_R); // WHEEL_R is from Constants.h
-
-    // Ensure a minimum sensible radius, especially if the zone is tiny
-    // (LETTER_R is also a design unit constant for the visual letter radius)
-    float minSensibleRadius = LETTER_R * 1.5f; // e.g., must be at least 1.5x a letter's visual radius
+    m_wheelX = wheelZoneInnerX_val + wheelZoneInnerWidth_val / 2.f;
+    m_wheelY = wheelZoneInnerY_val + wheelZoneInnerHeight_val / 2.f;
+    float maxRadiusForZone = std::min(wheelZoneInnerWidth_val / 2.f, wheelZoneInnerHeight_val / 2.f);
+    m_currentWheelRadius = std::min(maxRadiusForZone, WHEEL_R); // WHEEL_R from Constants.h
+    float minSensibleRadius = LETTER_R * 1.5f; // LETTER_R from Constants.h
     m_currentWheelRadius = std::max(m_currentWheelRadius, minSensibleRadius);
-
 
     if (sizeChanged) {
         std::cout << "  WHEEL FINAL: ZoneMaxR=" << maxRadiusForZone << ", DesignR=" << WHEEL_R
             << ", Clamped CurrentR=" << m_currentWheelRadius << std::endl;
         std::cout << "  WHEEL FINAL: Center X=" << m_wheelX << ", Y=" << m_wheelY << std::endl;
     }
-    // --- End Wheel Size & Position Determination ---
 
-    // --- 6. Calculate Final Wheel Letter Positions & Visual Background Radius ---
-    // m_currentWheelRadius is now the definitive radius for the logical letter path,
-    // already constrained by the zone.
-
-    // --- A. Calculate Visual Size of Individual Letters (m_currentLetterRenderRadius) ---
+    // 6. Calculate Final Wheel Letter Positions & Visual Background Radius
     if (!m_base.empty()) {
         float radiusBasedOnCount = (PI * m_currentWheelRadius) / static_cast<float>(m_base.size());
         radiusBasedOnCount *= 0.75f;
-
         float scaleFactorFromDesign = 1.0f;
-        if (WHEEL_R > 0.1f) {
+        if (WHEEL_R > 0.1f) { // WHEEL_R from Constants
             scaleFactorFromDesign = m_currentWheelRadius / WHEEL_R;
         }
-        float radiusBasedOnOverallScale = LETTER_R_BASE_DESIGN * scaleFactorFromDesign;
-
+        float radiusBasedOnOverallScale = LETTER_R_BASE_DESIGN * scaleFactorFromDesign; // LETTER_R_BASE_DESIGN from Constants
         m_currentLetterRenderRadius = std::min(radiusBasedOnCount, radiusBasedOnOverallScale);
-
-        float minAbsRadius = m_currentWheelRadius * MIN_LETTER_RADIUS_FACTOR;
-        float maxAbsRadius = m_currentWheelRadius * MAX_LETTER_RADIUS_FACTOR;
+        float minAbsRadius = m_currentWheelRadius * MIN_LETTER_RADIUS_FACTOR; // Constants
+        float maxAbsRadius = m_currentWheelRadius * MAX_LETTER_RADIUS_FACTOR; // Constants
         m_currentLetterRenderRadius = std::clamp(m_currentLetterRenderRadius, minAbsRadius, maxAbsRadius);
-        m_currentLetterRenderRadius = std::max(m_currentLetterRenderRadius, 5.f);
+        m_currentLetterRenderRadius = std::max(m_currentLetterRenderRadius, 5.f); // Min practical size
     }
     else {
-        m_currentLetterRenderRadius = LETTER_R_BASE_DESIGN;
+        m_currentLetterRenderRadius = LETTER_R_BASE_DESIGN; // Constant
     }
+    m_letterPositionRadius = m_currentWheelRadius; // Start with this (from original logic)
+    m_letterPositionRadius = std::max(m_letterPositionRadius, m_currentLetterRenderRadius * 0.5f);
+    m_letterPositionRadius = std::max(m_letterPositionRadius, m_currentWheelRadius * 0.3f);
 
-    // --- B. Calculate Radius for Placing Letter Centers (m_letterPositionRadius) ---
-    float calculatedLetterPositionRadius = m_currentWheelRadius;
-
-    calculatedLetterPositionRadius = std::max(calculatedLetterPositionRadius, m_currentLetterRenderRadius * 0.5f);
-    calculatedLetterPositionRadius = std::max(calculatedLetterPositionRadius, m_currentWheelRadius * 0.3f);
-
-    m_letterPositionRadius = calculatedLetterPositionRadius; 
-
-    // --- C. Calculate Visual Background for the Wheel (m_visualBgRadius) ---
-    // Ensure LETTER_R_BASE_DESIGN is not zero to avoid division by zero if m_currentLetterRenderRadius is also zero.
     float letterSizeRatioForPadding = (LETTER_R_BASE_DESIGN > 0.01f) ? (m_currentLetterRenderRadius / LETTER_R_BASE_DESIGN) : 1.0f;
-    float calculatedVisualBgRadius = this->m_letterPositionRadius + m_currentLetterRenderRadius +
-        (WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN * letterSizeRatioForPadding);
-    this->m_visualBgRadius = calculatedVisualBgRadius; // Assign to member
+    m_visualBgRadius = this->m_letterPositionRadius + m_currentLetterRenderRadius +
+        (WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN * letterSizeRatioForPadding); // Constant
 
-    // Position the actual letters on the wheel using the member m_letterPositionRadius
     m_wheelLetterRenderPos.resize(m_base.size());
     if (!m_base.empty()) {
-        float angleStep = (2.f * PI) / (float)m_base.size();
+        float angleStep = (2.f * PI) / static_cast<float>(m_base.size());
         for (size_t i = 0; i < m_base.size(); ++i) {
-            float ang = (float)i * angleStep - PI / 2.f;
-            m_wheelLetterRenderPos[i] = { // This is sf::Vector2f construction, should be fine
+            float ang = static_cast<float>(i) * angleStep - PI / 2.f; // Start at top
+            m_wheelLetterRenderPos[i] = sf::Vector2f(
                 m_wheelX + this->m_letterPositionRadius * std::cos(ang),
                 m_wheelY + this->m_letterPositionRadius * std::sin(ang)
-            };
+            );
         }
     }
-
-    // Debugging output
-    if (sizeChanged || true) {
+    if (sizeChanged || true) { // Original had 'true' for constant logging here
         std::cout << "  WHEEL PATH: m_currentWheelRadius = " << m_currentWheelRadius << std::endl;
-        std::cout << "  WHEEL LETTERS: Count=" << m_base.size()
-            << ", Visual Radius (m_currentLetterRenderRadius) = " << m_currentLetterRenderRadius << std::endl;
-        std::cout << "  WHEEL LETTERS: Placement Radius (m_letterPositionRadius) = " << this->m_letterPositionRadius << std::endl;
-        std::cout << "  WHEEL BG: Visual Radius (m_visualBgRadius) = " << this->m_visualBgRadius << std::endl;
+        // ... other wheel logging from original
     }
-    // --- End Wheel Letter Positions Calculation ---
 
     // 7. Other UI Element Positions (Scramble, Continue, Guess Display)
-    // ... (This section remains unchanged from your working version) ...
     if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) {
-        float h = S(this, SCRAMBLE_BTN_HEIGHT);
-        // Ensure texture height is not zero to avoid division by zero
-        float texHeight = static_cast<float>(m_scrambleTex.getSize().y);
-        if (texHeight > 0.1f) {
-            float s = h / texHeight;
-            m_scrambleSpr->setScale({ s, s }); // SFML 3 style
+        float h_scramble = S(this, SCRAMBLE_BTN_HEIGHT);
+        float texHeight_scramble = static_cast<float>(m_scrambleTex.getSize().y);
+        if (texHeight_scramble > 0.1f) {
+            float s_scramble_scale = h_scramble / texHeight_scramble; // Renamed local
+            m_scrambleSpr->setScale(sf::Vector2f(s_scramble_scale, s_scramble_scale));
         }
-        m_scrambleSpr->setOrigin({ 0.f, texHeight / 2.f }); // SFML 3 style
-        // Use m_visualBgRadius here
-        m_scrambleSpr->setPosition(sf::Vector2f{ m_wheelX + m_visualBgRadius + S(this, SCRAMBLE_BTN_OFFSET_X),
-                                                m_wheelY + S(this, SCRAMBLE_BTN_OFFSET_Y) }); // Explicit sf::Vector2f
+        m_scrambleSpr->setOrigin(sf::Vector2f(0.f, texHeight_scramble / 2.f));
+        m_scrambleSpr->setPosition(sf::Vector2f(m_wheelX + m_visualBgRadius + S(this, SCRAMBLE_BTN_OFFSET_X), // Constants
+            m_wheelY + S(this, SCRAMBLE_BTN_OFFSET_Y)));
     }
 
     if (m_contTxt && m_contBtn.getPointCount() > 0) {
-        sf::Vector2f s_size = { S(this, 200.f), S(this, 50.f) }; // Renamed 's' to 's_size' to avoid conflict if 's' is used later
-        m_contBtn.setSize(s_size);
+        sf::Vector2f s_size_contBtn = sf::Vector2f(S(this, 200.f), S(this, 50.f)); // Renamed local
+        m_contBtn.setSize(s_size_contBtn);
         m_contBtn.setRadius(S(this, 10.f));
-        m_contBtn.setOrigin({ s_size.x / 2.f, 0.f }); // Use s_size.x
-        // Use m_visualBgRadius here
-        m_contBtn.setPosition(sf::Vector2f{ m_wheelX,
-                                           m_wheelY + m_visualBgRadius + S(this, CONTINUE_BTN_OFFSET_Y) }); // Explicit sf::Vector2f
-
-        const unsigned int bf_cont = 24; // Renamed 'bf' to avoid conflict
-        unsigned int sf_cont = (unsigned int)std::max(10.0f, S(this, static_cast<float>(bf_cont)));
-        m_contTxt->setCharacterSize(sf_cont);
-        sf::FloatRect tb_cont = m_contTxt->getLocalBounds(); // Renamed 'tb'
-        m_contTxt->setOrigin({ tb_cont.position.x + tb_cont.size.x / 2.f,
-                              tb_cont.position.y + tb_cont.size.y / 2.f });
-        m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, s_size.y / 2.f }); // Use s_size.y
+        m_contBtn.setOrigin(sf::Vector2f(s_size_contBtn.x / 2.f, 0.f));
+        m_contBtn.setPosition(sf::Vector2f(m_wheelX,
+            m_wheelY + m_visualBgRadius + S(this, CONTINUE_BTN_OFFSET_Y))); // Constant
+        const unsigned int bf_cont_font_val = 24; // Renamed local
+        unsigned int sf_cont_font_val = static_cast<unsigned int>(std::max(10.0f, S(this, static_cast<float>(bf_cont_font_val))));
+        m_contTxt->setCharacterSize(sf_cont_font_val);
+        sf::FloatRect tb_cont_textbounds = m_contTxt->getLocalBounds(); // Renamed local
+        m_contTxt->setOrigin(sf::Vector2f(tb_cont_textbounds.position.x + tb_cont_textbounds.size.x / 2.f,
+            tb_cont_textbounds.position.y + tb_cont_textbounds.size.y / 2.f));
+        m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f(0.f, s_size_contBtn.y / 2.f));
     }
 
-    // Guess Display Text character size and Background radius/outline
     if (m_guessDisplay_Text) {
-        const unsigned int bf_guess = 30; // Renamed 'bf'
-        unsigned int sf_guess = (unsigned int)std::max(10.0f, S(this, static_cast<float>(bf_guess)));
-        m_guessDisplay_Text->setCharacterSize(sf_guess);
+        const unsigned int bf_guess_font_val = 30; // Renamed local
+        unsigned int sf_guess_font_val = static_cast<unsigned int>(std::max(10.0f, S(this, static_cast<float>(bf_guess_font_val))));
+        m_guessDisplay_Text->setCharacterSize(sf_guess_font_val);
     }
     if (m_guessDisplay_Bg.getPointCount() > 0) {
         m_guessDisplay_Bg.setRadius(S(this, 8.f));
         m_guessDisplay_Bg.setOutlineThickness(S(this, 1.f));
     }
-
-    // Logging for HUD Start Y (this used local visualBgRadius before)
-    const float scaledHudOffsetY_log = S(this, HUD_TEXT_OFFSET_Y);
-    float calculatedHudStartY_log = m_wheelY + m_visualBgRadius + scaledHudOffsetY_log;
-    float visualWheelTopEdgeY_log = m_wheelY - m_visualBgRadius;
-
-    if (sizeChanged) { // Only log if size changed to reduce spam
-        std::cout << "  WHEEL/HUD INFO (updateLayout): Visual Wheel BG Top Edge Y = " << visualWheelTopEdgeY_log << std::endl;
-        std::cout << "  WHEEL/HUD INFO (updateLayout): Calculated HUD Start Y = " << calculatedHudStartY_log << std::endl;
-        if (actualGridFinalHeight > 0 && visualWheelTopEdgeY_log < calculatedGridActualBottomY - 0.1f) {
-            std::cout << "  WHEEL/HUD WARNING (updateLayout): Visual Wheel BG (Y=" << visualWheelTopEdgeY_log
+    // HUD Logging from original
+    const float designBottomEdge_val = designH; // Local copy
+    const float scaledHudOffsetY_val = S(this, HUD_TEXT_OFFSET_Y);
+    float calculatedHudStartY_val = m_wheelY + m_visualBgRadius + scaledHudOffsetY_val;
+    float visualWheelTopEdgeY_val = m_wheelY - m_visualBgRadius;
+    if (sizeChanged) {
+        std::cout << "  WHEEL/HUD INFO (updateLayout): Visual Wheel BG Top Edge Y = " << visualWheelTopEdgeY_val << std::endl;
+        if (actualGridFinalHeight > 0 && visualWheelTopEdgeY_val < calculatedGridActualBottomY - 0.1f) {
+            std::cout << "  WHEEL/HUD WARNING (updateLayout): Visual Wheel BG (Y=" << visualWheelTopEdgeY_val
                 << ") overlaps Grid Bottom (Y=" << calculatedGridActualBottomY << ")!" << std::endl;
         }
-        if (calculatedHudStartY_log > designBottomEdge + 0.1f) {
-            std::cout << "  WHEEL/HUD WARNING (updateLayout): Calculated HUD Start Y (" << calculatedHudStartY_log
-                << ") is below Design Bottom Edge (" << designBottomEdge << ")" << std::endl;
+        if (calculatedHudStartY_val > designBottomEdge_val + 0.1f) {
+            std::cout << "  WHEEL/HUD WARNING (updateLayout): Calculated HUD Start Y (" << calculatedHudStartY_val
+                << ") is below Design Bottom Edge (" << designBottomEdge_val << ")" << std::endl;
         }
     }
 
-    // 8. Menu Layouts
-    // ... (This section remains unchanged from your working version) ...
-    sf::Vector2f windowCenterPix = sf::Vector2f(windowSize) / 2.f; sf::Vector2f mappedWindowCenter = m_window.mapPixelToCoords(sf::Vector2i(windowCenterPix)); const float scaledMenuPadding = S(this, 40.f); const float scaledButtonSpacing = S(this, 20.f); const unsigned int scaledTitleSize = (unsigned int)std::max(12.0f, S(this, 36.f)); const unsigned int scaledButtonFontSize = (unsigned int)std::max(10.0f, S(this, 24.f)); const sf::Vector2f scaledButtonSize = { S(this,250.f),S(this,50.f) }; const float scaledButtonRadius = S(this, 10.f); const float scaledMenuRadius = S(this, 15.f); auto centerTextOnButton = [&](const std::unique_ptr<sf::Text>& textPtr, const RoundedRectangleShape& button) { if (!textPtr) return; sf::Text* text = textPtr.get(); sf::FloatRect tb = text->getLocalBounds(); text->setOrigin({ tb.position.x + tb.size.x / 2.f,tb.position.y + tb.size.y / 2.f }); text->setPosition(button.getPosition() + sf::Vector2f{ 0.f,button.getSize().y / 2.f }); };
-    if (m_mainMenuTitle && m_casualButtonShape.getPointCount() > 0) { m_mainMenuTitle->setCharacterSize(scaledTitleSize); m_casualButtonText->setCharacterSize(scaledButtonFontSize); m_competitiveButtonText->setCharacterSize(scaledButtonFontSize); m_quitButtonText->setCharacterSize(scaledButtonFontSize); m_casualButtonShape.setSize(scaledButtonSize); m_competitiveButtonShape.setSize(scaledButtonSize); m_quitButtonShape.setSize(scaledButtonSize); m_casualButtonShape.setRadius(scaledButtonRadius); m_competitiveButtonShape.setRadius(scaledButtonRadius); m_quitButtonShape.setRadius(scaledButtonRadius); sf::FloatRect titleBounds = m_mainMenuTitle->getLocalBounds(); float sths = titleBounds.size.y + titleBounds.position.y + scaledButtonSpacing; float tbh = 3 * scaledButtonSize.y + 2 * scaledButtonSpacing; float smmh = scaledMenuPadding + sths + tbh + scaledMenuPadding; float smmw = std::max(scaledButtonSize.x, titleBounds.size.x + titleBounds.position.x) + 2 * scaledMenuPadding; m_mainMenuBg.setSize({ smmw,smmh }); m_mainMenuBg.setRadius(scaledMenuRadius); m_mainMenuBg.setOrigin({ smmw / 2.f,smmh / 2.f }); m_mainMenuBg.setPosition(mappedWindowCenter); sf::Vector2f mbp = m_mainMenuBg.getPosition(); float mty = mbp.y - smmh / 2.f; m_mainMenuTitle->setOrigin({ titleBounds.position.x + titleBounds.size.x / 2.f,titleBounds.position.y }); m_mainMenuTitle->setPosition({ mbp.x,mty + scaledMenuPadding }); float currentY = mty + scaledMenuPadding + sths; m_casualButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_casualButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_casualButtonText, m_casualButtonShape); currentY += scaledButtonSize.y + scaledButtonSpacing; m_competitiveButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_competitiveButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_competitiveButtonText, m_competitiveButtonShape); currentY += scaledButtonSize.y + scaledButtonSpacing; m_quitButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_quitButtonShape.setPosition({ mbp.x,currentY }); centerTextOnButton(m_quitButtonText, m_quitButtonShape); }
-    if (m_casualMenuTitle && m_easyButtonShape.getPointCount() > 0) { m_casualMenuTitle->setCharacterSize(scaledTitleSize); m_easyButtonText->setCharacterSize(scaledButtonFontSize); m_mediumButtonText->setCharacterSize(scaledButtonFontSize); m_hardButtonText->setCharacterSize(scaledButtonFontSize); m_returnButtonText->setCharacterSize(scaledButtonFontSize); m_easyButtonShape.setSize(scaledButtonSize); m_mediumButtonShape.setSize(scaledButtonSize); m_hardButtonShape.setSize(scaledButtonSize); m_returnButtonShape.setSize(scaledButtonSize); m_easyButtonShape.setRadius(scaledButtonRadius); m_mediumButtonShape.setRadius(scaledButtonRadius); m_hardButtonShape.setRadius(scaledButtonRadius); m_returnButtonShape.setRadius(scaledButtonRadius); sf::FloatRect ctb = m_casualMenuTitle->getLocalBounds(); float sths_c = ctb.size.y + ctb.position.y + scaledButtonSpacing; float tbh_c = 4 * scaledButtonSize.y + 3 * scaledButtonSpacing; float scmh = scaledMenuPadding + sths_c + tbh_c + scaledMenuPadding; float scmw = std::max(scaledButtonSize.x, ctb.size.x + ctb.position.x) + 2 * scaledMenuPadding; m_casualMenuBg.setSize({ scmw,scmh }); m_casualMenuBg.setRadius(scaledMenuRadius); m_casualMenuBg.setOrigin({ scmw / 2.f,scmh / 2.f }); m_casualMenuBg.setPosition(mappedWindowCenter); sf::Vector2f cmbp = m_casualMenuBg.getPosition(); float cmty = cmbp.y - scmh / 2.f; m_casualMenuTitle->setOrigin({ ctb.position.x + ctb.size.x / 2.f,ctb.position.y }); m_casualMenuTitle->setPosition({ cmbp.x,cmty + scaledMenuPadding }); float ccy = cmty + scaledMenuPadding + sths_c; m_easyButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_easyButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_easyButtonText, m_easyButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_mediumButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_mediumButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_mediumButtonText, m_mediumButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_hardButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_hardButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_hardButtonText, m_hardButtonShape); ccy += scaledButtonSize.y + scaledButtonSpacing; m_returnButtonShape.setOrigin({ scaledButtonSize.x / 2.f,0.f }); m_returnButtonShape.setPosition({ cmbp.x,ccy }); centerTextOnButton(m_returnButtonText, m_returnButtonShape); }
-
-
-    // --- 9. Hint UI Layout (Left Side) ---
-    // This is the critical section to correct for 4 hint buttons.
-    const float HINT_UI_MAX_SCALE = 1.0f;
-    float hintUiInternalScale = std::min(m_uiScale, HINT_UI_MAX_SCALE);
-
-    const float hintAreaPadding = hintUiInternalScale * 15.f;
-    const float hintElementSpacing = hintUiInternalScale * 10.f; // spacing between elements
-    const sf::Vector2f hintButtonSize = { hintUiInternalScale * 120.f, hintUiInternalScale * 35.f };
-    const float hintButtonRadius = hintUiInternalScale * 6.f;
-    const float costTextOffsetX = hintUiInternalScale * 8.f;
-    const float gapBelowGridBaseValue = 75.f;
-    const float gapBelowGrid = S(this, gapBelowGridBaseValue);
-
-    // --- Stage 1: Calculate required dimensions using HINT scale ---
-    float requiredWidth = 0.f;
-    float requiredHeight = 0.f;
-    float currentSimulatedY = 0;
-
-    auto estimateRowWidth = [&](float buttonWidth, float textScale, float textOffsetX) {
-        float estimatedCostTextWidth = textScale * 60.f; // Approx "Cost: XX"
-        return buttonWidth + textOffsetX + estimatedCostTextWidth;
+    // 8. Menu Layouts (Copied from original, with SFML3 API changes for Rect and setOrigin/setPosition)
+    sf::Vector2f windowCenterPix_menu = sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)) / 2.f;
+    sf::Vector2f mappedWindowCenter_menu = m_window.mapPixelToCoords(sf::Vector2i(static_cast<int>(windowCenterPix_menu.x), static_cast<int>(windowCenterPix_menu.y)));
+    const float scaledMenuPadding_menu = S(this, 40.f);
+    const float scaledButtonSpacing_menu = S(this, 20.f);
+    const unsigned int scaledTitleSize_menu = static_cast<unsigned int>(std::max(12.0f, S(this, 36.f)));
+    const unsigned int scaledButtonFontSize_menu = static_cast<unsigned int>(std::max(10.0f, S(this, 24.f)));
+    const sf::Vector2f scaledButtonSize_menu_vec = sf::Vector2f(S(this, 250.f), S(this, 50.f));
+    const float scaledButtonRadius_menu_val = S(this, 10.f);
+    const float scaledMenuRadius_menu_val = S(this, 15.f);
+    auto centerTextOnButton_lambda_menu = [&](const std::unique_ptr<sf::Text>& textPtr, const RoundedRectangleShape& button) {
+        if (!textPtr) return; sf::Text* text = textPtr.get(); sf::FloatRect tb_lambda_menu = text->getLocalBounds();
+        text->setOrigin(sf::Vector2f(tb_lambda_menu.position.x + tb_lambda_menu.size.x / 2.f, tb_lambda_menu.position.y + tb_lambda_menu.size.y / 2.f));
+        text->setPosition(button.getPosition() + sf::Vector2f(0.f, button.getSize().y / 2.f));
         };
-
-    // Points Text
-    if (m_hintPointsText) {
-        float estimatedPointsWidth = hintUiInternalScale * 100.f;
-        requiredWidth = std::max(requiredWidth, estimatedPointsWidth);
-        const unsigned int pointsFontSize = static_cast<unsigned int>(std::max(8.0f, hintUiInternalScale * 20.f));
-        currentSimulatedY += (float)pointsFontSize * 1.5f; // Approx line height with some spacing
+    if (m_mainMenuTitle && m_casualButtonShape.getPointCount() > 0) {
+        m_mainMenuTitle->setCharacterSize(scaledTitleSize_menu);
+        m_casualButtonText->setCharacterSize(scaledButtonFontSize_menu); m_competitiveButtonText->setCharacterSize(scaledButtonFontSize_menu); m_quitButtonText->setCharacterSize(scaledButtonFontSize_menu);
+        m_casualButtonShape.setSize(scaledButtonSize_menu_vec); m_competitiveButtonShape.setSize(scaledButtonSize_menu_vec); m_quitButtonShape.setSize(scaledButtonSize_menu_vec);
+        m_casualButtonShape.setRadius(scaledButtonRadius_menu_val); m_competitiveButtonShape.setRadius(scaledButtonRadius_menu_val); m_quitButtonShape.setRadius(scaledButtonRadius_menu_val);
+        sf::FloatRect titleBounds_main_menu = m_mainMenuTitle->getLocalBounds();
+        float sths_main_menu = titleBounds_main_menu.size.y + titleBounds_main_menu.position.y + scaledButtonSpacing_menu;
+        float tbh_main_menu = 3 * scaledButtonSize_menu_vec.y + 2 * scaledButtonSpacing_menu;
+        float smmh_main_menu = scaledMenuPadding_menu + sths_main_menu + tbh_main_menu + scaledMenuPadding_menu;
+        float smmw_main_menu = std::max(scaledButtonSize_menu_vec.x, titleBounds_main_menu.size.x + titleBounds_main_menu.position.x) + 2 * scaledMenuPadding_menu;
+        m_mainMenuBg.setSize(sf::Vector2f(smmw_main_menu, smmh_main_menu)); m_mainMenuBg.setRadius(scaledMenuRadius_menu_val);
+        m_mainMenuBg.setOrigin(sf::Vector2f(smmw_main_menu / 2.f, smmh_main_menu / 2.f)); m_mainMenuBg.setPosition(mappedWindowCenter_menu);
+        sf::Vector2f mbp_main_menu_pos = m_mainMenuBg.getPosition(); float mty_main_menu_pos = mbp_main_menu_pos.y - smmh_main_menu / 2.f;
+        m_mainMenuTitle->setOrigin(sf::Vector2f(titleBounds_main_menu.position.x + titleBounds_main_menu.size.x / 2.f, titleBounds_main_menu.position.y));
+        m_mainMenuTitle->setPosition(sf::Vector2f(mbp_main_menu_pos.x, mty_main_menu_pos + scaledMenuPadding_menu));
+        float currentY_main_menu = mty_main_menu_pos + scaledMenuPadding_menu + sths_main_menu;
+        m_casualButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_casualButtonShape.setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu));
+        centerTextOnButton_lambda_menu(m_casualButtonText, m_casualButtonShape); currentY_main_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
+        m_competitiveButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_competitiveButtonShape.setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu));
+        centerTextOnButton_lambda_menu(m_competitiveButtonText, m_competitiveButtonShape); currentY_main_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
+        m_quitButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_quitButtonShape.setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu));
+        centerTextOnButton_lambda_menu(m_quitButtonText, m_quitButtonShape);
+    }
+    if (m_casualMenuTitle && m_easyButtonShape.getPointCount() > 0) {
+        m_casualMenuTitle->setCharacterSize(scaledTitleSize_menu);
+        m_easyButtonText->setCharacterSize(scaledButtonFontSize_menu); m_mediumButtonText->setCharacterSize(scaledButtonFontSize_menu); m_hardButtonText->setCharacterSize(scaledButtonFontSize_menu); m_returnButtonText->setCharacterSize(scaledButtonFontSize_menu);
+        m_easyButtonShape.setSize(scaledButtonSize_menu_vec); m_mediumButtonShape.setSize(scaledButtonSize_menu_vec); m_hardButtonShape.setSize(scaledButtonSize_menu_vec); m_returnButtonShape.setSize(scaledButtonSize_menu_vec);
+        m_easyButtonShape.setRadius(scaledButtonRadius_menu_val); m_mediumButtonShape.setRadius(scaledButtonRadius_menu_val); m_hardButtonShape.setRadius(scaledButtonRadius_menu_val); m_returnButtonShape.setRadius(scaledButtonRadius_menu_val);
+        sf::FloatRect ctb_casual_menu = m_casualMenuTitle->getLocalBounds();
+        float sths_c_casual_menu = ctb_casual_menu.size.y + ctb_casual_menu.position.y + scaledButtonSpacing_menu;
+        float tbh_c_casual_menu = 4 * scaledButtonSize_menu_vec.y + 3 * scaledButtonSpacing_menu;
+        float scmh_casual_menu = scaledMenuPadding_menu + sths_c_casual_menu + tbh_c_casual_menu + scaledMenuPadding_menu;
+        float scmw_casual_menu = std::max(scaledButtonSize_menu_vec.x, ctb_casual_menu.size.x + ctb_casual_menu.position.x) + 2 * scaledMenuPadding_menu;
+        m_casualMenuBg.setSize(sf::Vector2f(scmw_casual_menu, scmh_casual_menu)); m_casualMenuBg.setRadius(scaledMenuRadius_menu_val);
+        m_casualMenuBg.setOrigin(sf::Vector2f(scmw_casual_menu / 2.f, scmh_casual_menu / 2.f)); m_casualMenuBg.setPosition(mappedWindowCenter_menu);
+        sf::Vector2f cmbp_casual_menu_pos = m_casualMenuBg.getPosition(); float cmty_casual_menu_pos = cmbp_casual_menu_pos.y - scmh_casual_menu / 2.f;
+        m_casualMenuTitle->setOrigin(sf::Vector2f(ctb_casual_menu.position.x + ctb_casual_menu.size.x / 2.f, ctb_casual_menu.position.y));
+        m_casualMenuTitle->setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, cmty_casual_menu_pos + scaledMenuPadding_menu));
+        float ccy_casual_menu = cmty_casual_menu_pos + scaledMenuPadding_menu + sths_c_casual_menu;
+        m_easyButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_easyButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
+        centerTextOnButton_lambda_menu(m_easyButtonText, m_easyButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
+        m_mediumButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_mediumButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
+        centerTextOnButton_lambda_menu(m_mediumButtonText, m_mediumButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
+        m_hardButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_hardButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
+        centerTextOnButton_lambda_menu(m_hardButtonText, m_hardButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
+        m_returnButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_returnButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
+        centerTextOnButton_lambda_menu(m_returnButtonText, m_returnButtonShape);
     }
 
-    // Hint 1 (RevealFirst "Letter")
-    requiredWidth = std::max(requiredWidth, estimateRowWidth(hintButtonSize.x, hintUiInternalScale, costTextOffsetX));
-    currentSimulatedY += (currentSimulatedY > 0 && m_hintPointsText ? hintElementSpacing : 0) + hintButtonSize.y;
+    // --- 9. NEW Hint UI Layout ---
+    if (m_newHintPanelSpr) {
+        const sf::Texture* panelTex = &m_newHintPanelSpr->getTexture();
+        if (panelTex && panelTex->getSize().x > 0) {
+            float panelOriginalWidth = static_cast<float>(panelTex->getSize().x);
+            float panelOriginalHeight = static_cast<float>(panelTex->getSize().y);
 
-    // Hint 2 (RevealRandom "Random")
-    requiredWidth = std::max(requiredWidth, estimateRowWidth(hintButtonSize.x, hintUiInternalScale, costTextOffsetX));
-    currentSimulatedY += hintElementSpacing + hintButtonSize.y;
+            float targetPanelWidth = HINT_ZONE_RECT_DESIGN.size.x * 0.98f;
+            float panelScale = targetPanelWidth / panelOriginalWidth;
+            float scaledPanelWidth = panelOriginalWidth * panelScale;
+            float scaledPanelHeight = panelOriginalHeight * panelScale;
 
-    // Hint 3 (RevealLast "Last Word")
-    requiredWidth = std::max(requiredWidth, estimateRowWidth(hintButtonSize.x, hintUiInternalScale, costTextOffsetX));
-    currentSimulatedY += hintElementSpacing + hintButtonSize.y;
+            float panelX = HINT_ZONE_RECT_DESIGN.position.x + (HINT_ZONE_RECT_DESIGN.size.x - scaledPanelWidth) / 2.f;
+            float panelY = HINT_ZONE_RECT_DESIGN.position.y + (HINT_ZONE_RECT_DESIGN.size.y - scaledPanelHeight) / 2.f;
 
-    // Hint 4 (RevealFirstOfEach "1st of Each")
-    requiredWidth = std::max(requiredWidth, estimateRowWidth(hintButtonSize.x, hintUiInternalScale, costTextOffsetX));
-    currentSimulatedY += hintElementSpacing + hintButtonSize.y;
+            m_newHintPanelSpr->setScale(sf::Vector2f(panelScale, panelScale));
+            m_newHintPanelSpr->setPosition(sf::Vector2f(panelX, panelY));
 
-    requiredHeight = currentSimulatedY; // Total height for elements
+            const float pointsTextRelX = panelOriginalWidth * 0.08f * panelScale;
+            const float pointsTextRelY = panelOriginalHeight * 0.1f * panelScale;
+            const float indicatorSize = panelOriginalHeight * 0.08f * panelScale;
+            const float indicatorRelX = panelOriginalWidth * 0.52f * panelScale;
+            const float firstIndicatorRelY = panelOriginalHeight * 0.28f * panelScale;
+            const float indicatorVerticalSpacing = panelOriginalHeight * 0.165f * panelScale;
+            const float textLabelOffsetX = indicatorSize * 0.7f;
 
-    // --- Stage 2: Calculate Background Frame properties ---
-    float bgWidth = requiredWidth + hintAreaPadding * 2.f;
-    float bgHeight = requiredHeight + hintAreaPadding * 2.f; // bgHeight now reflects 4 buttons
-    float bgRadius = hintUiInternalScale * 10.f;
+            const unsigned int labelFontSizeBase = 16;
+            const unsigned int costFontSizeBase = 13;
+            const unsigned int pointsFontSizeBase = 18;
 
-    // --- Stage 3: Determine Background Top-Left Position ---
-    float finalBgPosX = HINT_ZONE_RECT_DESIGN.position.x + HINT_BG_PADDING_X;
-    float finalBgPosY = HINT_ZONE_RECT_DESIGN.position.y + HINT_BG_PADDING_Y;
+            if (m_hintPointsText) {
+                unsigned int scaledPointsFontSize = static_cast<unsigned int>(S(this, static_cast<float>(pointsFontSizeBase)) * panelScale * 1.1f);
+                m_hintPointsText->setCharacterSize(scaledPointsFontSize);
+                m_hintPointsText->setFillColor(sf::Color(230, 230, 230));
+                sf::FloatRect ptBounds_hint = m_hintPointsText->getLocalBounds(); // Renamed local
+                m_hintPointsText->setOrigin(sf::Vector2f(ptBounds_hint.position.x, ptBounds_hint.position.y));
+                m_hintPointsText->setPosition(sf::Vector2f(panelX + pointsTextRelX, panelY + pointsTextRelY));
+            }
 
-    // --- Stage 4: Set Background Position and Size ---
-    m_hintAreaBg.setSize({ bgWidth, bgHeight });
-    m_hintAreaBg.setRadius(bgRadius);
-    m_hintAreaBg.setOrigin({ 0.f, 0.f });
-    m_hintAreaBg.setPosition({ finalBgPosX, finalBgPosY });
-    
-    // --- Stage 5: Position Elements INSIDE the Background Frame ---
-    float elementStartX = finalBgPosX + hintAreaPadding;
-    float currentElementY = finalBgPosY + hintAreaPadding; // Start Y for the first element
+            std::vector<std::unique_ptr<sf::Text>*> hintLabelsPtrs = {
+                &m_hintRevealFirstButtonText, &m_hintRevealRandomButtonText,
+                &m_hintRevealLastButtonText, &m_hintRevealFirstOfEachButtonText
+            };
+            std::vector<std::unique_ptr<sf::Text>*> hintCostsPtrs = {
+                &m_hintRevealFirstCostText, &m_hintRevealRandomCostText,
+                &m_hintRevealLastCostText, &m_hintRevealFirstOfEachCostText
+            };
 
-    // Position "Points: XXX" Text
-    if (m_hintPointsText) {
-        const unsigned int pointsFontSize = static_cast<unsigned int>(std::max(8.0f, hintUiInternalScale * 20.f));
-        m_hintPointsText->setCharacterSize(pointsFontSize);
-        sf::FloatRect ptBounds = m_hintPointsText->getLocalBounds();
-        m_hintPointsText->setOrigin({ ptBounds.position.x, ptBounds.position.y });
-        m_hintPointsText->setPosition({ elementStartX, currentElementY });
-        currentElementY += ptBounds.size.y + ptBounds.position.y + hintElementSpacing; // Advance Y for the next element
+            for (int i = 0; i < 4; ++i) {
+                if (i < m_hintIndicatorLightSprs.size() && m_hintIndicatorLightSprs[i]) {
+                    const sf::Texture* lightTex = &m_hintIndicatorLightSprs[i]->getTexture();
+                    if (lightTex && lightTex->getSize().x > 0) {
+                        float lightOriginalTexSize = static_cast<float>(lightTex->getSize().x);
+                        float lightSpriteScale = indicatorSize / lightOriginalTexSize;
+                        m_hintIndicatorLightSprs[i]->setScale(sf::Vector2f(lightSpriteScale, lightSpriteScale));
+                        m_hintIndicatorLightSprs[i]->setOrigin(sf::Vector2f(lightOriginalTexSize / 2.f, lightOriginalTexSize / 2.f));
+
+                        float indicatorCenterX = panelX + indicatorRelX + indicatorSize / 2.f;
+                        float indicatorCenterY = panelY + firstIndicatorRelY + (i * indicatorVerticalSpacing) + indicatorSize / 2.f;
+                        m_hintIndicatorLightSprs[i]->setPosition(sf::Vector2f(indicatorCenterX, indicatorCenterY));
+
+                        sf::Text* currentLabel = hintLabelsPtrs[i]->get();
+                        sf::Text* currentCost = hintCostsPtrs[i]->get();
+
+                        if (currentLabel) {
+                            unsigned int scaledLabelSize = static_cast<unsigned int>(S(this, static_cast<float>(labelFontSizeBase)) * panelScale);
+                            currentLabel->setCharacterSize(scaledLabelSize);
+                            currentLabel->setFillColor(sf::Color(210, 210, 210));
+                            sf::FloatRect labelBounds_hint_loop = currentLabel->getLocalBounds();
+                            currentLabel->setOrigin(sf::Vector2f(labelBounds_hint_loop.position.x, labelBounds_hint_loop.position.y + labelBounds_hint_loop.size.y / 2.f));
+                            currentLabel->setPosition(sf::Vector2f(indicatorCenterX + textLabelOffsetX, indicatorCenterY));
+                        }
+
+                        if (currentCost) {
+                            unsigned int scaledCostSize = static_cast<unsigned int>(S(this, static_cast<float>(costFontSizeBase)) * panelScale);
+                            currentCost->setCharacterSize(scaledCostSize);
+                            currentCost->setFillColor(sf::Color(190, 190, 190));
+                            sf::FloatRect costBounds_hint_loop = currentCost->getLocalBounds();
+                            currentCost->setOrigin(sf::Vector2f(costBounds_hint_loop.position.x, costBounds_hint_loop.position.y + costBounds_hint_loop.size.y / 2.f));
+                            float costXPos = panelX + scaledPanelWidth - costBounds_hint_loop.size.x - (panelOriginalWidth * 0.05f * panelScale);
+                            if (currentLabel) {
+                                sf::FloatRect labelGlobalBounds_hint_loop = currentLabel->getGlobalBounds();
+                                costXPos = std::max(labelGlobalBounds_hint_loop.position.x + labelGlobalBounds_hint_loop.size.x + (10.f * panelScale), costXPos);
+                            }
+                            currentCost->setPosition(sf::Vector2f(costXPos, indicatorCenterY));
+                        }
+                        if (i < m_hintClickableRegions.size()) {
+                            float clickX = panelX + indicatorRelX;
+                            float clickY = panelY + firstIndicatorRelY + (i * indicatorVerticalSpacing);
+                            float clickWidth = scaledPanelWidth - indicatorRelX - (panelOriginalWidth * 0.02f * panelScale);
+                            float clickHeight = indicatorVerticalSpacing * 0.95f;
+                            m_hintClickableRegions[i] = sf::FloatRect({ clickX, clickY }, { clickWidth, clickHeight });
+                        }
+                    }
+                }
+            }
+        }
     }
-
-    // --- Helper lambda to position a hint button and its texts ---
-    auto positionHintUIElements =
-        [&](RoundedRectangleShape& buttonShape,
-            const std::unique_ptr<sf::Text>& buttonTextElem,
-            const std::unique_ptr<sf::Text>& costTextElem)
-        {
-            sf::Vector2f buttonPos = { elementStartX, currentElementY };
-            buttonShape.setSize(hintButtonSize);
-            buttonShape.setRadius(hintButtonRadius);
-            buttonShape.setOrigin({ 0.f, 0.f });
-            buttonShape.setPosition(buttonPos);
-
-            if (buttonTextElem) {
-                const unsigned int btnFontSize = static_cast<unsigned int>(std::max(8.0f, hintUiInternalScale * 18.f));
-                buttonTextElem->setCharacterSize(btnFontSize);
-                sf::FloatRect txtBounds = buttonTextElem->getLocalBounds();
-                buttonTextElem->setOrigin({ txtBounds.position.x + txtBounds.size.x / 2.f,
-                                            txtBounds.position.y + txtBounds.size.y / 2.f });
-                buttonTextElem->setPosition(buttonPos + hintButtonSize / 2.f);
-            }
-            if (costTextElem) {
-                const unsigned int costFontSize = static_cast<unsigned int>(std::max(8.0f, hintUiInternalScale * 16.f));
-                costTextElem->setCharacterSize(costFontSize);
-                sf::FloatRect costBounds = costTextElem->getLocalBounds();
-                costTextElem->setOrigin({ costBounds.position.x, costBounds.position.y + costBounds.size.y / 2.f });
-                float costTextX = buttonPos.x + hintButtonSize.x + costTextOffsetX;
-                float costTextY = buttonPos.y + hintButtonSize.y / 2.f;
-                costTextElem->setPosition({ costTextX, costTextY });
-            }
-            currentElementY += hintButtonSize.y + hintElementSpacing; // Advance Y for the next button
-        };
-
-    // Position Hint 1 (RevealFirst "Letter")
-    positionHintUIElements(m_hintRevealFirstButtonShape, m_hintRevealFirstButtonText, m_hintRevealFirstCostText);
-
-    // Position Hint 2 (RevealRandom "Random")
-    positionHintUIElements(m_hintRevealRandomButtonShape, m_hintRevealRandomButtonText, m_hintRevealRandomCostText);
-
-    // Position Hint 3 (RevealLast "Last Word")
-    positionHintUIElements(m_hintRevealLastButtonShape, m_hintRevealLastButtonText, m_hintRevealLastCostText);
-
-    // Position Hint 4 (RevealFirstOfEach "1st of Each")
-    positionHintUIElements(m_hintRevealFirstOfEachButtonShape, m_hintRevealFirstOfEachButtonText, m_hintRevealFirstOfEachCostText);
 
     // --- Update DEBUG Zone Shapes ---
     if (m_showDebugZones) {
         float scaledOutlineThickness = S(this, 2.0f);
 
-        m_debugGridZoneShape.setPosition({ GRID_ZONE_RECT_DESIGN.position.x, GRID_ZONE_RECT_DESIGN.position.y });
-        m_debugGridZoneShape.setSize({ GRID_ZONE_RECT_DESIGN.size.x, GRID_ZONE_RECT_DESIGN.size.y });
+        m_debugGridZoneShape.setPosition(sf::Vector2f(GRID_ZONE_RECT_DESIGN.position.x, GRID_ZONE_RECT_DESIGN.position.y));
+        m_debugGridZoneShape.setSize(sf::Vector2f(GRID_ZONE_RECT_DESIGN.size.x, GRID_ZONE_RECT_DESIGN.size.y));
         m_debugGridZoneShape.setOutlineThickness(scaledOutlineThickness);
 
-        m_debugHintZoneShape.setPosition({ HINT_ZONE_RECT_DESIGN.position.x, HINT_ZONE_RECT_DESIGN.position.y });
-        m_debugHintZoneShape.setSize({ HINT_ZONE_RECT_DESIGN.size.x, HINT_ZONE_RECT_DESIGN.size.y });
+        m_debugHintZoneShape.setPosition(sf::Vector2f(HINT_ZONE_RECT_DESIGN.position.x, HINT_ZONE_RECT_DESIGN.position.y));
+        m_debugHintZoneShape.setSize(sf::Vector2f(HINT_ZONE_RECT_DESIGN.size.x, HINT_ZONE_RECT_DESIGN.size.y));
         m_debugHintZoneShape.setOutlineThickness(scaledOutlineThickness);
 
-        m_debugWheelZoneShape.setPosition({ WHEEL_ZONE_RECT_DESIGN.position.x, WHEEL_ZONE_RECT_DESIGN.position.y });
-        m_debugWheelZoneShape.setSize({ WHEEL_ZONE_RECT_DESIGN.size.x, WHEEL_ZONE_RECT_DESIGN.size.y });
+        m_debugWheelZoneShape.setPosition(sf::Vector2f(WHEEL_ZONE_RECT_DESIGN.position.x, WHEEL_ZONE_RECT_DESIGN.position.y));
+        m_debugWheelZoneShape.setSize(sf::Vector2f(WHEEL_ZONE_RECT_DESIGN.size.x, WHEEL_ZONE_RECT_DESIGN.size.y));
         m_debugWheelZoneShape.setOutlineThickness(scaledOutlineThickness);
 
-        m_debugScoreZoneShape.setPosition({ SCORE_ZONE_RECT_DESIGN.position.x, SCORE_ZONE_RECT_DESIGN.position.y });
-        m_debugScoreZoneShape.setSize({ SCORE_ZONE_RECT_DESIGN.size.x, SCORE_ZONE_RECT_DESIGN.size.y });
+        m_debugScoreZoneShape.setPosition(sf::Vector2f(SCORE_ZONE_RECT_DESIGN.position.x, SCORE_ZONE_RECT_DESIGN.position.y));
+        m_debugScoreZoneShape.setSize(sf::Vector2f(SCORE_ZONE_RECT_DESIGN.size.x, SCORE_ZONE_RECT_DESIGN.size.y));
         m_debugScoreZoneShape.setOutlineThickness(scaledOutlineThickness);
 
-        m_debugTopBarZoneShape.setPosition({ TOP_BAR_ZONE_DESIGN.position.x, TOP_BAR_ZONE_DESIGN.position.y });
-        m_debugTopBarZoneShape.setSize({ TOP_BAR_ZONE_DESIGN.size.x, TOP_BAR_ZONE_DESIGN.size.y });
+        m_debugTopBarZoneShape.setPosition(sf::Vector2f(TOP_BAR_ZONE_DESIGN.position.x, TOP_BAR_ZONE_DESIGN.position.y));
+        m_debugTopBarZoneShape.setSize(sf::Vector2f(TOP_BAR_ZONE_DESIGN.size.x, TOP_BAR_ZONE_DESIGN.size.y));
         m_debugTopBarZoneShape.setOutlineThickness(scaledOutlineThickness);
     }
 
-    // --- Final Summary Log ---
-    if (sizeChanged) {
-        // ... (existing summary log) ...
-        m_lastLayoutSize = windowSize;
-    }
+    m_lastLayoutSize = windowSize;
 }
 // ***** END OF COMPLETE Game::m_updateLayout FUNCTION (Corrected Rect Access) *****
 
@@ -1819,175 +1731,78 @@ void Game::m_renderCasualMenu(const sf::Vector2f& mousePos) {
 // --- Event Handlers for Specific Screens ---
 
 void Game::m_handlePlayingEvents(const sf::Event& event) {
-    // --- Handle Window Close ---
-    // (Redundant if handled globally in m_processEvents, but safe to keep)
-    if (event.is<sf::Event::Closed>()) {
+    if (event.is<sf::Event::Closed>()) { // SFML3: event.is<T>()
         m_window.close();
         return;
     }
 
-    // Window Resized
-    if (const auto* rs = event.getIf<sf::Event::Resized>()) {
-        unsigned int newWidth = rs->size.x;
-        unsigned int newHeight = rs->size.y;
-        bool changed = false;
+    // Using getIf<T>() for specific event types in SFML 3
+    if (const auto* rsEv = event.getIf<sf::Event::Resized>()) {
+        sf::Vector2u currentSize = rsEv->size; // rsEv->size is sf::Vector2u
+        // Your original clamping logic for MIN_WINDOW_WIDTH/HEIGHT would go here if needed
+        // For example:
+        // if (currentSize.x < MIN_WINDOW_WIDTH) currentSize.x = MIN_WINDOW_WIDTH;
+        // if (currentSize.y < MIN_WINDOW_HEIGHT) currentSize.y = MIN_WINDOW_HEIGHT;
+        // if (currentSize != rsEv->size) m_window.setSize(currentSize); // If clamped
 
-        // Check against minimums
-        if (newWidth < MIN_WINDOW_WIDTH) { /* clamp width */ changed = true; }
-        if (newHeight < MIN_WINDOW_HEIGHT) { /* clamp height */ changed = true; }
-
-        if (changed) {
-            std::cout << "DEBUG: Window too small, resizing to " << newWidth << "x" << newHeight << std::endl;
-            m_window.setSize({ newWidth, newHeight });
-        }
-
-        // --- Update View and Layout using CLAMPED size ---
-        sf::Vector2u clampedSize = { newWidth, newHeight }; // Store the clamped size
-
-        sf::FloatRect visibleArea({ 0.f, 0.f }, { static_cast<float>(clampedSize.x), static_cast<float>(clampedSize.y) });
-        m_window.setView(sf::View(visibleArea));
-
-        // *** PASS the clamped size to m_updateLayout ***
-        m_updateLayout(clampedSize);
-        // ***********************************************
-
-    } // --- End Resized Handling ---
-
-
-    // Only process game input if not solved (already checked by screen state, but double-check internal state)
-    if (m_gameState != GState::Playing) {
-        return; // Don't process game input if already solved internally
+        m_updateView(currentSize);
+        m_updateLayout(currentSize);
+        return;
     }
 
-    // --- Mouse Button Pressed ---
-    if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
-        if (mb->button == sf::Mouse::Button::Left) {
-            sf::Vector2f mp = m_window.mapPixelToCoords(mb->position); // Mapped mouse position
+    if (m_gameState != GState::Playing) {
+        return;
+    }
 
-            // Check Return to Menu Button
+    if (const auto* mb_pressed = event.getIf<sf::Event::MouseButtonPressed>()) { // Renamed local
+        if (mb_pressed->button == sf::Mouse::Button::Left) {
+            sf::Vector2f mp = m_window.mapPixelToCoords(mb_pressed->position); // Use mb_pressed->position
+
             if (m_returnToMenuButtonShape.getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
                 m_currentScreen = GameScreen::MainMenu;
                 m_backgroundMusic.stop();
                 m_isInSession = false;
                 m_selectedDifficulty = DifficultyLevel::None;
-                m_clearDragState();
-                return; // Processed button click
+                m_clearDragState(); // Ensure this resets guess, path, dragging
+                return;
             }
-
-            // Check Scramble Button
             if (m_scrambleSpr && m_scrambleSpr->getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
-                std::shuffle(m_base.begin(), m_base.end(), Rng());
-                // m_updateLayout(m_window.getSize()); // m_updateLayout is called in main loop's update if needed
-                                                    // or specifically after m_base changes if that's the only trigger.
-                                                    // For now, let's assume layout updates handle it.
+                std::shuffle(m_base.begin(), m_base.end(), Rng()); // Ensure Rng() is defined and seeded
                 m_clearDragState();
-                return; // Processed button click
+                return;
             }
 
-            // Check Hint Buttons
             bool hintButtonClicked = false;
+            const int HINT_COSTS_EVENT_ARR[] = { HINT_COST_REVEAL_FIRST, HINT_COST_REVEAL_RANDOM, HINT_COST_REVEAL_LAST, HINT_COST_REVEAL_FIRST_OF_EACH }; // Renamed
+            const HintType HINT_TYPES_EVENT_ARR[] = { HintType::RevealFirst, HintType::RevealRandom, HintType::RevealLast, HintType::RevealFirstOfEach }; // Renamed
 
-            // Hint 1: Reveal First Letter
-            if (!hintButtonClicked && m_hintRevealFirstButtonShape.getGlobalBounds().contains(mp)) {
-                if (m_hintPoints >= HINT_COST_REVEAL_FIRST) {
-                    std::cout << "DEBUG: Clicked Hint 1 (Reveal First)" << std::endl;
-                    m_hintPoints -= HINT_COST_REVEAL_FIRST;
-                    m_activateHint(HintType::RevealFirst);
-                }
-                else {
-                    std::cout << "DEBUG: Clicked Hint 1, but cannot afford." << std::endl;
-                    if (m_errorWordSound) m_errorWordSound->play();
-                }
-                hintButtonClicked = true;
-            }
-
-            // Hint 2: Reveal Random Letters
-            if (!hintButtonClicked && m_hintRevealRandomButtonShape.getGlobalBounds().contains(mp)) {
-                if (m_hintPoints >= HINT_COST_REVEAL_RANDOM) {
-                    std::cout << "DEBUG: Clicked Hint 2 (Reveal Random)" << std::endl;
-                    m_hintPoints -= HINT_COST_REVEAL_RANDOM;
-                    m_activateHint(HintType::RevealRandom);
-                }
-                else {
-                    std::cout << "DEBUG: Clicked Hint 2, but cannot afford." << std::endl;
-                    if (m_errorWordSound) m_errorWordSound->play();
-                }
-                hintButtonClicked = true;
-            }
-
-            // Hint 3: Reveal Last Word
-            if (!hintButtonClicked && m_hintRevealLastButtonShape.getGlobalBounds().contains(mp)) {
-                if (m_hintPoints >= HINT_COST_REVEAL_LAST) {
-                    std::cout << "DEBUG: Clicked Hint 3 (Reveal Last)" << std::endl;
-                    m_hintPoints -= HINT_COST_REVEAL_LAST;
-                    m_activateHint(HintType::RevealLast);
-                }
-                else {
-                    std::cout << "DEBUG: Clicked Hint 3, but cannot afford." << std::endl;
-                    if (m_errorWordSound) m_errorWordSound->play();
-                }
-                hintButtonClicked = true;
-            }
-
-            // Hint 4: Reveal First of Each
-            if (!hintButtonClicked && m_hintRevealFirstOfEachButtonShape.getGlobalBounds().contains(mp)) {
-                if (m_hintPoints >= HINT_COST_REVEAL_FIRST_OF_EACH) {
-                    std::cout << "DEBUG: Clicked Hint 4 (Reveal First of Each)" << std::endl;
-                    m_hintPoints -= HINT_COST_REVEAL_FIRST_OF_EACH;
-                    m_activateHint(HintType::RevealFirstOfEach);
-                }
-                else {
-                    std::cout << "DEBUG: Clicked Hint 4 (First of Each), but cannot afford." << std::endl;
-                    if (m_errorWordSound) m_errorWordSound->play();
-                }
-                hintButtonClicked = true;
-            }
-
-
-            if (hintButtonClicked) {
-                // m_updateLayout(m_window.getSize()); // Consider if hint usage needs immediate layout update for hint points text
-                return; // Processed a hint button click
-            }
-            // --- End Hint Button Checks ---
-
-
-            // --- START: DIAGNOSTIC LOGGING FOR WHEEL CLICK ---
-            std::cout << "[Click] Mouse Coords: X=" << mp.x << " Y=" << mp.y << std::endl;
-            std::cout << "[Click] m_currentLetterRenderRadius: " << m_currentLetterRenderRadius << std::endl;
-            if (!m_wheelLetterRenderPos.empty() && !m_base.empty()) { // Ensure there are letters to check
-                // Log for the first letter as an example
-                std::cout << "[Click] First Letter Target (" << m_base[0] << "): X=" << m_wheelLetterRenderPos[0].x
-                    << " Y=" << m_wheelLetterRenderPos[0].y << std::endl;
-                float distSqDebug = distSq(mp, m_wheelLetterRenderPos[0]);
-                float radiusSqDebug = m_currentLetterRenderRadius * m_currentLetterRenderRadius;
-                std::cout << "[Click] DistSq to first letter: " << distSqDebug
-                    << ", RadiusSq target: " << radiusSqDebug
-                    << (distSqDebug < radiusSqDebug ? " (INSIDE)" : " (OUTSIDE)") << std::endl;
-            }
-            else {
-                std::cout << "[Click] m_wheelLetterRenderPos or m_base is empty." << std::endl;
-            }
-            // --- END: DIAGNOSTIC LOGGING FOR WHEEL CLICK ---
-
-
-            // --- Check Letter Wheel Click ---
-            // Loop up to m_base.size() as m_wheelLetterRenderPos should be sized accordingly.
-            for (std::size_t i = 0; i < m_base.size(); ++i) {
-                if (i >= m_wheelLetterRenderPos.size()) { // Safety break if sizes somehow mismatch
-                    std::cerr << "Warning: m_base.size() and m_wheelLetterRenderPos.size() mismatch in click check!" << std::endl;
+            for (int i = 0; i < 4; ++i) {
+                if (i < m_hintClickableRegions.size() && m_hintClickableRegions[i].contains(mp)) {
+                    if (m_hintPoints >= HINT_COSTS_EVENT_ARR[i]) {
+                        std::cout << "DEBUG: Clicked Hint " << (i + 1) << " (Type: " << static_cast<int>(HINT_TYPES_EVENT_ARR[i]) << ")" << std::endl;
+                        m_hintPoints -= HINT_COSTS_EVENT_ARR[i];
+                        m_activateHint(HINT_TYPES_EVENT_ARR[i]);
+                    }
+                    else {
+                        std::cout << "DEBUG: Clicked Hint " << (i + 1) << ", but cannot afford." << std::endl;
+                        if (m_errorWordSound) m_errorWordSound->play();
+                    }
+                    hintButtonClicked = true;
                     break;
                 }
+            }
+            if (hintButtonClicked) return;
 
-                if (distSq(mp, m_wheelLetterRenderPos[i]) < m_currentLetterRenderRadius * m_currentLetterRenderRadius) {
-                    std::cout << "[Click] SUCCESS: Hit letter " << m_base[i] << " (index " << i << ")" << std::endl;
+            // Letter Wheel Click (from original)
+            for (std::size_t i = 0; i < m_base.size(); ++i) {
+                if (i < m_wheelLetterRenderPos.size() && distSq(mp, m_wheelLetterRenderPos[i]) < m_currentLetterRenderRadius * m_currentLetterRenderRadius) {
                     m_dragging = true;
                     m_path.clear();
-                    m_path.push_back(static_cast<int>(i)); // Store index of letter in m_base
+                    m_path.push_back(static_cast<int>(i));
                     m_currentGuess += static_cast<char>(std::toupper(m_base[i]));
                     if (m_selectSound) m_selectSound->play();
-                    return; // Started drag
                 }
             }
             // If no wheel letter was clicked, and no button was clicked, this click did nothing relevant.
@@ -2205,11 +2020,12 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         int bonusScore = 25; m_currentScore += bonusScore;
                         if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
                         std::cout << "BONUS Word: " << m_currentGuess << " | Points: " << bonusScore << " | Total: " << m_currentScore << std::endl;
+                        //return;
 
                         if (m_scoreValueText) {
                             sf::FloatRect scoreBounds = m_scoreValueText->getGlobalBounds();
-                            sf::Vector2f scoreCenterPos = { scoreBounds.position.x + scoreBounds.size.x / 2.f, 
-                                                            scoreBounds.position.y + scoreBounds.size.y / 2.f  
+                            sf::Vector2f scoreCenterPos = { scoreBounds.position.x + scoreBounds.size.x / 2.f,
+                                                            scoreBounds.position.y + scoreBounds.size.y / 2.f
                             };
                             for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
                                 if (c < m_path.size()) {
@@ -2227,7 +2043,7 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         }
 
                         m_bonusTextFlourishTimer = BONUS_TEXT_FLOURISH_DURATION; // This flourishes the "Bonus Words: X/Y" text itself
-                        actionTaken = true;
+                        actionTaken = true;   // Ensure any getLocalBounds or getGlobalBounds here uses SFML3 API for rect members if accessed.
                     }
                     goto process_outcome;
                 }
@@ -2245,8 +2061,9 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 
             m_clearDragState(); // Clear path and guess regardless of outcome
         }
-        } // --- End Mouse Button Released ---
+    } // --- End Mouse Button Released ---
 
+   
 } // End m_handlePlayingEvents
 
 
@@ -2335,43 +2152,52 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
 // --- Render Game Screen ---
 void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is already mapped to coords
 
-    //------------------------------------------------------------
-    //  Calculate common scaled values ONCE (using base m_uiScale)
-    //------------------------------------------------------------
-    // const float scaledLetterRadius = S(this, LETTER_R); // m_currentLetterRenderRadius is used now
+    // Scaled values (ensure S function is S(this, value))
     const float scaledWheelOutlineThickness = S(this, 3.f);
     const float scaledLetterCircleOutline = S(this, 2.f);
     const float scaledPathThickness = S(this, 5.0f);
-    const float scaledGuessDisplayGap = S(this, GUESS_DISPLAY_GAP);
+    const float scaledGuessDisplayGap = S(this, GUESS_DISPLAY_GAP); // Constant from Constants.h
     const float scaledGuessDisplayPadX = S(this, 15.f);
     const float scaledGuessDisplayPadY = S(this, 5.f);
     const float scaledGuessDisplayRadius = S(this, 8.f);
     const float scaledGuessDisplayOutline = S(this, 1.f);
-    const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y); // Gap below wheel for HUD
+    const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y);
     const float scaledHudLineSpacing = S(this, HUD_LINE_SPACING);
 
-    // Scaled Font Sizes (ensure minimum usable size)
-    const unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f) * m_currentGridLayoutScale)); // Font scales with grid tiles
+    const unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f) * m_currentGridLayoutScale));
     const unsigned int scaledFlyingLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
     const unsigned int scaledGuessDisplayFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 30.f)));
-    const unsigned int scaledFoundFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
-    const unsigned int scaledBonusFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 18.f)));
+    // const unsigned int scaledFoundFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f))); // Not directly used in provided snippet
+    // const unsigned int scaledBonusFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 18.f))); // Used for Bonus Words Pop up
     const unsigned int scaledSolvedFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 26.f)));
     const unsigned int scaledContinueFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 24.f)));
 
-    //------------------------------------------------------------
-    //  Draw Progress Meter (If in session)
-    //------------------------------------------------------------
+    // --- Progress Meter ---
     if (m_isInSession) {
-        m_progressMeterBg.setFillColor(sf::Color(50, 50, 50, 150)); m_progressMeterBg.setOutlineColor(sf::Color(150, 150, 150));
-        m_progressMeterBg.setOutlineThickness(S(this, PROGRESS_METER_OUTLINE)); m_progressMeterFill.setFillColor(sf::Color(0, 180, 0, 200));
-        float progressRatio = 0.f; if (m_puzzlesPerSession > 0) { progressRatio = static_cast<float>(m_currentPuzzleIndex + 1) / static_cast<float>(m_puzzlesPerSession); }
-        float fillWidth = m_progressMeterBg.getSize().x * progressRatio; m_progressMeterFill.setSize({ fillWidth, m_progressMeterBg.getSize().y });
-        m_window.draw(m_progressMeterBg); m_window.draw(m_progressMeterFill);
-        if (m_progressMeterText) { const unsigned int scaledProgressFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 16.f))); m_progressMeterText->setCharacterSize(scaledProgressFontSize); std::string progressStr = std::to_string(m_currentPuzzleIndex + 1) + "/" + std::to_string(m_puzzlesPerSession); m_progressMeterText->setString(progressStr); m_progressMeterText->setFillColor(sf::Color::White); sf::FloatRect textBounds = m_progressMeterText->getLocalBounds(); m_progressMeterText->setOrigin({ textBounds.position.x + textBounds.size.x / 2.f, textBounds.position.y + textBounds.size.y / 2.f }); m_progressMeterText->setPosition(m_progressMeterBg.getPosition()); m_window.draw(*m_progressMeterText); }
+        m_progressMeterBg.setFillColor(sf::Color(50, 50, 50, 150));
+        m_progressMeterBg.setOutlineColor(sf::Color(150, 150, 150));
+        m_progressMeterBg.setOutlineThickness(S(this, PROGRESS_METER_OUTLINE)); // Constant
+        m_progressMeterFill.setFillColor(sf::Color(0, 180, 0, 200));
+        float progressRatio = 0.f;
+        if (m_puzzlesPerSession > 0) { progressRatio = static_cast<float>(m_currentPuzzleIndex + 1) / static_cast<float>(m_puzzlesPerSession); }
+        float fillWidth = m_progressMeterBg.getSize().x * progressRatio;
+        m_progressMeterFill.setSize(sf::Vector2f(fillWidth, m_progressMeterBg.getSize().y)); // Use sf::Vector2f
+        m_window.draw(m_progressMeterBg);
+        m_window.draw(m_progressMeterFill);
+        if (m_progressMeterText) {
+            const unsigned int scaledProgressFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 16.f)));
+            m_progressMeterText->setCharacterSize(scaledProgressFontSize);
+            std::string progressStr = std::to_string(m_currentPuzzleIndex + 1) + "/" + std::to_string(m_puzzlesPerSession);
+            m_progressMeterText->setString(progressStr);
+            m_progressMeterText->setFillColor(sf::Color::White);
+            sf::FloatRect textBounds_prog = m_progressMeterText->getLocalBounds(); // SFML3: .position.x, .size.x
+            m_progressMeterText->setOrigin(sf::Vector2f(textBounds_prog.position.x + textBounds_prog.size.x / 2.f, textBounds_prog.position.y + textBounds_prog.size.y / 2.f));
+            m_progressMeterText->setPosition(m_progressMeterBg.getPosition());
+            m_window.draw(*m_progressMeterText);
+        }
     }
 
-    // --- Draw Return to Menu Button ---
+    // --- Return to Menu Button ---
     if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) {
         bool returnHover = m_returnToMenuButtonShape.getGlobalBounds().contains(mousePos);
         sf::Color returnBaseColor = m_currentTheme.menuButtonNormal;
@@ -2384,29 +2210,25 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         }
     }
 
-    //------------------------------------------------------------
-    //  Draw Score Bar
-    //------------------------------------------------------------
-    //m_scoreBar.setFillColor(m_currentTheme.scoreBarBg); m_scoreBar.setOutlineColor(m_currentTheme.wheelOutline); m_scoreBar.setOutlineThickness(1.f);
-    //m_window.draw(m_scoreBar);
+    // --- Score Bar / Score Text ---
     if (m_scoreLabelText) { m_window.draw(*m_scoreLabelText); }
     if (m_scoreValueText) {
         m_scoreValueText->setString(std::to_string(m_currentScore));
-        sf::FloatRect currentValueBounds = m_scoreValueText->getLocalBounds();
-        m_scoreValueText->setOrigin({ currentValueBounds.position.x + currentValueBounds.size.x / 2.f,
-                                         m_scoreValueText->getOrigin().y });
+        sf::FloatRect currentValueBounds_score = m_scoreValueText->getLocalBounds(); // SFML3: .position.x, .size.x
+        m_scoreValueText->setOrigin(sf::Vector2f(currentValueBounds_score.position.x + currentValueBounds_score.size.x / 2.f,
+            m_scoreValueText->getOrigin().y)); // Keep original Y origin if it was set for baseline
         sf::Vector2f valOriginalPos = m_scoreValueText->getPosition();
         sf::Vector2f valOriginalOrigin = m_scoreValueText->getOrigin();
         sf::Vector2f valOriginalScale = m_scoreValueText->getScale();
         if (m_scoreFlourishTimer > 0.f) {
             float scaleFactor = 1.0f + 0.4f * std::sin((SCORE_FLOURISH_DURATION - m_scoreFlourishTimer) / SCORE_FLOURISH_DURATION * PI);
-            sf::FloatRect valLocalBoundsFlourish = m_scoreValueText->getLocalBounds();
+            sf::FloatRect valLocalBoundsFlourish = m_scoreValueText->getLocalBounds(); // SFML3: .position.x, .size.x
             float valCenterX = valLocalBoundsFlourish.position.x + valLocalBoundsFlourish.size.x / 2.f;
             float valCenterY = valLocalBoundsFlourish.position.y + valLocalBoundsFlourish.size.y / 2.f;
-            m_scoreValueText->setOrigin({ valCenterX, valCenterY });
-            m_scoreValueText->setPosition(sf::Vector2f{ valOriginalPos.x - valOriginalOrigin.x + valCenterX,
-                                                       valOriginalPos.y - valOriginalOrigin.y + valCenterY });
-            m_scoreValueText->setScale({ scaleFactor, scaleFactor });
+            m_scoreValueText->setOrigin(sf::Vector2f(valCenterX, valCenterY));
+            m_scoreValueText->setPosition(sf::Vector2f(valOriginalPos.x - valOriginalOrigin.x + valCenterX,
+                valOriginalPos.y - valOriginalOrigin.y + valCenterY));
+            m_scoreValueText->setScale(sf::Vector2f(scaleFactor, scaleFactor));
         }
         m_window.draw(*m_scoreValueText);
         if (m_scoreFlourishTimer > 0.f) {
@@ -2415,88 +2237,110 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
             m_scoreValueText->setPosition(valOriginalPos);
         }
     }
-    //------------------------------------------------------------
-    //  Draw letter grid
-    //------------------------------------------------------------
-    if (!m_sorted.empty()) {
-        const float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale; // m_currentGridLayoutScale is gridElementsScaleFactor
-        const float finalRenderTileRadius = finalRenderTileSize * 0.18f;
-        const float tileOutlineRenderThickness = 1.0f; // Fixed or scaled: 1.0f * m_currentGridLayoutScale;
+    // --- Bonus Words Display in Score Zone ---
+    if (!m_allPotentialSolutions.empty() || !m_foundBonusWords.empty()) {
+        int totalPossibleBonus = 0;
+        for (const auto& potentialWordInfo : m_allPotentialSolutions) {
+            if (!isGridSolution(potentialWordInfo.text)) {
+                totalPossibleBonus++;
+            }
+        }
+        std::string bonusCountStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
+        sf::Text bonusWordsDisplay(m_font, bonusCountStr, static_cast<unsigned int>(S(this, SCORE_ZONE_BONUS_FONT_SIZE)));
+        bonusWordsDisplay.setFillColor(GLOWING_TUBE_TEXT_COLOR);
+        sf::FloatRect bonusTextBounds_render = bonusWordsDisplay.getLocalBounds(); // SFML3: .position.x, .size.x
+        bonusWordsDisplay.setOrigin(sf::Vector2f(bonusTextBounds_render.position.x + bonusTextBounds_render.size.x / 2.f,
+            bonusTextBounds_render.position.y + bonusTextBounds_render.size.y)); // Origin bottom-center
+        bonusWordsDisplay.setPosition(sf::Vector2f(
+            SCORE_ZONE_RECT_DESIGN.position.x + SCORE_ZONE_RECT_DESIGN.size.x / 2.f,
+            SCORE_ZONE_RECT_DESIGN.position.y + SCORE_ZONE_RECT_DESIGN.size.y - S(this, SCORE_ZONE_PADDING_Y_DESIGN)
+        ));
+        sf::Vector2f bonusDispOriginalPos = bonusWordsDisplay.getPosition();
+        sf::Vector2f bonusDispOriginalOrigin = bonusWordsDisplay.getOrigin();
+        sf::Vector2f bonusDispOriginalScale = bonusWordsDisplay.getScale();
+        if (m_bonusTextFlourishTimer > 0.f) {
+            float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION;
+            float bonusFlourishScaleFactor = 1.0f + 0.4f * std::sin(progress * PI);
+            sf::FloatRect bonusLocalBoundsActual = bonusWordsDisplay.getLocalBounds(); // SFML3: .position.x, .size.x
+            float bonusCenterX = bonusLocalBoundsActual.position.x + bonusLocalBoundsActual.size.x / 2.f;
+            float bonusCenterY = bonusLocalBoundsActual.position.y + bonusLocalBoundsActual.size.y / 2.f;
+            bonusWordsDisplay.setOrigin(sf::Vector2f(bonusCenterX, bonusCenterY));
+            bonusWordsDisplay.setPosition(sf::Vector2f(bonusDispOriginalPos.x - bonusDispOriginalOrigin.x + bonusCenterX,
+                bonusDispOriginalPos.y - bonusDispOriginalOrigin.y + bonusCenterY));
+            bonusWordsDisplay.setScale(sf::Vector2f(bonusFlourishScaleFactor, bonusFlourishScaleFactor));
+        }
+        m_window.draw(bonusWordsDisplay);
+        if (m_bonusTextFlourishTimer > 0.f) {
+            bonusWordsDisplay.setScale(bonusDispOriginalScale);
+            bonusWordsDisplay.setOrigin(bonusDispOriginalOrigin);
+            bonusWordsDisplay.setPosition(bonusDispOriginalPos);
+        }
+    }
 
-        RoundedRectangleShape tileBackground({ finalRenderTileSize, finalRenderTileSize }, finalRenderTileRadius, 10);
+
+    // --- Draw letter grid ---
+    if (!m_sorted.empty()) {
+        const float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale;
+        const float finalRenderTileRadius = finalRenderTileSize * 0.18f;
+        const float tileOutlineRenderThickness = 1.0f;
+
+        RoundedRectangleShape tileBackground(sf::Vector2f(finalRenderTileSize, finalRenderTileSize), finalRenderTileRadius, 10);
         tileBackground.setOutlineThickness(tileOutlineRenderThickness);
-        sf::Text letterText(m_font, "", scaledGridLetterFontSize);
+        sf::Text letterText_grid(m_font, "", scaledGridLetterFontSize); // Renamed local
 
         for (std::size_t w = 0; w < m_sorted.size(); ++w) {
             int wordRarity = m_sorted[w].rarity;
             if (w >= m_grid.size()) continue;
             for (std::size_t c = 0; c < m_sorted[w].text.length(); ++c) {
                 if (c >= m_grid[w].size()) continue;
-                sf::Vector2f p = m_tilePos(static_cast<int>(w), static_cast<int>(c));
+                sf::Vector2f p_tile = m_tilePos(static_cast<int>(w), static_cast<int>(c)); // Renamed local
                 bool isFilled = (m_grid[w][c] != '_');
-                tileBackground.setPosition(p);
+                tileBackground.setPosition(p_tile);
                 if (isFilled) { tileBackground.setFillColor(m_currentTheme.gridFilledTile); tileBackground.setOutlineColor(m_currentTheme.gridFilledTile); }
                 else { tileBackground.setFillColor(m_currentTheme.gridEmptyTile); tileBackground.setOutlineColor(m_currentTheme.gridEmptyTile); }
                 m_window.draw(tileBackground);
 
                 if (!isFilled) {
                     sf::Sprite* gemSprite = nullptr;
-                    const sf::Texture* gemTexture = nullptr; // Pointer to the relevant texture
+                    const sf::Texture* gemTexture = nullptr;
+                    if (wordRarity == 2 && m_sapphireSpr) { gemSprite = m_sapphireSpr.get(); gemTexture = &m_sapphireTex; }
+                    else if (wordRarity == 3 && m_rubySpr) { gemSprite = m_rubySpr.get(); gemTexture = &m_rubyTex; }
+                    else if (wordRarity == 4 && m_diamondSpr) { gemSprite = m_diamondSpr.get(); gemTexture = &m_diamondTex; }
 
-                    if (wordRarity == 2 && m_sapphireSpr) {
-                        gemSprite = m_sapphireSpr.get();
-                        gemTexture = &m_sapphireTex; // Get address of the texture object
-                    }
-                    else if (wordRarity == 3 && m_rubySpr) {
-                        gemSprite = m_rubySpr.get();
-                        gemTexture = &m_rubyTex;
-                    }
-                    else if (wordRarity == 4 && m_diamondSpr) {
-                        gemSprite = m_diamondSpr.get();
-                        gemTexture = &m_diamondTex;
-                    }
-
-                    if (gemSprite && gemTexture) { // Check both sprite and its intended texture
-                        float desiredGemHeight = finalRenderTileSize * 0.60f; // Scale gem relative to new tile size
-
-                        // Get texture dimensions using the dot operator on the texture object
-                        // (or -> if gemTexture was a pointer to a texture, but here it's const sf::Texture*)
-                        if (gemTexture->getSize().y > 0) { // Use -> because gemTexture is a pointer
-                            float gemScale = desiredGemHeight / static_cast<float>(gemTexture->getSize().y);
-                            gemSprite->setScale({ gemScale, gemScale }); // SFML 3
-                            // Origin is usually set once at load based on original texture dimensions
-                            // If you want to ensure it's always center of the *original* texture:
-                            gemSprite->setOrigin({ static_cast<float>(gemTexture->getSize().x) / 2.f,
-                                                  static_cast<float>(gemTexture->getSize().y) / 2.f });
+                    if (gemSprite && gemTexture) {
+                        float desiredGemHeight_grid = finalRenderTileSize * 0.60f;
+                        if (gemTexture->getSize().y > 0) {
+                            float gemScale_grid = desiredGemHeight_grid / static_cast<float>(gemTexture->getSize().y);
+                            gemSprite->setScale(sf::Vector2f(gemScale_grid, gemScale_grid));
+                            gemSprite->setOrigin(sf::Vector2f(static_cast<float>(gemTexture->getSize().x) / 2.f,
+                                static_cast<float>(gemTexture->getSize().y) / 2.f));
                         }
-
-                        gemSprite->setPosition({ p.x + finalRenderTileSize / 2.f, p.y + finalRenderTileSize / 2.f });
+                        gemSprite->setPosition(sf::Vector2f(p_tile.x + finalRenderTileSize / 2.f, p_tile.y + finalRenderTileSize / 2.f));
                         m_window.draw(*gemSprite);
                     }
                 }
                 else {
                     bool isAnimatingToTile = false;
-                    for (const auto& anim : m_anims) { if (anim.target == AnimTarget::Grid && anim.wordIdx == w && anim.charIdx == c && anim.t < 1.0f) { isAnimatingToTile = true; break; } }
+                    for (const auto& anim : m_anims) { if (anim.target == AnimTarget::Grid && anim.wordIdx == static_cast<int>(w) && anim.charIdx == static_cast<int>(c) && anim.t < 1.0f) { isAnimatingToTile = true; break; } }
                     if (!isAnimatingToTile) {
                         float currentFlourishScale = 1.0f; bool isFlourishing = false;
-                        for (const auto& flourish : m_gridFlourishes) { if (flourish.wordIdx == w && flourish.charIdx == c) { float progress = (GRID_FLOURISH_DURATION - flourish.timer) / GRID_FLOURISH_DURATION; currentFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); isFlourishing = true; break; } }
-                        letterText.setString(std::string(1, m_grid[w][c]));
-                        letterText.setFillColor(m_currentTheme.gridLetter);
-                        sf::FloatRect b = letterText.getLocalBounds();
-                        letterText.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
-                        letterText.setPosition(p + sf::Vector2f(finalRenderTileSize / 2.f, finalRenderTileSize / 2.f));
-                        letterText.setScale({ currentFlourishScale, currentFlourishScale });
-                        m_window.draw(letterText);
-                        if (!isFlourishing) letterText.setScale({ 1.f, 1.f });
+                        for (const auto& flourish : m_gridFlourishes) { if (flourish.wordIdx == static_cast<int>(w) && flourish.charIdx == static_cast<int>(c)) { float progress = (GRID_FLOURISH_DURATION - flourish.timer) / GRID_FLOURISH_DURATION; currentFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); isFlourishing = true; break; } }
+                        letterText_grid.setString(std::string(1, m_grid[w][c]));
+                        letterText_grid.setFillColor(m_currentTheme.gridLetter);
+                        sf::FloatRect b_grid_letter = letterText_grid.getLocalBounds(); // SFML3: .position.x, .size.x
+                        letterText_grid.setOrigin(sf::Vector2f(b_grid_letter.position.x + b_grid_letter.size.x / 2.f, b_grid_letter.position.y + b_grid_letter.size.y / 2.f));
+                        letterText_grid.setPosition(p_tile + sf::Vector2f(finalRenderTileSize / 2.f, finalRenderTileSize / 2.f));
+                        letterText_grid.setScale(sf::Vector2f(currentFlourishScale, currentFlourishScale));
+                        m_window.draw(letterText_grid);
+                        if (!isFlourishing) letterText_grid.setScale(sf::Vector2f(1.f, 1.f));
                     }
                 }
             }
         }
     }
-
     //------------------------------------------------------------
- //  Draw Path lines (BEFORE Wheel Letters)
- //------------------------------------------------------------
+    //  Draw Path lines (BEFORE Wheel Letters)
+    //------------------------------------------------------------
     if (m_dragging && !m_path.empty()) {
         const float halfThickness = scaledPathThickness / 2.0f; // scaledPathThickness from top of function
         const sf::PrimitiveType stripType = sf::PrimitiveType::TriangleStrip;
@@ -2565,87 +2409,69 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         }
     }
 
-    //------------------------------------------------------------
-    //  Draw wheel background & letters
-    //------------------------------------------------------------
-    /*m_wheelBg.setRadius(m_visualBgRadius); // m_visualBgRadius is set in m_updateLayout
-    m_wheelBg.setOrigin({ m_visualBgRadius, m_visualBgRadius });
-    m_wheelBg.setPosition(sf::Vector2f{ m_wheelX, m_wheelY });
-    m_wheelBg.setFillColor(m_currentTheme.wheelBg);
-    m_wheelBg.setOutlineColor(m_currentTheme.wheelOutline);
-    m_wheelBg.setOutlineThickness(scaledWheelOutlineThickness);
-    m_window.draw(m_wheelBg); */
+
 
     float fontScaleRatio = 1.f;
     if (LETTER_R_BASE_DESIGN > 0.1f && m_currentLetterRenderRadius > 0.1f) {
         fontScaleRatio = m_currentLetterRenderRadius / LETTER_R_BASE_DESIGN;
     }
-    // Clamp to prevent excessively tiny or huge fonts relative to original design.
     fontScaleRatio = std::clamp(fontScaleRatio, 0.5f, 1.5f);
-
-    // S(this, ...) scales the base font size by the overall m_uiScale.
-    // fontScaleRatio further refines it based on the letter circle's current relative size.
     unsigned int actualScaledWheelLetterFontSize = static_cast<unsigned int>(
         std::max(8.0f, S(this, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN) * fontScaleRatio)
         );
-
-    sf::Text chTxt(m_font, "", actualScaledWheelLetterFontSize);
+    sf::Text chTxt_wheel(m_font, "", actualScaledWheelLetterFontSize); // Renamed local
 
     for (std::size_t i = 0; i < m_base.size(); ++i) {
         if (i >= m_wheelLetterRenderPos.size()) continue;
         bool isHilited = std::find(m_path.begin(), m_path.end(), static_cast<int>(i)) != m_path.end();
-        sf::Vector2f renderPos = m_wheelLetterRenderPos[i];
+        sf::Vector2f renderPos_wheel = m_wheelLetterRenderPos[i]; // Renamed local
         sf::CircleShape letterCircle(m_currentLetterRenderRadius);
-        letterCircle.setOrigin({ m_currentLetterRenderRadius, m_currentLetterRenderRadius });
-        letterCircle.setPosition(renderPos);
+        letterCircle.setOrigin(sf::Vector2f(m_currentLetterRenderRadius, m_currentLetterRenderRadius));
+        letterCircle.setPosition(renderPos_wheel);
         letterCircle.setFillColor(isHilited ? m_currentTheme.wheelOutline : m_currentTheme.letterCircleNormal);
         letterCircle.setOutlineColor(m_currentTheme.wheelOutline);
         letterCircle.setOutlineThickness(scaledLetterCircleOutline);
         m_window.draw(letterCircle);
-        chTxt.setString(std::string(1, static_cast<char>(std::toupper(m_base[i]))));
-        chTxt.setFillColor(isHilited ? m_currentTheme.letterTextHighlight : m_currentTheme.letterTextNormal);
-        sf::FloatRect txtBounds_ch = chTxt.getLocalBounds();
-        chTxt.setOrigin({ txtBounds_ch.position.x + txtBounds_ch.size.x / 2.f, txtBounds_ch.position.y + txtBounds_ch.size.y / 2.f });
-        chTxt.setPosition(renderPos);
-        m_window.draw(chTxt);
+        chTxt_wheel.setString(std::string(1, static_cast<char>(std::toupper(m_base[i]))));
+        chTxt_wheel.setFillColor(isHilited ? m_currentTheme.letterTextHighlight : m_currentTheme.letterTextNormal);
+        sf::FloatRect txtBounds_ch_wheel = chTxt_wheel.getLocalBounds(); // SFML3: .position.x, .size.x
+        chTxt_wheel.setOrigin(sf::Vector2f(txtBounds_ch_wheel.position.x + txtBounds_ch_wheel.size.x / 2.f, txtBounds_ch_wheel.position.y + txtBounds_ch_wheel.size.y / 2.f));
+        chTxt_wheel.setPosition(renderPos_wheel);
+        m_window.draw(chTxt_wheel);
     }
 
     // --- DRAW FLYING LETTER ANIMATIONS ---
     sf::Text flyingLetterText(m_font, "", scaledFlyingLetterFontSize);
     sf::Color flyColorBase = m_currentTheme.gridLetter;
     for (const auto& a : m_anims) { sf::Color currentFlyColor = flyColorBase; if (a.target == AnimTarget::Score) { currentFlyColor = sf::Color::Yellow; } float alpha_ratio = 1.0f; if (a.t > 0.7f) { alpha_ratio = (1.0f - a.t) / 0.3f; alpha_ratio = std::max(0.0f, std::min(1.0f, alpha_ratio)); } currentFlyColor.a = static_cast<std::uint8_t>(255.f * alpha_ratio); flyingLetterText.setFillColor(currentFlyColor); float eased_t = a.t * a.t * (3.f - 2.f * a.t); sf::Vector2f p_anim = a.start + (a.end - a.start) * eased_t; flyingLetterText.setString(std::string(1, a.ch)); sf::FloatRect bounds_fly = flyingLetterText.getLocalBounds(); flyingLetterText.setOrigin({ bounds_fly.position.x + bounds_fly.size.x / 2.f, bounds_fly.position.y + bounds_fly.size.y / 2.f }); flyingLetterText.setPosition(p_anim); m_window.draw(flyingLetterText); }
+    /* ... flying letter animation drawing ... */ // Unchanged from original full code
 
-    // --- DRAW SCORE FLOURISHES (from grid words) ---
     m_renderScoreFlourishes(m_window);
-
-    // --- DRAW HINT POINT ANIMATIONS (+1 flying to Points text) ---
     m_renderHintPointAnims(m_window);
 
- 
     // --- Draw Guess Display ---
     if (m_gameState == GState::Playing && !m_currentGuess.empty() && m_guessDisplay_Text && m_guessDisplay_Bg.getPointCount() > 0) {
         m_guessDisplay_Text->setCharacterSize(scaledGuessDisplayFontSize);
         m_guessDisplay_Text->setString(m_currentGuess);
-        sf::FloatRect textBounds_guess = m_guessDisplay_Text->getLocalBounds();
-        sf::Vector2f bgSize_guess = { textBounds_guess.position.x + textBounds_guess.size.x + 2 * scaledGuessDisplayPadX,
-                                     textBounds_guess.position.y + textBounds_guess.size.y + 2 * scaledGuessDisplayPadY };
-        float wheelVisualTopY = m_wheelY - m_visualBgRadius; // m_visualBgRadius is correct here
-        float guessY_val = wheelVisualTopY - (bgSize_guess.y / 2.f) - scaledGuessDisplayGap;
-        m_guessDisplay_Bg.setSize(bgSize_guess);
+        sf::FloatRect textBounds_guess_display = m_guessDisplay_Text->getLocalBounds(); // SFML3: .position.x, .size.x
+        sf::Vector2f bgSize_guess_display = sf::Vector2f(textBounds_guess_display.position.x + textBounds_guess_display.size.x + 2 * scaledGuessDisplayPadX,
+            textBounds_guess_display.position.y + textBounds_guess_display.size.y + 2 * scaledGuessDisplayPadY);
+        float wheelVisualTopY = m_wheelY - m_visualBgRadius;
+        float guessY_val_display = wheelVisualTopY - (bgSize_guess_display.y / 2.f) - scaledGuessDisplayGap; // Renamed local
+        m_guessDisplay_Bg.setSize(bgSize_guess_display);
         m_guessDisplay_Bg.setRadius(scaledGuessDisplayRadius);
         m_guessDisplay_Bg.setFillColor(m_currentTheme.gridFilledTile);
         m_guessDisplay_Bg.setOutlineColor(sf::Color(150, 150, 150, 200));
         m_guessDisplay_Bg.setOutlineThickness(scaledGuessDisplayOutline);
-        m_guessDisplay_Bg.setOrigin({ bgSize_guess.x / 2.f, bgSize_guess.y / 2.f });
-        m_guessDisplay_Bg.setPosition({ m_wheelX, guessY_val });
-        m_guessDisplay_Text->setOrigin({ textBounds_guess.position.x + textBounds_guess.size.x / 2.f,
-                                         textBounds_guess.position.y + textBounds_guess.size.y / 2.f });
-        m_guessDisplay_Text->setPosition({ m_wheelX, guessY_val });
+        m_guessDisplay_Bg.setOrigin(sf::Vector2f(bgSize_guess_display.x / 2.f, bgSize_guess_display.y / 2.f));
+        m_guessDisplay_Bg.setPosition(sf::Vector2f(m_wheelX, guessY_val_display));
+        m_guessDisplay_Text->setOrigin(sf::Vector2f(textBounds_guess_display.position.x + textBounds_guess_display.size.x / 2.f,
+            textBounds_guess_display.position.y + textBounds_guess_display.size.y / 2.f));
+        m_guessDisplay_Text->setPosition(sf::Vector2f(m_wheelX, guessY_val_display));
         m_guessDisplay_Text->setFillColor(m_currentTheme.gridLetter);
         m_window.draw(m_guessDisplay_Bg);
         m_window.draw(*m_guessDisplay_Text);
     }
-
     //------------------------------------------------------------
     //  Draw UI Buttons / HUD
     //------------------------------------------------------------
@@ -2656,14 +2482,14 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         float bottomHudStartY = wheelVisualBottomY + scaledHudOffsetY;
         float currentTopY = bottomHudStartY;
 
-/*        sf::Text foundTxt(m_font, "", scaledFoundFontSize);
-        foundTxt.setString("Found: " + std::to_string(m_found.size()) + "/" + std::to_string(m_solutions.size()));
-        foundTxt.setFillColor(m_currentTheme.hudTextFound);
-        sf::FloatRect foundBounds = foundTxt.getLocalBounds();
-        foundTxt.setOrigin({ foundBounds.position.x + foundBounds.size.x / 2.f, foundBounds.position.y }); // Use .position.y for vertical origin if aligning top
-        foundTxt.setPosition({ m_wheelX, currentTopY });
-        m_window.draw(foundTxt);
-        currentTopY += foundBounds.size.y + scaledHudLineSpacing;*/
+        /*        sf::Text foundTxt(m_font, "", scaledFoundFontSize);
+                foundTxt.setString("Found: " + std::to_string(m_found.size()) + "/" + std::to_string(m_solutions.size()));
+                foundTxt.setFillColor(m_currentTheme.hudTextFound);
+                sf::FloatRect foundBounds = foundTxt.getLocalBounds();
+                foundTxt.setOrigin({ foundBounds.position.x + foundBounds.size.x / 2.f, foundBounds.position.y }); // Use .position.y for vertical origin if aligning top
+                foundTxt.setPosition({ m_wheelX, currentTopY });
+                m_window.draw(foundTxt);
+                currentTopY += foundBounds.size.y + scaledHudLineSpacing;*/
 
         if (!m_allPotentialSolutions.empty() || !m_foundBonusWords.empty()) {
             int totalPossibleBonus = 0;
@@ -2689,7 +2515,6 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                 SCORE_ZONE_RECT_DESIGN.position.x + SCORE_ZONE_RECT_DESIGN.size.x / 2.f,
                 SCORE_ZONE_RECT_DESIGN.position.y + SCORE_ZONE_RECT_DESIGN.size.y - S(this, SCORE_ZONE_PADDING_Y_DESIGN)
                 });
-
             // Apply flourish (m_bonusTextFlourishTimer)
             // ... (flourish logic for bonusWordsDisplay remains the same) ...
             sf::Vector2f bonusDispOriginalPos = bonusWordsDisplay.getPosition();
@@ -2713,128 +2538,118 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                 bonusWordsDisplay.setPosition(bonusDispOriginalPos);
             }
         }
-            // --- End Score Zone Elements Drawing ---
+        // --- End Score Zone Elements Drawing ---
 
-        // Hint "Points:" Text Display with Flourish
+    // Hint "Points:" Text Display with Flourish
+
+    // --- Render New Hint UI ---
+        if (m_newHintPanelSpr) {
+            m_window.draw(*m_newHintPanelSpr);
+        }
         if (m_hintPointsText) {
             m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
-            m_hintPointsText->setFillColor(m_currentTheme.hudTextFound);
-            sf::Vector2f originalPosition = m_hintPointsText->getPosition();
-            sf::Vector2f originalOrigin = m_hintPointsText->getOrigin();
-            sf::Vector2f originalScale = m_hintPointsText->getScale();
+            sf::Vector2f originalPosition_hintpts = m_hintPointsText->getPosition(); // Renamed local
+            sf::Vector2f originalOrigin_hintpts = m_hintPointsText->getOrigin();     // Renamed local
+            sf::Vector2f originalScale_hintpts = m_hintPointsText->getScale();       // Renamed local
             if (m_hintPointsTextFlourishTimer > 0.f) {
-                float progress = (HINT_POINT_TEXT_FLOURISH_DURATION - m_hintPointsTextFlourishTimer) / HINT_POINT_TEXT_FLOURISH_DURATION;
-                float flourishScaleFactor = 1.0f + 0.3f * std::sin(progress * PI);
-                sf::FloatRect localBounds = m_hintPointsText->getLocalBounds();
-                float centerX = localBounds.position.x + localBounds.size.x / 2.f;
-                float centerY = localBounds.position.y + localBounds.size.y / 2.f;
-                m_hintPointsText->setOrigin({ centerX, centerY });
-                m_hintPointsText->setPosition({ originalPosition.x + (centerX - originalOrigin.x), originalPosition.y + (centerY - originalOrigin.y) });
-                m_hintPointsText->setScale({ flourishScaleFactor, flourishScaleFactor });
+                float progress_hintpts = (HINT_POINT_TEXT_FLOURISH_DURATION - m_hintPointsTextFlourishTimer) / HINT_POINT_TEXT_FLOURISH_DURATION;
+                float flourishScaleFactor_hintpts = 1.0f + 0.3f * std::sin(progress_hintpts * PI);
+                sf::FloatRect localBounds_hintpts = m_hintPointsText->getLocalBounds(); // SFML3: .position.x, .size.x
+                float centerX_hintpts = localBounds_hintpts.position.x + localBounds_hintpts.size.x / 2.f;
+                float centerY_hintpts = localBounds_hintpts.position.y + localBounds_hintpts.size.y / 2.f;
+                m_hintPointsText->setOrigin(sf::Vector2f(centerX_hintpts, centerY_hintpts));
+                m_hintPointsText->setPosition(sf::Vector2f(originalPosition_hintpts.x - originalOrigin_hintpts.x + centerX_hintpts,
+                    originalPosition_hintpts.y - originalOrigin_hintpts.y + centerY_hintpts));
+                m_hintPointsText->setScale(sf::Vector2f(flourishScaleFactor_hintpts, flourishScaleFactor_hintpts));
             }
             m_window.draw(*m_hintPointsText);
             if (m_hintPointsTextFlourishTimer > 0.f) {
-                m_hintPointsText->setScale(originalScale);
-                m_hintPointsText->setOrigin(originalOrigin);
-                m_hintPointsText->setPosition(originalPosition);
+                m_hintPointsText->setScale(originalScale_hintpts);
+                m_hintPointsText->setOrigin(originalOrigin_hintpts);
+                m_hintPointsText->setPosition(originalPosition_hintpts);
             }
         }
-
-        // Update hover state for bonus words popup trigger
-        if (m_hintPointsText && m_currentScreen == GameScreen::Playing) { // Only if text exists and on playing screen
-            // Convert m_hintPointsText's local bounds to global bounds for accurate hover check
-            // This assumes m_hintPointsText is already positioned correctly by m_updateLayout
-            sf::FloatRect hintTextGlobalBounds = m_hintPointsText->getGlobalBounds();
-            if (hintTextGlobalBounds.contains(mousePos)) {
-                m_isHoveringHintPointsText = true;
+        const int HINT_COSTS_RENDER_ARR[] = { HINT_COST_REVEAL_FIRST, HINT_COST_REVEAL_RANDOM, HINT_COST_REVEAL_LAST, HINT_COST_REVEAL_FIRST_OF_EACH }; // Renamed local
+        std::vector<std::unique_ptr<sf::Text>*> hintLabelsPtrs_render_vec = { // Renamed local
+           &m_hintRevealFirstButtonText, &m_hintRevealRandomButtonText,
+           &m_hintRevealLastButtonText, &m_hintRevealFirstOfEachButtonText
+        };
+        std::vector<std::unique_ptr<sf::Text>*> hintCostsPtrs_render_vec = { // Renamed local
+            &m_hintRevealFirstCostText, &m_hintRevealRandomCostText,
+            &m_hintRevealLastCostText, &m_hintRevealFirstOfEachCostText
+        };
+        for (int i = 0; i < 4; ++i) {
+            if (i < m_hintIndicatorLightSprs.size() && m_hintIndicatorLightSprs[i]) {
+                bool canAfford = (m_hintPoints >= HINT_COSTS_RENDER_ARR[i]);
+                sf::Color lightSpriteColor = canAfford ? sf::Color::White : sf::Color(100, 100, 100, 200);
+                m_hintIndicatorLightSprs[i]->setColor(lightSpriteColor);
+                m_window.draw(*m_hintIndicatorLightSprs[i]);
             }
-            else {
-                m_isHoveringHintPointsText = false;
+            sf::Text* currentLabel_render = hintLabelsPtrs_render_vec[i]->get(); // Renamed local
+            sf::Text* currentCost_render = hintCostsPtrs_render_vec[i]->get();   // Renamed local
+            if (currentLabel_render) m_window.draw(*currentLabel_render);
+            if (currentCost_render) {
+                currentCost_render->setString("Cost: " + std::to_string(HINT_COSTS_RENDER_ARR[i]));
+                m_window.draw(*currentCost_render);
             }
+        }
+        if (m_hintPointsText && m_currentScreen == GameScreen::Playing) {
+            sf::FloatRect hintTextGlobalBounds_render = m_hintPointsText->getGlobalBounds(); // SFML3
+            m_isHoveringHintPointsText = hintTextGlobalBounds_render.contains(mousePos);
         }
         else {
-            m_isHoveringHintPointsText = false; // Not hovering if text doesn't exist or not on playing screen
+            m_isHoveringHintPointsText = false;
         }
 
-        // Draw Hint UI Background and Buttons
-        m_hintAreaBg.setFillColor(sf::Color(200, 200, 200, 50));
-        m_hintAreaBg.setOutlineColor(sf::Color(220, 220, 220, 100));
-        m_hintAreaBg.setOutlineThickness(S(this, 1.f));
-        m_window.draw(m_hintAreaBg);
-
-        sf::Color affordableColor = m_currentTheme.menuButtonNormal;
-        sf::Color affordableHoverColor = m_currentTheme.menuButtonHover;
-        sf::Color unaffordableColor = sf::Color(100, 100, 100, 180);
-        sf::Color affordableTextColor = m_currentTheme.menuButtonText;
-        sf::Color unaffordableTextColor = sf::Color(180, 180, 180, 200);
-
-        bool canAffordFirst = m_hintPoints >= HINT_COST_REVEAL_FIRST;
-        bool hoverFirst = m_hintRevealFirstButtonShape.getGlobalBounds().contains(mousePos);
-        m_hintRevealFirstButtonShape.setFillColor(canAffordFirst ? (hoverFirst ? affordableHoverColor : affordableColor) : unaffordableColor);
-        m_window.draw(m_hintRevealFirstButtonShape);
-        if (m_hintRevealFirstButtonText) { m_hintRevealFirstButtonText->setFillColor(canAffordFirst ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstButtonText); }
-        if (m_hintRevealFirstCostText) { m_hintRevealFirstCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_FIRST)); m_hintRevealFirstCostText->setFillColor(canAffordFirst ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstCostText); }
-
-        bool canAffordRandom = m_hintPoints >= HINT_COST_REVEAL_RANDOM;
-        bool hoverRandom = m_hintRevealRandomButtonShape.getGlobalBounds().contains(mousePos);
-        m_hintRevealRandomButtonShape.setFillColor(canAffordRandom ? (hoverRandom ? affordableHoverColor : affordableColor) : unaffordableColor);
-        m_window.draw(m_hintRevealRandomButtonShape);
-        if (m_hintRevealRandomButtonText) { m_hintRevealRandomButtonText->setFillColor(canAffordRandom ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealRandomButtonText); }
-        if (m_hintRevealRandomCostText) { m_hintRevealRandomCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_RANDOM)); m_hintRevealRandomCostText->setFillColor(canAffordRandom ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealRandomCostText); }
-
-        bool canAffordLast = m_hintPoints >= HINT_COST_REVEAL_LAST;
-        bool hoverLast = m_hintRevealLastButtonShape.getGlobalBounds().contains(mousePos);
-        m_hintRevealLastButtonShape.setFillColor(canAffordLast ? (hoverLast ? affordableHoverColor : affordableColor) : unaffordableColor);
-        m_window.draw(m_hintRevealLastButtonShape);
-        if (m_hintRevealLastButtonText) { m_hintRevealLastButtonText->setFillColor(canAffordLast ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealLastButtonText); }
-        if (m_hintRevealLastCostText) { m_hintRevealLastCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_LAST)); m_hintRevealLastCostText->setFillColor(canAffordLast ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealLastCostText); }
-
-        bool canAffordFirstOfEach = m_hintPoints >= HINT_COST_REVEAL_FIRST_OF_EACH;
-        bool hoverFirstOfEach = m_hintRevealFirstOfEachButtonShape.getGlobalBounds().contains(mousePos);
-        m_hintRevealFirstOfEachButtonShape.setFillColor(canAffordFirstOfEach ? (hoverFirstOfEach ? affordableHoverColor : affordableColor) : unaffordableColor);
-        m_window.draw(m_hintRevealFirstOfEachButtonShape);
-        if (m_hintRevealFirstOfEachButtonText) { m_hintRevealFirstOfEachButtonText->setFillColor(canAffordFirstOfEach ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstOfEachButtonText); }
-        if (m_hintRevealFirstOfEachCostText) { m_hintRevealFirstOfEachCostText->setString("Cost: " + std::to_string(HINT_COST_REVEAL_FIRST_OF_EACH)); m_hintRevealFirstOfEachCostText->setFillColor(canAffordFirstOfEach ? affordableTextColor : unaffordableTextColor); m_window.draw(*m_hintRevealFirstOfEachCostText); }
+        // --- Draw Scramble Button (if playing) ---
+        if (m_gameState == GState::Playing) {
+            if (m_scrambleSpr) {
+                bool scrambleHover = m_scrambleSpr->getGlobalBounds().contains(mousePos);
+                m_scrambleSpr->setColor(scrambleHover ? sf::Color::White : sf::Color(255, 255, 255, 200));
+                m_window.draw(*m_scrambleSpr);
+            }
+        }
     }
 
-    //------------------------------------------------------------
-    //  Draw Solved State overlay
-    //------------------------------------------------------------
+    // --- Draw Solved State overlay ---
     if (m_currentScreen == GameScreen::GameOver) {
         sf::Text winTxt(m_font, "Puzzle Solved!", scaledSolvedFontSize);
         winTxt.setFillColor(m_currentTheme.hudTextSolved);
         winTxt.setStyle(sf::Text::Bold);
-        sf::FloatRect winTxtBounds = winTxt.getLocalBounds();
-        sf::Vector2f contBtnSize = m_contBtn.getSize();
-        const float scaledPadding = S(this, 25.f);
-        const float scaledSpacing = S(this, 20.f);
-        float overlayWidth = std::max(winTxtBounds.size.x, contBtnSize.x) + 2.f * scaledPadding;
-        float overlayHeight = winTxtBounds.size.y + contBtnSize.y + scaledSpacing + 2.f * scaledPadding;
-        m_solvedOverlay.setSize({ overlayWidth, overlayHeight });
+        sf::FloatRect winTxtBounds_solved = winTxt.getLocalBounds(); // SFML3
+        sf::Vector2f contBtnSize_solved = m_contBtn.getSize(); // SFML3
+        const float scaledPadding_solved = S(this, 25.f);
+        const float scaledSpacing_solved = S(this, 20.f);
+        float overlayWidth_solved = std::max(winTxtBounds_solved.size.x, contBtnSize_solved.x) + 2.f * scaledPadding_solved;
+        float overlayHeight_solved = winTxtBounds_solved.size.y + contBtnSize_solved.y + scaledSpacing_solved + 2.f * scaledPadding_solved;
+        m_solvedOverlay.setSize(sf::Vector2f(overlayWidth_solved, overlayHeight_solved));
         m_solvedOverlay.setRadius(S(this, 15.f));
         m_solvedOverlay.setFillColor(m_currentTheme.solvedOverlayBg);
-        m_solvedOverlay.setOrigin({ overlayWidth / 2.f, overlayHeight / 2.f });
-        sf::Vector2f windowCenterPix = sf::Vector2f(m_window.getSize()) / 2.f;
-        sf::Vector2f overlayCenter = m_window.mapPixelToCoords(sf::Vector2i(windowCenterPix));
-        m_solvedOverlay.setPosition(overlayCenter);
-        float winTxtCenterY = overlayCenter.y - overlayHeight / 2.f + scaledPadding + (winTxtBounds.position.y + winTxtBounds.size.y / 2.f);
-        float contBtnPosY = winTxtCenterY + (winTxtBounds.size.y / 2.f) + scaledSpacing;
-        winTxt.setOrigin({ winTxtBounds.position.x + winTxtBounds.size.x / 2.f, winTxtBounds.position.y + winTxtBounds.size.y / 2.f });
-        winTxt.setPosition({ overlayCenter.x, winTxtCenterY });
+        m_solvedOverlay.setOrigin(sf::Vector2f(overlayWidth_solved / 2.f, overlayHeight_solved / 2.f));
+        sf::Vector2f windowCenterPix_solved = sf::Vector2f(static_cast<float>(m_window.getSize().x), static_cast<float>(m_window.getSize().y)) / 2.f;
+        sf::Vector2f overlayCenter_solved = m_window.mapPixelToCoords(sf::Vector2i(static_cast<int>(windowCenterPix_solved.x), static_cast<int>(windowCenterPix_solved.y)));
+        m_solvedOverlay.setPosition(overlayCenter_solved);
+        float winTxtCenterY_solved = overlayCenter_solved.y - overlayHeight_solved / 2.f + scaledPadding_solved + (winTxtBounds_solved.position.y + winTxtBounds_solved.size.y / 2.f);
+        float contBtnPosY_solved = winTxtCenterY_solved + (winTxtBounds_solved.size.y / 2.f) + scaledSpacing_solved;
+        winTxt.setOrigin(sf::Vector2f(winTxtBounds_solved.position.x + winTxtBounds_solved.size.x / 2.f, winTxtBounds_solved.position.y + winTxtBounds_solved.size.y / 2.f));
+        winTxt.setPosition(sf::Vector2f(overlayCenter_solved.x, winTxtCenterY_solved));
         if (m_contTxt) {
             m_contTxt->setCharacterSize(scaledContinueFontSize);
-            sf::FloatRect contTxtBounds = m_contTxt->getLocalBounds();
-            m_contTxt->setOrigin({ contTxtBounds.position.x + contTxtBounds.size.x / 2.f, contTxtBounds.position.y + contTxtBounds.size.y / 2.f });
-            m_contBtn.setOrigin({ contBtnSize.x / 2.f, 0.f });
-            m_contBtn.setPosition({ overlayCenter.x, contBtnPosY });
-            m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f{ 0.f, contBtnSize.y / 2.f });
+            sf::FloatRect contTxtBounds_solved = m_contTxt->getLocalBounds(); // SFML3
+            m_contTxt->setOrigin(sf::Vector2f(contTxtBounds_solved.position.x + contTxtBounds_solved.size.x / 2.f, contTxtBounds_solved.position.y + contTxtBounds_solved.size.y / 2.f));
+            m_contBtn.setOrigin(sf::Vector2f(contBtnSize_solved.x / 2.f, 0.f));
+            m_contBtn.setPosition(sf::Vector2f(overlayCenter_solved.x, contBtnPosY_solved));
+            m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f(0.f, contBtnSize_solved.y / 2.f));
         }
-        bool contHover = m_contBtn.getGlobalBounds().contains(mousePos); sf::Color continueHoverColor = adjustColorBrightness(m_currentTheme.continueButton, 1.2f);
-        m_contBtn.setFillColor(contHover ? continueHoverColor : m_currentTheme.continueButton);
+        bool contHover_solved = m_contBtn.getGlobalBounds().contains(mousePos);
+        sf::Color continueHoverColor_solved = adjustColorBrightness(m_currentTheme.continueButton, 1.2f); // Ensure adjustColorBrightness is defined
+        m_contBtn.setFillColor(contHover_solved ? continueHoverColor_solved : m_currentTheme.continueButton);
+
         m_window.draw(m_solvedOverlay);
         m_window.draw(winTxt);
         m_window.draw(m_contBtn);
         if (m_contTxt) m_window.draw(*m_contTxt);
+    
     }
 }
 // ***** END OF COMPLETE Game::m_renderGameScreen FUNCTION *****
@@ -4093,4 +3908,17 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
         }
         currentMajorColX += group.totalWidth + actualMajorColSpacing;
     }
+}
+
+void Game::centerTextOnShape(sf::Text& text, const sf::Shape& shape) {
+    sf::FloatRect textBounds = text.getLocalBounds();
+    text.setOrigin({ textBounds.position.x + textBounds.size.x / 2.f,
+        textBounds.position.y + textBounds.size.y / 2.f });
+
+    // Assumes shape's origin is top-left for getPosition()
+    // Uses shape's local bounds for its size, good if shape isn't scaled weirdly
+    sf::FloatRect shapeLocalBounds = shape.getLocalBounds();
+    text.setPosition({ shape.getPosition().x + shapeLocalBounds.size.x / 2.f,
+        shape.getPosition().y + shapeLocalBounds.size.y / 2.f });
+
 }

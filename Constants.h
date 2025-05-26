@@ -61,6 +61,17 @@ const float PROGRESS_METER_HEIGHT = 20.0f;
 const float PROGRESS_METER_TOP_MARGIN = 15.0f;
 const float PROGRESS_METER_OUTLINE = 1.0f;
 
+// For Progress Meter
+const float PROGRESS_METER_HEIGHT_DESIGN = 20.f; // Example: 20 design units high
+
+
+// For Return to Menu Button in Top Bar
+const float RETURN_BTN_WIDTH_DESIGN = 120.f;
+const float RETURN_BTN_HEIGHT_DESIGN = 35.f; // Adjusted for typical button height
+const float TOP_BAR_PADDING_X_DESIGN = 20.f;    // Example padding from left edge of top bar
+const unsigned int RETURN_BTN_FONT_SIZE_DESIGN = 16; // Example font size
+
+
 // Difficulty Session Size
 const int EASY_PUZZLE_COUNT = 5;
 const int MEDIUM_PUZZLE_COUNT = 7;
@@ -83,6 +94,7 @@ const sf::FloatRect HINT_ZONE_RECT_DESIGN = { { 110.f, 475.f}, {243.f, 245.f} };
 const sf::FloatRect WHEEL_ZONE_RECT_DESIGN = { {374.f, 450.f}, {285.f, 285.f} }; // Bottom-middle for letter wheel
 const sf::FloatRect SCORE_ZONE_RECT_DESIGN = { {660.f, 500.f}, {243.f, 195.f} }; // Bottom-right for score/bonus
 const sf::FloatRect TOP_BAR_ZONE_DESIGN = { { 50.f,  10.f}, {900.f,  30.f} }; // Area for current "Score: XXX" and "1/5"
+
 
 const float HINT_BG_PADDING_X = 5;
 const float HINT_BG_PADDING_Y = 2;

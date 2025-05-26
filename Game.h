@@ -48,99 +48,106 @@ enum class HintType { RevealFirst, RevealRandom, RevealLast, RevealFirstOfEach }
 //--------------------------------------------------------------------
 class Game {
 public:
-    void m_updateView(sf::Vector2u win);
+    // ... (public methods like Game(), run(), etc.) ...
+    void m_updateView(sf::Vector2u win); // Already exists
     Game(); // Constructor
     void run(); // Main game loop function
     friend float S(const Game* g, float du);
 
+
 private:
+    // ... (other private members like m_letterPositionRadius, m_gridFlourishes, etc.) ...
 
-    float m_letterPositionRadius;      // Radius on which letter circles are centered
-    float m_visualBgRadius;            // Radius of the m_wheelBg circle
+    // --- Hint UI New Assets ---
+    sf::Texture m_newHintPanelTex;
+    std::unique_ptr<sf::Sprite> m_newHintPanelSpr;
+    sf::Texture m_hintIndicatorLightTex; // Single texture for the light, color will change
+    std::vector<std::unique_ptr<sf::Sprite>> m_hintIndicatorLightSprs; // Vector of 4 sprites
 
-    // --- Flourish State ---
+    // Hint Text elements (These are kept but will be repositioned)
+    std::unique_ptr<sf::Text> m_hintPointsText;
+    std::unique_ptr<sf::Text> m_hintRevealFirstCostText;
+    std::unique_ptr<sf::Text> m_hintRevealRandomButtonText;
+    std::unique_ptr<sf::Text> m_hintRevealRandomCostText;
+    std::unique_ptr<sf::Text> m_hintRevealLastButtonText;
+    std::unique_ptr<sf::Text> m_hintRevealLastCostText;
+    std::unique_ptr<sf::Text> m_hintRevealFirstButtonText; // Text like "Letter"
+    std::unique_ptr<sf::Text> m_hintRevealFirstOfEachButtonText;
+    std::unique_ptr<sf::Text> m_hintRevealFirstOfEachCostText;
+
+   
+
+    // --- REMOVED Hint Shapes ---
+    // RoundedRectangleShape m_hintRevealFirstButtonShape;        // REMOVED
+    // RoundedRectangleShape m_hintRevealRandomButtonShape;       // REMOVED
+    // RoundedRectangleShape m_hintRevealLastButtonShape;         // REMOVED
+    // RoundedRectangleShape m_hintRevealFirstOfEachButtonShape;  // REMOVED
+    // RoundedRectangleShape m_hintAreaBg;                        // REMOVED
+
+    // Clickable areas for new hint UI (will be calculated in m_updateLayout)
+    std::vector<sf::FloatRect> m_hintClickableRegions; // Size 4
+
+    // ... (rest of your private members) ...
+
+    // Core SFML Objects
+    sf::RenderWindow m_window;
+    sf::Font m_font;
+    sf::Clock m_clock;
+
+    // Game State
+    GameScreen m_currentScreen;
+    GState m_gameState;
+    int m_hintPoints;
+    // ... (and so on for all existing member variables)
+
+    // Example of keeping existing relevant members:
+    float m_letterPositionRadius;
+    float m_visualBgRadius;
+
     struct GridLetterFlourish {
-        int wordIdx;       // Index in m_sorted
-        int charIdx;       // Index within the word
-        float timer;       // How much longer to flourish
+        int wordIdx;
+        int charIdx;
+        float timer;
     };
-    std::vector<GridLetterFlourish> m_gridFlourishes; // Stores active grid flourishes
+    std::vector<GridLetterFlourish> m_gridFlourishes;
 
-    float m_bonusTextFlourishTimer = 0.f;   // Timer for bonus text flourish
+    float m_bonusTextFlourishTimer = 0.f;
 
-    // --- Flourish Constants (can also go in Constants.h) ---
-    const float GRID_FLOURISH_DURATION = 0.6f;  // Duration in seconds
-    const float BONUS_TEXT_FLOURISH_DURATION = 0.6f; // Duration in seconds
+    const float GRID_FLOURISH_DURATION = 0.6f;
+    const float BONUS_TEXT_FLOURISH_DURATION = 0.6f;
 
-    // --- Debugging ---
     bool m_debugDrawCircleMode;
-
-
     float m_currentGridLayoutScale = 1.0f;
-
     std::set<std::string> m_usedBaseWordsThisSession;
     std::set<std::string> m_usedLetterSetsThisSession;
-
     float m_uiScale = 1.f;
     bool m_needsLayoutUpdate;
-    sf::Vector2u m_lastKnownSize; // Store the last size used for layout
+    sf::Vector2u m_lastKnownSize;
 
-
-    // --- Session and Difficulty State ---
     DifficultyLevel m_selectedDifficulty;
     int m_puzzlesPerSession;
-    int m_currentPuzzleIndex; 
-    bool m_isInSession;      
+    int m_currentPuzzleIndex;
+    bool m_isInSession;
 
     std::vector<WordInfo> m_allPotentialSolutions;
     std::set<std::string> m_foundBonusWords;
     std::vector<HintPointAnimParticle> m_hintPointAnims;
     float m_hintPointsTextFlourishTimer;
 
-    // Core SFML Objects
-    sf::RenderWindow m_window;
-    sf::Font m_font;
-    sf::Clock m_clock; // For delta time calculation
-
-    // Game State
-    GameScreen m_currentScreen;
-    GState m_gameState; // For Playing/Solved state within game screen
-    int m_hintPoints;
-    unsigned int m_hintsAvailable;
+    unsigned int m_hintsAvailable; // Keep if used elsewhere, otherwise points are prime
     unsigned int m_wordsSolvedSinceHint;
     unsigned int m_currentScore;
 
-    // In Game.h (or the class definition)
-    std::unique_ptr<sf::Text> m_hintPointsText;
-    std::unique_ptr<sf::Text> m_hintRevealFirstCostText; // Cost for existing hint
-    std::unique_ptr<sf::Text> m_hintRevealRandomButtonText; // Text for new button ("Random")
-    std::unique_ptr<sf::Text> m_hintRevealRandomCostText;   // Cost for new button
-    std::unique_ptr<sf::Text> m_hintRevealLastButtonText;   // Text for new button ("Last Word")
-    std::unique_ptr<sf::Text> m_hintRevealLastCostText;     // Cost for new button
-    std::unique_ptr<sf::Text> m_hintRevealFirstButtonText;
-    std::unique_ptr<sf::Text> m_hintRevealFirstOfEachButtonText; // <<< NEW BUTTON TEXT
-    std::unique_ptr<sf::Text> m_hintRevealFirstOfEachCostText;
-
-    // Shapes for the hint buttons
-    RoundedRectangleShape m_hintRevealFirstButtonShape;
-    RoundedRectangleShape m_hintRevealRandomButtonShape;
-    RoundedRectangleShape m_hintRevealLastButtonShape;
-    RoundedRectangleShape m_hintRevealFirstOfEachButtonShape;
-    RoundedRectangleShape m_hintAreaBg;
-
-    // New Background Art    
     std::unique_ptr<sf::Sprite> m_mainBackgroundSpr;
     sf::Texture m_mainBackgroundTex;
 
-    // Calculated layout properties for wheel letters
-    std::vector<sf::Vector2f> m_wheelLetterRenderPos; // Final screen position for each letter circle
-    float m_currentLetterRenderRadius; // Final scaled radius for letter circles
+    std::vector<sf::Vector2f> m_wheelLetterRenderPos;
+    float m_currentLetterRenderRadius;
     bool m_firstFrame = true;
     bool m_dragging;
     std::vector<int> m_path;
     std::string m_currentGuess;
 
-    // Word Data
     std::vector<WordInfo> m_fullWordList;
     std::vector<WordInfo> m_roots;
     std::string m_base;
@@ -149,23 +156,19 @@ private:
     std::vector<std::vector<char>> m_grid;
     std::set<std::string> m_found;
 
-    // Animations & Effects
     std::vector<LetterAnim> m_anims;
     std::vector<ScoreParticleAnim> m_scoreAnims;
-	std::vector< ScoreParticleAnim> bonusAnim; // For bonus word animations
+    std::vector< ScoreParticleAnim> bonusAnim;
     DecorLayer m_decor;
 
-    // --- Celebration Effect Storage ---
     std::vector<ConfettiParticle> m_confetti;
     std::vector<Balloon> m_balloons;
     float m_celebrationEffectTimer;
 
-    // Score animation
-    float m_scoreFlourishTimer; // Timer for how long the score stays big
-    const float SCORE_FLOURISH_DURATION = 0.4f; // How long flourish lasts (seconds)
-    const float SCORE_FLOURISH_SCALE = 1.3f;    // How much to scale score text
+    float m_scoreFlourishTimer;
+    const float SCORE_FLOURISH_DURATION = 0.4f;
+    const float SCORE_FLOURISH_SCALE = 1.3f;
 
-    // Resources (Textures, Sound Buffers - loaded once)
     sf::Texture m_scrambleTex;
     sf::Texture m_sapphireTex;
     sf::Texture m_rubyTex;
@@ -181,7 +184,6 @@ private:
     std::vector<std::string> m_musicFiles;
     sf::Music m_backgroundMusic;
 
-    // --- Sounds & Music (Use unique_ptr) ---
     std::unique_ptr<sf::Sound> m_selectSound;
     std::unique_ptr<sf::Sound> m_placeSound;
     std::unique_ptr<sf::Sound> m_winSound;
@@ -189,51 +191,44 @@ private:
     std::unique_ptr<sf::Sound> m_hintUsedSound;
     std::unique_ptr<sf::Sound> m_errorWordSound;
 
-    // --- Sprites (Use unique_ptr) ---
     std::unique_ptr<sf::Sprite> m_scrambleSpr;
     std::unique_ptr<sf::Sprite> m_sapphireSpr;
     std::unique_ptr<sf::Sprite> m_rubySpr;
     std::unique_ptr<sf::Sprite> m_diamondSpr;
 
-    // --- UI Elements (Shapes can stay, Text needs unique_ptr) ---
     RoundedRectangleShape m_contBtn;
     RoundedRectangleShape m_solvedOverlay;
-    RoundedRectangleShape m_scoreBar;
-    // Use unique_ptr
+    RoundedRectangleShape m_scoreBar; // If this is for the "SCORE" text background keep it
     std::unique_ptr<sf::Text> m_contTxt;
-    std::unique_ptr<sf::Text> m_scoreLabelText; // Use unique_ptr
-    std::unique_ptr<sf::Text> m_scoreValueText; // Use unique_ptr
-    std::unique_ptr<sf::Text> m_hintCountTxt; // Use unique_ptr
+    std::unique_ptr<sf::Text> m_scoreLabelText;
+    std::unique_ptr<sf::Text> m_scoreValueText;
+    std::unique_ptr<sf::Text> m_hintCountTxt; // This might be redundant if m_hintPointsText is used primarily
     sf::CircleShape m_wheelBg;
-    std::unique_ptr<sf::Text> m_guessDisplay_Text;   // Text object for the guess itself
-    RoundedRectangleShape     m_guessDisplay_Bg;     // Background shape for the guess
+    std::unique_ptr<sf::Text> m_guessDisplay_Text;
+    RoundedRectangleShape     m_guessDisplay_Bg;
 
-    // Main Menu Elements
     RoundedRectangleShape m_mainMenuBg;
     RoundedRectangleShape m_casualButtonShape;
     RoundedRectangleShape m_competitiveButtonShape;
     RoundedRectangleShape m_quitButtonShape;
     RoundedRectangleShape m_returnToMenuButtonShape;
     std::unique_ptr<sf::Text> m_returnToMenuButtonText;
-    std::unique_ptr<sf::Text> m_mainMenuTitle; // Use unique_ptr
-	std::unique_ptr<sf::Text> m_casualMenuTitle; // Use unique_ptr
-    std::unique_ptr<sf::Text> m_casualButtonText; // Use unique_ptrGame::m_updateLayer
-    std::unique_ptr<sf::Text> m_competitiveButtonText; // Use unique_ptr
+    std::unique_ptr<sf::Text> m_mainMenuTitle;
+    std::unique_ptr<sf::Text> m_casualMenuTitle;
+    std::unique_ptr<sf::Text> m_casualButtonText;
+    std::unique_ptr<sf::Text> m_competitiveButtonText;
     std::unique_ptr<sf::Text> m_quitButtonText;
-    
-    // --- Casual Menu Elements ---
+
     RoundedRectangleShape m_casualMenuBg;
-    RoundedRectangleShape m_easyButtonShape; 
+    RoundedRectangleShape m_easyButtonShape;
     RoundedRectangleShape m_mediumButtonShape;
     RoundedRectangleShape m_hardButtonShape;
-    RoundedRectangleShape m_returnButtonShape; // Can reuse shape settings
-    // Use unique_ptr
+    RoundedRectangleShape m_returnButtonShape;
     std::unique_ptr<sf::Text> m_easyButtonText;
     std::unique_ptr<sf::Text> m_mediumButtonText;
     std::unique_ptr<sf::Text> m_hardButtonText;
     std::unique_ptr<sf::Text> m_returnButtonText;
 
-    // Layout Variables
     float m_wheelX = 0.f;
     float m_wheelY = 0.f;
     std::vector<sf::Vector2f> m_wheelCentres;
@@ -242,34 +237,28 @@ private:
     std::vector<int>   m_colMaxLen;
     std::vector<float> m_colXOffset;
     float m_gridStartX = 0.f;
-    float m_gridStartY = GRID_TOP_MARGIN; // Use constant for initial default
+    float m_gridStartY = GRID_TOP_MARGIN;
     float m_totalGridW = 0.f;
     float m_currentWheelRadius;
-    int tempCount = 0; // For debugging
-    
-    //debug
-    sf::Vector2u m_lastLayoutSize; 
+    int tempCount = 0;
 
+    sf::Vector2u m_lastLayoutSize;
 
-    // Themes
     std::vector<ColorTheme> m_themes;
     ColorTheme m_currentTheme;
 
-    // Helper to get criteria based on current state (optional but cleans up rebuild)
     struct PuzzleCriteria {
         std::vector<int> allowedLengths;
         std::vector<int> allowedRarities;
     };
     PuzzleCriteria m_getCriteriaForCurrentPuzzle() const;
 
-    // Progress Meter Elements
-    RoundedRectangleShape m_progressMeterBg;     // Background/border
-    RoundedRectangleShape m_progressMeterFill;   // The filled part showing progress
-    std::unique_ptr<sf::Text> m_progressMeterText; // Optional: Text overlay "X/Y"
+    RoundedRectangleShape m_progressMeterBg;
+    RoundedRectangleShape m_progressMeterFill;
+    std::unique_ptr<sf::Text> m_progressMeterText;
 
     std::vector<ScoreFlourishParticle> m_scoreFlourishes;
 
-    // For Debugging Zone Layout
     sf::RectangleShape m_debugGridZoneShape;
     sf::RectangleShape m_debugHintZoneShape;
     sf::RectangleShape m_debugWheelZoneShape;
@@ -277,48 +266,42 @@ private:
     sf::RectangleShape m_debugTopBarZoneShape;
     bool m_showDebugZones;
 
-    bool m_isHoveringHintPointsText; // True if mouse is over the hint points text
-    std::vector<WordInfo> m_cachedBonusWords; // Cache for bonus words
+    bool m_isHoveringHintPointsText;
+    std::vector<WordInfo> m_cachedBonusWords;
     bool m_bonusWordsCacheIsValid;
 
-    void m_renderBonusWordsPopup(sf::RenderTarget& target); // Declaration
+    void m_renderBonusWordsPopup(sf::RenderTarget& target);
     bool isGridSolution(const std::string& wordText) const;
 
-    // --- Private Helper Methods (Declarations only) ---
     void m_loadResources();
     void m_processEvents();
     void m_update(sf::Time dt);
     void m_render();
-    
 
     void m_rebuild();
     void m_updateLayout(sf::Vector2u windowSize);
-    void m_updateAnims(float dt); // Takes dt
+    void m_updateAnims(float dt);
     void m_updateScoreAnims(float dt);
     sf::Vector2f m_tilePos(int wordIdx, int charIdx);
     void m_clearDragState();
 
-    // Screen Specific Helpers
     void m_handleMainMenuEvents(const sf::Event& event);
     void m_renderMainMenu(const sf::Vector2f& mousePos);
-    void m_handleCasualMenuEvents(const sf::Event& event); 
-    void m_renderCasualMenu(const sf::Vector2f& mousePos); 
-    // void m_handleCompetitiveMenuEvents(const sf::Event& event); // Declare later
-    // void m_renderCompetitiveMenu(const sf::Vector2f& mousePos); // Declare later
+    void m_handleCasualMenuEvents(const sf::Event& event);
+    void m_renderCasualMenu(const sf::Vector2f& mousePos);
     void m_handlePlayingEvents(const sf::Event& event);
     void m_handleGameOverEvents(const sf::Event& event);
     void m_renderGameScreen(const sf::Vector2f& mousePos);
     void m_activateHint(HintType type);
     void m_checkWordCompletion(int wordIdx);
 
-    //celebration functions
-    void m_startCelebrationEffects(); 
-    void m_updateCelebrationEffects(float dt); 
+    void m_startCelebrationEffects();
+    void m_updateCelebrationEffects(float dt);
     void m_renderCelebrationEffects(sf::RenderTarget& target);
     void m_renderSessionComplete(const sf::Vector2f& mousePos);
 
-    void m_spawnScoreFlourish(int points, int wordIdxOnGrid); // Helper to create a new flourish
-    void m_updateScoreFlourishes(float dt);                  // To update animation logic
+    void m_spawnScoreFlourish(int points, int wordIdxOnGrid);
+    void m_updateScoreFlourishes(float dt);
     void m_renderScoreFlourishes(sf::RenderTarget& target);
 
     void m_handleSessionCompleteEvents(const sf::Event& event);
@@ -327,6 +310,9 @@ private:
     void m_spawnHintPointAnimation(const sf::Vector2f& startPos);
     void m_updateHintPointAnims(float dt);
     void m_renderHintPointAnims(sf::RenderTarget& target);
+
+    static void centerTextOnShape(sf::Text& text, const sf::Shape& shape);
+
 };
 
 #endif // GAME_H
