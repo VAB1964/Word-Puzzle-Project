@@ -262,6 +262,21 @@ private:
     std::vector<WordInfo> m_cachedBonusWords;
     bool m_bonusWordsCacheIsValid;
 
+    // --- Bonus List Complete Effect ---
+    bool m_bonusListCompleteEffectActive;
+    float m_bonusListCompleteAnimTimer;
+    float m_bonusListCompletePopupDisplayTimer; // How long the main popup stays
+    int m_bonusListCompletePointsAwarded;
+    sf::Text m_bonusListCompletePopupText; // For "Bonus List Complete: +XXXX"
+    sf::Text m_bonusListCompleteAnimatingPointsText; // For the points flying to score
+    sf::Vector2f m_bonusListCompleteAnimStartPos;
+    sf::Vector2f m_bonusListCompleteAnimEndPos;
+
+    int m_calculateTotalPossibleBonusWords() const; // Renamed for clarity
+    void m_triggerBonusListCompleteEffect(int pointsAwarded);
+    void m_updateBonusListCompleteEffect(float dt);
+    void m_renderBonusListCompleteEffect(sf::RenderTarget& target);
+
     void m_renderBonusWordsPopup(sf::RenderTarget& target);
     bool isGridSolution(const std::string& wordText) const;
 
@@ -299,7 +314,7 @@ private:
     void m_handleSessionCompleteEvents(const sf::Event& event);
     void m_renderDebugCircle();
 
-    void m_spawnHintPointAnimation(const sf::Vector2f& startPos);
+    void m_spawnHintPointAnimation(const sf::Vector2f& bonusWordTextCenterPos, int pointsAwarded);
     void m_updateHintPointAnims(float dt);
     void m_renderHintPointAnims(sf::RenderTarget& target);
 

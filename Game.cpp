@@ -1,5 +1,4 @@
-﻿
-#include <utility>
+﻿#include <utility>
 #include <cstdint>
 #include <fstream>
 #include <sstream>
@@ -139,8 +138,8 @@ void Game::m_updateView(sf::Vector2u ws)
 
 Game::Game() :
     // --- Initialize members in the initializer list ---
-    m_window(),                              // Default construct window
-    m_font(),                                // Default construct font (will be loaded)
+    m_window(),                              
+    m_font(),                                
     m_clock(),
     m_lastLayoutSize({ 0, 0 }), 
     m_celebrationEffectTimer(0.f),
@@ -177,13 +176,13 @@ Game::Game() :
     m_mainBackgroundSpr(nullptr),
     m_returnToMenuButtonText(nullptr),
 
-    m_contBtn(sf::Vector2f(200.f, 50.f), 10.f, 10), // Explicit sf::Vector2f
+    m_contBtn(sf::Vector2f(200.f, 50.f), 10.f, 10), 
     m_solvedOverlay(sf::Vector2f(100.f, 50.f), 10.f, 10),
     m_scoreBar(sf::Vector2f(100.f, 30.f), 10.f, 10),
     m_guessDisplay_Bg(sf::Vector2f(50.f, 30.f), 5.f, 10),
     m_debugDrawCircleMode(false),
     m_needsLayoutUpdate(false),
-    m_lastKnownSize(sf::Vector2u(0, 0)), // Explicit sf::Vector2u
+    m_lastKnownSize(sf::Vector2u(0, 0)), 
     m_mainMenuBg(sf::Vector2f(300.f, 300.f), 15.f, 10),
     m_casualButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
     m_competitiveButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
@@ -199,6 +198,12 @@ Game::Game() :
     m_isHoveringHintPointsText(false),
     m_bonusWordsCacheIsValid(false),
     m_showDebugZones(false),
+    m_bonusListCompleteEffectActive(false),
+    m_bonusListCompleteAnimTimer(0.f),
+    m_bonusListCompletePopupDisplayTimer(0.f),
+    m_bonusListCompletePointsAwarded(0),
+    m_bonusListCompletePopupText(m_font, "", 0),
+    m_bonusListCompleteAnimatingPointsText(m_font, "", 0),
     m_firstFrame(true)
 {
     const sf::Vector2u desiredInitialSize{ 1000u, 800u };
@@ -638,7 +643,9 @@ void Game::m_update(sf::Time dt) {
             }),
         m_gridFlourishes.end()
     );
-    // -------------------------------------------
+    
+    // Update Bonus List Complete Effect 
+    m_updateBonusListCompleteEffect(deltaSeconds);
 
     // Update game elements based on screen
     if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) {
@@ -649,7 +656,7 @@ void Game::m_update(sf::Time dt) {
     else if (m_currentScreen == GameScreen::SessionComplete) {
         m_updateCelebrationEffects(deltaSeconds);
     }
-    // (No need to call m_updateScoreAnims separately if it's part of m_updateAnims or not used)
+    
 }
 
 // --- Render ---
@@ -685,6 +692,9 @@ void Game::m_render() {
     if (m_isHoveringHintPointsText && (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)) {
         m_renderBonusWordsPopup(m_window); // Pass m_window as the RenderTarget
     }
+
+    // Render Bonus List Complete Effect
+    m_renderBonusListCompleteEffect(m_window);
 
     // --- Draw Debug Zones (draw them last to see on top of everything) ---
     if (m_showDebugZones) {
@@ -930,15 +940,48 @@ void Game::m_rebuild() {
     // --- Debug Print ---
     std::cout << "DEBUG: m_rebuild - Final Base: '" << m_base << "', FINAL m_solutions count (Grid Target): " << m_solutions.size() << ", m_sorted count: " << m_sorted.size() << std::endl;
     /* ... rest of debug print ... */
-    std::cout << "DEBUG: Final list for grid (m_solutions, first 5 or fewer):" << std::endl;
-    for (size_t i = 0; i < std::min<size_t>(m_solutions.size(), 5); ++i) {
-        std::cout << "  - '" << m_solutions[i].text << "' (Len=" << m_solutions[i].text.length() << ", Rarity=" << m_solutions[i].rarity << ")" << std::endl;
+    std::cout << "DEBUG: Final list for grid (m_solutions, ALL " << m_solutions.size() << " words):" << std::endl;
+    for (size_t i = 0; i < m_solutions.size(); ++i) { // Loop up to the actual size of m_solutions
+        std::cout << "  - '" << m_solutions[i].text
+            << "' (Len=" << m_solutions[i].text.length()
+            << ", Rarity=" << m_solutions[i].rarity << ")" << std::endl;
     }
     if (!m_sorted.empty()) {
         std::cout << "DEBUG: m_rebuild - First sorted word for grid display: '" << m_sorted[0].text << "'" << std::endl;
     }
     else { std::cout << "DEBUG: m_rebuild - No words selected for the grid." << std::endl; }
 
+    // DEBUG BLOCK FOR BONUS WORDS *****
+    std::cout << "DEBUG: Potential Bonus Words (" << m_allPotentialSolutions.size() - m_solutions.size() << " expected):" << std::endl;
+    int actualBonusCount = 0;
+    if (!m_allPotentialSolutions.empty()) {
+        for (const auto& potentialSolutionInfo : m_allPotentialSolutions) {
+            // Check if this potential solution is NOT in the main m_solutions list
+            bool isGridWord = false;
+            for (const auto& gridSolutionInfo : m_solutions) {
+                if (potentialSolutionInfo.text == gridSolutionInfo.text) {
+                    isGridWord = true;
+                    break;
+                }
+            }
+
+            if (!isGridWord) {
+                // It's a bonus word
+                std::cout << "  - BONUS: '" << potentialSolutionInfo.text
+                    << "' (Len=" << potentialSolutionInfo.text.length()
+                    << ", Rarity=" << potentialSolutionInfo.rarity << ")" << std::endl;
+                actualBonusCount++;
+            }
+        }
+    }
+    if (actualBonusCount == 0 && (m_allPotentialSolutions.size() - m_solutions.size() > 0)) {
+        std::cout << "  - (No distinct bonus words found, or all subwords are grid words)" << std::endl;
+    }
+    else if (actualBonusCount == 0) {
+        std::cout << "  - (No bonus words for this puzzle)" << std::endl;
+    }
+    std::cout << "DEBUG: Actual distinct bonus words found and listed: " << actualBonusCount << std::endl;
+    
 
     // --- Setup Grid & Reset State ---
     m_grid.assign(m_sorted.size(), {});
@@ -953,17 +996,22 @@ void Game::m_rebuild() {
     m_clearDragState(); m_gameState = GState::Playing;
 
     // --- Reset Score/Hints ---
-    if (m_currentPuzzleIndex == 0 && m_isInSession) { /* ... reset score/hints ... */
-        m_currentScore = 0; m_wordsSolvedSinceHint = 0;
-        std::cout << "DEBUG: First puzzle of session - Resetting score, hints, and words solved count." << std::endl;
+    if (m_currentPuzzleIndex == 0 && m_isInSession) {
+        m_currentScore = 0;
+        m_wordsSolvedSinceHint = 0;
+        //m_hintPoints = 0; Want player to keep points they've earned
+        std::cout << "DEBUG: First puzzle of session - Resetting score, hint points, and words solved count." << std::endl;
     }
-    else if (m_isInSession) { /* ... reset words solved count ... */
+    else if (m_isInSession) {
         m_wordsSolvedSinceHint = 0;
         std::cout << "DEBUG: Subsequent puzzle - Resetting words solved count for next hint." << std::endl;
     }
-    if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
-    if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
 
+    if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
+
+    if (m_hintPointsText) {
+        m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
+    }
     // --- Update Layout & Music ---
     m_updateLayout(m_window.getSize());
     if (m_backgroundMusic.getStatus() != sf::SoundSource::Status::Playing) { /* ... start music ... */
@@ -1937,7 +1985,7 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         // --- NEW Grid Word Found ---
                         std::cout << "DEBUG: Found NEW match on GRID: '" << solutionOriginalCase << "'" << std::endl;
                         m_found.insert(solutionOriginalCase);
-                        // ... (Scoring, Hint Check, Letter Animations - keep this existing logic) ...
+
                         int baseScore = static_cast<int>(m_currentGuess.length()) * 10;
                         int rarityBonus = (m_sorted[w].rarity > 1) ? (m_sorted[w].rarity * 25) : 0;
                         int wordScoreForThisWord = baseScore + rarityBonus;
@@ -1946,42 +1994,40 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         m_spawnScoreFlourish(wordScoreForThisWord, static_cast<int>(w));
 
                         if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
-                        m_wordsSolvedSinceHint++;
-                        if (m_wordsSolvedSinceHint >= WORDS_PER_HINT) {
-                            m_hintsAvailable++; m_wordsSolvedSinceHint = 0;
-                            if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
-                        }
+
+                        // m_wordsSolvedSinceHint++; // This was for gaining free hints, hints are now bought with points.
+                        // if (m_wordsSolvedSinceHint >= WORDS_PER_HINT) {
+                        //     m_hintsAvailable++; m_wordsSolvedSinceHint = 0;
+                        //     if (m_hintCountTxt) m_hintCountTxt->setString("Hints: " + std::to_string(m_hintsAvailable));
+                        // }
+
                         for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
-                            if (c < m_path.size()) { // m_path stores indices of letters from m_base
-                                int pathNodeIdx = m_path[c]; // This is the index in m_base
-                                // Ensure pathNodeIdx is valid for m_wheelLetterRenderPos (it should be if m_base matches)
+                            if (c < m_path.size()) {
+                                int pathNodeIdx = m_path[c];
                                 if (pathNodeIdx >= 0 && static_cast<size_t>(pathNodeIdx) < m_wheelLetterRenderPos.size() &&
                                     static_cast<size_t>(pathNodeIdx) < m_base.size()) {
 
-                                    sf::Vector2f startPos = m_wheelLetterRenderPos[pathNodeIdx]; // Animation STARTS from visual letter pos
-                                    sf::Vector2f endPos = m_tilePos(wordIndexMatched, static_cast<int>(c)); // wordIndexMatched is index in m_sorted
+                                    sf::Vector2f startPos = m_wheelLetterRenderPos[pathNodeIdx];
+                                    sf::Vector2f endPos = m_tilePos(wordIndexMatched, static_cast<int>(c));
 
-                                    // Critical: Adjust endPos to be the CENTER of the tile for visual appeal
-                                    // Assuming m_tilePos gives top-left of the tile
-                                    float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale; // Get current scaled tile size
+                                    float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale;
                                     endPos.x += finalRenderTileSize / 2.f;
                                     endPos.y += finalRenderTileSize / 2.f;
 
-                                    // Ensure m_currentGuess[c] is correct char, wordIndexMatched for m_sorted, c for char in word
                                     m_anims.push_back({
-                                        m_currentGuess[c], // Character being animated
+                                        m_currentGuess[c],
                                         startPos,
                                         endPos,
-                                        0.f - (c * 0.03f), // Staggered start time
-                                        wordIndexMatched,      // Word index in m_grid / m_sorted
-                                        static_cast<int>(c),   // Character index in that word
+                                        0.f - (c * 0.03f),
+                                        wordIndexMatched,
+                                        static_cast<int>(c),
                                         AnimTarget::Grid
                                         });
                                 }
                             }
                         }
-                        std::cout << "GRID Word: " << m_currentGuess << " | Rarity: " << m_sorted[wordIndexMatched].rarity << " | Len: " << m_currentGuess.length() << " | Rarity Bonus: " << rarityBonus << " | BasePts: " << baseScore << " | Total: " << m_currentScore << std::endl;
-                        // Check for Puzzle Solved
+                        std::cout << "GRID Word: " << m_currentGuess << " | Rarity: " << m_sorted[wordIndexMatched].rarity << " | Len: " << m_currentGuess.length() << " | Rarity Bonus: " << rarityBonus << " | BasePts: " << baseScore << " | Current Game Score: " << m_currentScore << std::endl;
+
                         if (m_found.size() == m_solutions.size()) {
                             std::cout << "DEBUG: All grid words found! Puzzle solved." << std::endl;
                             if (m_winSound) m_winSound->play();
@@ -1989,10 +2035,9 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                             m_currentScreen = GameScreen::GameOver;
                             m_updateLayout(m_window.getSize());
                         }
-                        // ... (End of new grid word logic) ...
                         actionTaken = true;
                     }
-                    goto process_outcome; // Found a grid match (new or repeat), skip bonus check
+                    goto process_outcome;
                 }
             } // --- End Grid Check Loop ---
 
@@ -2001,7 +2046,7 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
             std::cout << "DEBUG: Checking for BONUS word..." << std::endl;
             for (const auto& potentialWordInfo : m_allPotentialSolutions) {
                 const std::string& bonusWordOriginalCase = potentialWordInfo.text;
-                if (m_found.count(bonusWordOriginalCase)) { continue; } // Already handled by grid check
+                if (m_found.count(bonusWordOriginalCase)) { continue; }
 
                 std::string bonusWordUpper = bonusWordOriginalCase;
                 std::transform(bonusWordUpper.begin(), bonusWordUpper.end(), bonusWordUpper.begin(), ::toupper);
@@ -2021,49 +2066,65 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         std::cout << "DEBUG: Found NEW match for BONUS: '" << bonusWordOriginalCase << "'" << std::endl;
                         m_foundBonusWords.insert(bonusWordOriginalCase);
 
-                        m_hintPoints++; // <<< THIS LINE WAS ALREADY THERE FROM PREVIOUS WORK
-                        std::cout << "DEBUG: Hint Points increased to: " << m_hintPoints << std::endl; // <<< THIS LINE WAS ALREADY THERE
+                        int hintPointsAwarded = 0;
+                        size_t len = bonusWordOriginalCase.length();
+                        if (len == 3) hintPointsAwarded = 1;
+                        else if (len == 4) hintPointsAwarded = 2;
+                        else if (len == 5) hintPointsAwarded = 3;
+                        else if (len == 6) hintPointsAwarded = 4;
+                        else if (len == 7) hintPointsAwarded = 5;
 
-                        // --- Spawn the "+1" animation for the hint point ---
-                        // Calculate an approximate center Y for where the "Bonus Words: X/Y" text is displayed.
-                        // This is based on the HUD layout logic.
-                        // Adjust S(this, 25.f) or S(this, HUD_TEXT_OFFSET_Y) if the "Bonus Words" text is higher/lower.
-                        float bonusTextApproxY = m_wheelY + (m_currentWheelRadius + S(this, 30.f)) /* visual wheel bottom edge */
-                            + S(this, HUD_TEXT_OFFSET_Y)    /* gap below wheel */
-                            + S(this, 20.f)                 /* approx height of "Found: X/Y" */
-                            + S(this, HUD_LINE_SPACING)     /* space after "Found: X/Y" */
-                            + S(this, 10.f);                /* approx half-height of "Bonus: X/Y" itself */
-                        sf::Vector2f hintAnimStartPos = { m_wheelX, bonusTextApproxY };
-                        m_spawnHintPointAnimation(hintAnimStartPos); // <<< --- ADD THIS LINE ---
+                        if (hintPointsAwarded > 0) {
+                            m_hintPoints += hintPointsAwarded;
+                            std::cout << "DEBUG: Hint Points increased by " << hintPointsAwarded << ". New Total Hint Points: " << m_hintPoints << std::endl;
+                            if (m_hintPointsText) m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
 
-                        // Existing logic for bonus score and letter animations to score bar
-                        int bonusScore = 25; m_currentScore += bonusScore;
-                        if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
-                        std::cout << "BONUS Word: " << m_currentGuess << " | Points: " << bonusScore << " | Total: " << m_currentScore << std::endl;
-                        //return;
+                            float bonusTextApproxY = m_wheelY + (m_currentWheelRadius + S(this, 30.f))
+                                + S(this, HUD_TEXT_OFFSET_Y) + S(this, 20.f) + S(this, HUD_LINE_SPACING) + S(this, 10.f);
+                            sf::Vector2f hintAnimStartPos = { m_wheelX, bonusTextApproxY };
+                            m_spawnHintPointAnimation(hintAnimStartPos, hintPointsAwarded);
+                        }
 
-                        if (m_scoreValueText) {
-                            sf::FloatRect scoreBounds = m_scoreValueText->getGlobalBounds();
-                            sf::Vector2f scoreCenterPos = { scoreBounds.position.x + scoreBounds.size.x / 2.f,
-                                                            scoreBounds.position.y + scoreBounds.size.y / 2.f
-                            };
-                            for (std::size_t c = 0; c < m_currentGuess.length(); ++c) {
-                                if (c < m_path.size()) {
-                                    int pathNodeIdx = m_path[c];
-                                    if (pathNodeIdx >= 0 && pathNodeIdx < m_wheelCentres.size()) {
-                                        sf::Vector2f startPos = m_wheelCentres[pathNodeIdx];
-                                        m_anims.push_back({ m_currentGuess[c], startPos, scoreCenterPos, 0.f - (c * 0.05f), -1, -1, AnimTarget::Score });
-                                    }
+                        std::cout << "BONUS Word: " << m_currentGuess << " (Length: " << len << ") | Hint Points Awarded: " << hintPointsAwarded << std::endl;
+
+                        m_bonusTextFlourishTimer = BONUS_TEXT_FLOURISH_DURATION;
+                        if (m_placeSound) m_placeSound->play();
+                        actionTaken = true;
+
+                        // ***** NEW: Check for Full Bonus List Completion *****
+                        int totalPossibleBonus = m_calculateTotalPossibleBonusWords();
+                        if (totalPossibleBonus > 0 && m_foundBonusWords.size() == static_cast<size_t>(totalPossibleBonus)) {
+                            std::cout << "DEBUG: *** ENTIRE BONUS LIST COMPLETED! ***" << std::endl;
+
+                            // Calculate points for bonus list completion
+                            int rawCompletionValue = 0;
+                            // Pn_complete values (points per word length for this specific bonus)
+                            const int p3c = 5, p4c = 10, p5c = 20, p6c = 35, p7c = 50;
+                            // Iterate through m_cachedBonusWords (which should be populated by now)
+                            // Or, more robustly, iterate m_allPotentialSolutions and check if non-grid
+                            for (const auto& bWordInfo : m_allPotentialSolutions) {
+                                if (!isGridSolution(bWordInfo.text)) { // It's a bonus word
+                                    size_t bLen = bWordInfo.text.length();
+                                    if (bLen == 3) rawCompletionValue += p3c;
+                                    else if (bLen == 4) rawCompletionValue += p4c;
+                                    else if (bLen == 5) rawCompletionValue += p5c;
+                                    else if (bLen == 6) rawCompletionValue += p6c;
+                                    else if (bLen == 7) rawCompletionValue += p7c;
                                 }
                             }
-                            std::cout << "DEBUG: Bonus animations CREATED." << std::endl;
-                        }
-                        else {
-                            std::cerr << "Warning: Cannot animate bonus to score - m_scoreValueText is null." << std::endl;
-                        }
 
-                        m_bonusTextFlourishTimer = BONUS_TEXT_FLOURISH_DURATION; // This flourishes the "Bonus Words: X/Y" text itself
-                        actionTaken = true;   // Ensure any getLocalBounds or getGlobalBounds here uses SFML3 API for rect members if accessed.
+                            int flatFullClearBonus = 150; // Example
+                            float difficultyMultiplier = 1.0f;
+                            if (m_selectedDifficulty == DifficultyLevel::Medium) difficultyMultiplier = 1.25f;
+                            else if (m_selectedDifficulty == DifficultyLevel::Hard) difficultyMultiplier = 1.5f;
+
+                            int finalBonusListScore = static_cast<int>((static_cast<float>(rawCompletionValue) + static_cast<float>(flatFullClearBonus)) * difficultyMultiplier);
+
+                            m_triggerBonusListCompleteEffect(finalBonusListScore);
+                            // Note: The points are added to m_currentScore inside m_updateBonusListCompleteEffect 
+                            // when the animation timer finishes, to sync with the visual effect.
+                        }
+                        // ***** END NEW CHECK *****
                     }
                     goto process_outcome;
                 }
@@ -2071,19 +2132,47 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 
 
             // --- Phase 3: Incorrect Word ---
-            // This block is only reached if the guess didn't match ANY grid or potential bonus word text
             std::cout << "Word '" << m_currentGuess << "' is not valid for this puzzle." << std::endl;
             if (m_errorWordSound) m_errorWordSound->play();
             actionTaken = true;
 
 
-        process_outcome:; // Label for jumps after processing a match
+        process_outcome:;
 
-            m_clearDragState(); // Clear path and guess regardless of outcome
+            m_clearDragState();
         }
     } // --- End Mouse Button Released ---
 
-   
+    // Also, ensure that when a hint is used, the m_hintPointsText is updated immediately:
+    if (const auto* mb_pressed_for_hint = event.getIf<sf::Event::MouseButtonPressed>()) {
+        if (mb_pressed_for_hint->button == sf::Mouse::Button::Left) {
+            sf::Vector2f mp = m_window.mapPixelToCoords(mb_pressed_for_hint->position);
+            // ... (existing button checks like return to menu, scramble) ...
+
+            bool hintButtonClickedThisPress = false; // Use a local flag for this press
+            const int HINT_COSTS_EVENT_ARR_LOCAL[] = { HINT_COST_REVEAL_FIRST, HINT_COST_REVEAL_RANDOM, HINT_COST_REVEAL_LAST, HINT_COST_REVEAL_FIRST_OF_EACH };
+            const HintType HINT_TYPES_EVENT_ARR_LOCAL[] = { HintType::RevealFirst, HintType::RevealRandom, HintType::RevealLast, HintType::RevealFirstOfEach };
+
+            for (int i = 0; i < 4; ++i) {
+                if (i < m_hintClickableRegions.size() && m_hintClickableRegions[i].contains(mp)) {
+                    if (m_hintPoints >= HINT_COSTS_EVENT_ARR_LOCAL[i]) {
+                        m_hintPoints -= HINT_COSTS_EVENT_ARR_LOCAL[i];
+                        if (m_hintPointsText) m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints)); // Update display
+                        m_activateHint(HINT_TYPES_EVENT_ARR_LOCAL[i]);
+                        // m_hintUsedSound will be played in m_activateHint if successful
+                    }
+                    else {
+                        if (m_errorWordSound) m_errorWordSound->play();
+                    }
+                    hintButtonClickedThisPress = true;
+                    break;
+                }
+            }
+            if (hintButtonClickedThisPress) return; // If a hint button was processed, return
+            // ... (rest of mouse button pressed logic for wheel) ...
+        }
+    }
+    
 } // End m_handlePlayingEvents
 
 
@@ -3498,27 +3587,28 @@ void Game::m_renderScoreFlourishes(sf::RenderTarget& target) {
     }
 }
 
-void Game::m_spawnHintPointAnimation(const sf::Vector2f& bonusWordTextCenterPos) {
+void Game::m_spawnHintPointAnimation(const sf::Vector2f& bonusWordTextCenterPos, int pointsAwarded) {
     HintPointAnimParticle particle;
-    particle.startPosition = bonusWordTextCenterPos; // Where the "Bonus Word" text is
+    particle.startPosition = bonusWordTextCenterPos; // Where the "Bonus Word" text is (approx)
     particle.currentPosition = particle.startPosition;
-    particle.textString = "+1";
-    particle.color = sf::Color(255, 215, 0, 255); 
+
+    // ***** MODIFICATION: Use pointsAwarded for the text *****
+    particle.textString = "+" + std::to_string(pointsAwarded);
+    // ***** END MODIFICATION *****
+
+    particle.color = sf::Color(255, 215, 0, 255);
 
     // Determine target position: the center of m_hintPointsText
     if (m_hintPointsText) {
-        sf::FloatRect hintTextGlobalBounds = m_hintPointsText->getGlobalBounds(); // Use global for screen pos
+        sf::FloatRect hintTextGlobalBounds = m_hintPointsText->getGlobalBounds();
         particle.targetPosition = {
             hintTextGlobalBounds.position.x + hintTextGlobalBounds.size.x / 2.f,
             hintTextGlobalBounds.position.y + hintTextGlobalBounds.size.y / 2.f
         };
     }
     else {
-        // Fallback if m_hintPointsText is somehow not available
-        // This should ideally not happen if layout is done correctly.
-        // Target a generic spot on the left.
         std::cerr << "WARNING: m_hintPointsText is null. Hint point anim targeting fallback." << std::endl;
-        particle.targetPosition = { S(this, 100.f), S(this, 50.f) }; // Example fallback
+        particle.targetPosition = { S(this, 100.f), S(this, 50.f) };
     }
 
     particle.speed = HINT_POINT_ANIM_SPEED;
@@ -3946,4 +4036,140 @@ void Game::centerTextOnShape(sf::Text& text, const sf::Shape& shape) {
     text.setPosition({ shape.getPosition().x + shapeLocalBounds.size.x / 2.f,
         shape.getPosition().y + shapeLocalBounds.size.y / 2.f });
 
+}
+
+int Game::m_calculateTotalPossibleBonusWords() const {
+    if (m_base == "ERROR" || m_allPotentialSolutions.empty()) {
+        return 0;
+    }
+    int count = 0;
+    for (const auto& wordInfo : m_allPotentialSolutions) {
+        if (!isGridSolution(wordInfo.text)) { // isGridSolution helper is already defined
+            count++;
+        }
+    }
+    return count;
+}
+
+void Game::m_triggerBonusListCompleteEffect(int pointsAwarded) {
+    if (m_bonusListCompleteEffectActive) return; // Don't trigger if already active
+
+    std::cout << "DEBUG: Triggering Bonus List Complete Effect for " << pointsAwarded << " points." << std::endl;
+
+    m_bonusListCompleteEffectActive = true;
+    m_bonusListCompletePointsAwarded = pointsAwarded;
+    m_bonusListCompleteAnimTimer = 0.f;
+    m_bonusListCompletePopupDisplayTimer = 3.0f; // Display "Bonus List Complete: +XXX" for 3 seconds
+
+    // --- Setup the main popup text ---
+    m_bonusListCompletePopupText.setFont(m_font);
+    m_bonusListCompletePopupText.setString("Bonus List Complete: +" + std::to_string(pointsAwarded));
+    // Scaled font size (adjust base size as needed)
+    unsigned int popupFontSize = static_cast<unsigned int>(std::max(12.0f, S(this, 28.f)));
+    m_bonusListCompletePopupText.setCharacterSize(popupFontSize);
+    m_bonusListCompletePopupText.setFillColor(sf::Color::Yellow); // Or a theme color
+    m_bonusListCompletePopupText.setStyle(sf::Text::Bold);
+
+    sf::FloatRect popupBounds = m_bonusListCompletePopupText.getLocalBounds();
+    m_bonusListCompletePopupText.setOrigin(sf::Vector2f(popupBounds.position.x + popupBounds.size.x / 2.f,
+        popupBounds.position.y + popupBounds.size.y / 2.f));
+    // Position it in the center of the screen (design space)
+    m_bonusListCompletePopupText.setPosition(sf::Vector2f(static_cast<float>(REF_W) / 2.f,
+        static_cast<float>(REF_H) / 2.f));
+
+    m_bonusListCompleteAnimStartPos = m_bonusListCompletePopupText.getPosition();
+
+    // --- Setup the animating points text (initially same as popup) ---
+    m_bonusListCompleteAnimatingPointsText = m_bonusListCompletePopupText; // Copy properties
+    m_bonusListCompleteAnimatingPointsText.setString("+" + std::to_string(pointsAwarded)); // Ensure it's just the points
+
+    // Target for animation: center of the m_scoreValueText
+    if (m_scoreValueText) {
+        sf::FloatRect scoreTextBounds = m_scoreValueText->getGlobalBounds(); // Use global for screen coords
+        m_bonusListCompleteAnimEndPos = {
+            scoreTextBounds.position.x + scoreTextBounds.size.x / 2.f,
+            scoreTextBounds.position.y + scoreTextBounds.size.y / 2.f
+        };
+    }
+    else {
+        // Fallback if score text isn't available (shouldn't happen)
+        m_bonusListCompleteAnimEndPos = { static_cast<float>(REF_W) * 0.8f, static_cast<float>(REF_H) * 0.1f };
+    }
+
+    if (m_winSound) {
+        m_winSound->play();
+    }
+}
+
+void Game::m_updateBonusListCompleteEffect(float dt) {
+    if (!m_bonusListCompleteEffectActive) return;
+
+    m_bonusListCompletePopupDisplayTimer -= dt;
+
+    // Animation of points flying to score
+    const float animDuration = 1.5f; // How long the points take to fly
+    m_bonusListCompleteAnimTimer += dt;
+
+    if (m_bonusListCompleteAnimTimer <= animDuration) {
+        float t = m_bonusListCompleteAnimTimer / animDuration;
+        // Simple easing (ease out quad)
+        t = 1.f - (1.f - t) * (1.f - t);
+
+        sf::Vector2f currentPos = m_bonusListCompleteAnimStartPos +
+            (m_bonusListCompleteAnimEndPos - m_bonusListCompleteAnimStartPos) * t;
+        m_bonusListCompleteAnimatingPointsText.setPosition(currentPos);
+
+        // Fade out the animating points text as it nears the target
+        if (t > 0.7f) {
+            float alphaRatio = (1.0f - t) / 0.3f; // Fades from t=0.7 to t=1.0
+            sf::Color c = m_bonusListCompleteAnimatingPointsText.getFillColor();
+            c.a = static_cast<std::uint8_t>(std::max(0.f, std::min(255.f, alphaRatio * 255.f)));
+            m_bonusListCompleteAnimatingPointsText.setFillColor(c);
+        }
+
+    }
+    else {
+        // Animation finished
+        if (m_bonusListCompleteEffectActive && m_bonusListCompleteAnimTimer > animDuration) { // Ensure this only happens once
+            // Add points to score and flourish (if not already done)
+            // This ensures points are added when animation *finishes*
+            if (m_bonusListCompletePointsAwarded > 0) { // Check to avoid adding 0 if something went wrong
+                m_currentScore += m_bonusListCompletePointsAwarded;
+                if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
+                m_scoreFlourishTimer = SCORE_FLOURISH_DURATION; // Trigger main score flourish
+                m_bonusListCompletePointsAwarded = 0; // Prevent re-adding
+            }
+        }
+    }
+
+    // Deactivate effect once popup and animation are done (or popup timer expires)
+    if (m_bonusListCompletePopupDisplayTimer <= 0.f && m_bonusListCompleteAnimTimer > animDuration) {
+        m_bonusListCompleteEffectActive = false;
+    }
+}
+
+void Game::m_renderBonusListCompleteEffect(sf::RenderTarget& target) {
+    if (!m_bonusListCompleteEffectActive) return;
+
+    // Draw the main "Bonus List Complete: +XXX" popup while its timer is active
+    if (m_bonusListCompletePopupDisplayTimer > 0.f) {
+        // Optional: Fade out the main popup towards the end of its display time
+        if (m_bonusListCompletePopupDisplayTimer < 0.5f) { // Last 0.5 seconds
+            sf::Color c = m_bonusListCompletePopupText.getFillColor();
+            c.a = static_cast<std::uint8_t>((m_bonusListCompletePopupDisplayTimer / 0.5f) * 255.f);
+            m_bonusListCompletePopupText.setFillColor(c);
+        }
+        else {
+            sf::Color c = m_bonusListCompletePopupText.getFillColor();
+            c.a = 255;
+            m_bonusListCompletePopupText.setFillColor(c);
+        }
+        target.draw(m_bonusListCompletePopupText);
+    }
+
+    // Draw the animating points text if it's still within its animation duration
+    const float animDuration = 1.5f;
+    if (m_bonusListCompleteAnimTimer <= animDuration) {
+        target.draw(m_bonusListCompleteAnimatingPointsText);
+    }
 }
