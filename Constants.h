@@ -47,7 +47,7 @@ const int MIN_DESIRED_GRID_WORDS = 5;
 
 const int HINT_COST_REVEAL_FIRST = 3; 
 const int HINT_COST_REVEAL_RANDOM = 5; 
-const int HINT_COST_REVEAL_LAST = 15;
+const int HINT_COST_REVEAL_LAST = 7;
 const int HINT_COST_REVEAL_FIRST_OF_EACH = 10;
 
 constexpr unsigned int WORDS_PER_HINT = 5;

@@ -56,36 +56,28 @@ public:
 
 
 private:
-    // ... (other private members like m_letterPositionRadius, m_gridFlourishes, etc.) ...
 
     // --- Hint UI New Assets ---
-    sf::Texture m_newHintPanelTex;
-    std::unique_ptr<sf::Sprite> m_newHintPanelSpr;
-    sf::Texture m_hintIndicatorLightTex; // Single texture for the light, color will change
-    std::vector<std::unique_ptr<sf::Sprite>> m_hintIndicatorLightSprs; // Vector of 4 sprites
+    sf::Texture m_hintFrameTexture; // Texture for the individual hint frame art
+    std::vector<std::unique_ptr<sf::Sprite>> m_hintFrameSprites; // Vector of 4 sprites, one for each hint frame
 
-    // Hint Text elements (These are kept but will be repositioned)
+    sf::Texture m_hintIndicatorLightTex;
+    std::vector<std::unique_ptr<sf::Sprite>> m_hintIndicatorLightSprs;
+
+    // Hint Text elements (These are kept but will be repositioned ON the individual frames)
     std::unique_ptr<sf::Text> m_hintPointsText;
     std::unique_ptr<sf::Text> m_hintRevealFirstCostText;
-    std::unique_ptr<sf::Text> m_hintRevealRandomButtonText;
+    std::unique_ptr<sf::Text> m_hintRevealRandomButtonText; 
     std::unique_ptr<sf::Text> m_hintRevealRandomCostText;
-    std::unique_ptr<sf::Text> m_hintRevealLastButtonText;
+    std::unique_ptr<sf::Text> m_hintRevealLastButtonText;   
     std::unique_ptr<sf::Text> m_hintRevealLastCostText;
-    std::unique_ptr<sf::Text> m_hintRevealFirstButtonText; // Text like "Letter"
-    std::unique_ptr<sf::Text> m_hintRevealFirstOfEachButtonText;
+    std::unique_ptr<sf::Text> m_hintRevealFirstButtonText;  
+    std::unique_ptr<sf::Text> m_hintRevealFirstOfEachButtonText; 
     std::unique_ptr<sf::Text> m_hintRevealFirstOfEachCostText;
 
    
-
-    // --- REMOVED Hint Shapes ---
-    // RoundedRectangleShape m_hintRevealFirstButtonShape;        // REMOVED
-    // RoundedRectangleShape m_hintRevealRandomButtonShape;       // REMOVED
-    // RoundedRectangleShape m_hintRevealLastButtonShape;         // REMOVED
-    // RoundedRectangleShape m_hintRevealFirstOfEachButtonShape;  // REMOVED
-    // RoundedRectangleShape m_hintAreaBg;                        // REMOVED
-
     // Clickable areas for new hint UI (will be calculated in m_updateLayout)
-    std::vector<sf::FloatRect> m_hintClickableRegions; // Size 4
+    std::vector<sf::FloatRect> m_hintClickableRegions; 
 
     // ... (rest of your private members) ...
 

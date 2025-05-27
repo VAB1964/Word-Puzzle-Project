@@ -157,11 +157,11 @@ Game::Game() :
     m_currentPuzzleIndex(0),
     m_isInSession(false),
     m_uiScale(1.f),
-    m_hintPoints(999),
+    m_hintPoints(0),
     m_scoreFlourishes(),
     m_hintPointAnims(),
     m_hintPointsTextFlourishTimer(0.f),
-    m_newHintPanelSpr(nullptr),
+    m_hintFrameSprites(4),
     m_hintIndicatorLightSprs(4),
     m_hintClickableRegions(4),
     m_scrambleTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
@@ -224,9 +224,14 @@ Game::Game() :
     if (m_rubyTex.getSize().x > 0) m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
     if (m_diamondTex.getSize().x > 0) m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
 
-    if (m_newHintPanelTex.getSize().x > 0) {
-        m_newHintPanelSpr = std::make_unique<sf::Sprite>(m_newHintPanelTex);
+    // Setup new hint panel sprites (plural)
+    if (m_hintFrameTexture.getSize().x > 0) { // Check if the frame texture loaded
+        for (size_t i = 0; i < m_hintFrameSprites.size(); ++i) { // Should be 4
+            m_hintFrameSprites[i] = std::make_unique<sf::Sprite>(m_hintFrameTexture);
+        }
     }
+
+    // Setup hint indicator light sprites (remains the same)
     if (m_hintIndicatorLightTex.getSize().x > 0) {
         for (size_t i = 0; i < m_hintIndicatorLightSprs.size(); ++i) {
             m_hintIndicatorLightSprs[i] = std::make_unique<sf::Sprite>(m_hintIndicatorLightTex);
@@ -393,23 +398,21 @@ void Game::m_loadResources() {
         }
     }
 
-    // --- Load New Hint Panel Textures ---
-    if (!m_newHintPanelTex.loadFromFile("assets/HintButtonFrame.png")) { // Make sure this path is correct
-        std::cerr << "CRITICAL ERROR: Could not load new hint panel texture (HintButtonFrame.png)!" << std::endl;
-        // Consider fallback or exit
+    // --- Load Hint Frame Texture ---
+    if (!m_hintFrameTexture.loadFromFile("assets/HintButtonFrame.png")) {
+        std::cerr << "CRITICAL ERROR: Could not load hint frame texture (assets/HintButtonFrame.png)!" << std::endl;
     }
     else {
-        m_newHintPanelTex.setSmooth(true);
+        m_hintFrameTexture.setSmooth(true);
     }
 
-    if (!m_hintIndicatorLightTex.loadFromFile("assets/LightOn_small.png")) { // Make sure this path is correct
-        std::cerr << "CRITICAL ERROR: Could not load hint indicator light texture (LightOn_small.png)!" << std::endl;
-        // Consider fallback or exit
+    // --- Load Hint Indicator Light Texture --- (remains the same)
+    if (!m_hintIndicatorLightTex.loadFromFile("assets/LightOn_small.png")) {
+        std::cerr << "CRITICAL ERROR: Could not load hint indicator light texture (assets/LightOn_small.png)!" << std::endl;
     }
     else {
         m_hintIndicatorLightTex.setSmooth(true);
     }
-    // --- End New Hint Panel Textures ---
 
     // --- Load New Main Background Texture ---
     if (!m_mainBackgroundTex.loadFromFile("assets/BackgroundandFrame.png")) {
@@ -1390,103 +1393,120 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         centerTextOnButton_lambda_menu(m_returnButtonText, m_returnButtonShape);
     }
 
-    // --- 9. NEW Hint UI Layout ---
-    if (m_newHintPanelSpr) {
-        const sf::Texture* panelTex = &m_newHintPanelSpr->getTexture();
-        if (panelTex && panelTex->getSize().x > 0) {
-            float panelOriginalWidth = static_cast<float>(panelTex->getSize().x);
-            float panelOriginalHeight = static_cast<float>(panelTex->getSize().y);
+    // --- 9. REVISED Stacked Hint UI Layout ---
+    if (m_hintFrameTexture.getSize().x > 0 && !m_hintFrameSprites.empty()) {
+        const float frameTexOriginalWidth = static_cast<float>(m_hintFrameTexture.getSize().x);
+        const float frameTexOriginalHeight = static_cast<float>(m_hintFrameTexture.getSize().y);
 
-            float targetPanelWidth = HINT_ZONE_RECT_DESIGN.size.x * 0.98f;
-            float panelScale = targetPanelWidth / panelOriginalWidth;
-            float scaledPanelWidth = panelOriginalWidth * panelScale;
-            float scaledPanelHeight = panelOriginalHeight * panelScale;
+        const sf::FloatRect hintZone = HINT_ZONE_RECT_DESIGN;
+        float currentY = hintZone.position.y;
 
-            float panelX = HINT_ZONE_RECT_DESIGN.position.x + (HINT_ZONE_RECT_DESIGN.size.x - scaledPanelWidth) / 2.f;
-            float panelY = HINT_ZONE_RECT_DESIGN.position.y + (HINT_ZONE_RECT_DESIGN.size.y - scaledPanelHeight) / 2.f;
+        // --- Position "Points: XXX" Text ---
+        const float pointsTextPaddingTop = S(this, 5.f);
+        const float pointsTextPaddingBottom = S(this, 10.f);
+        unsigned int pointsFontSize = static_cast<unsigned int>(S(this, 20.f));
 
-            m_newHintPanelSpr->setScale(sf::Vector2f(panelScale, panelScale));
-            m_newHintPanelSpr->setPosition(sf::Vector2f(panelX, panelY));
+        if (m_hintPointsText) {
+            m_hintPointsText->setCharacterSize(pointsFontSize);
+            m_hintPointsText->setFillColor(sf::Color(230, 230, 230, 220));
+            sf::FloatRect ptBounds = m_hintPointsText->getLocalBounds();
+            float pointsX = hintZone.position.x + (hintZone.size.x - (ptBounds.position.x + ptBounds.size.x)) / 2.f;
+            currentY += pointsTextPaddingTop;
+            m_hintPointsText->setOrigin(sf::Vector2f(ptBounds.position.x, ptBounds.position.y));
+            m_hintPointsText->setPosition(sf::Vector2f(pointsX, currentY));
+            currentY += ptBounds.size.y + ptBounds.position.y + pointsTextPaddingBottom;
+        }
 
-            const float pointsTextRelX = panelOriginalWidth * 0.08f * panelScale;
-            const float pointsTextRelY = panelOriginalHeight * 0.1f * panelScale;
-            const float indicatorSize = panelOriginalHeight * 0.08f * panelScale;
-            const float indicatorRelX = panelOriginalWidth * 0.52f * panelScale;
-            const float firstIndicatorRelY = panelOriginalHeight * 0.28f * panelScale;
-            const float indicatorVerticalSpacing = panelOriginalHeight * 0.165f * panelScale;
-            const float textLabelOffsetX = indicatorSize * 0.7f;
+        // --- Calculate dimensions for individual hint frames (wider) ---
+        const int numHintFrames = 4;
+        const float verticalSpacingBetweenFrames = S(this, 6.f);
 
-            const unsigned int labelFontSizeBase = 16;
-            const unsigned int costFontSizeBase = 13;
-            const unsigned int pointsFontSizeBase = 18;
+        // ** CHANGE: Reduce side padding to make frames wider **
+        const float sidePaddingForFrames = hintZone.size.x * 0.03f; // Reduced from 0.05f to make frames wider
 
-            if (m_hintPointsText) {
-                unsigned int scaledPointsFontSize = static_cast<unsigned int>(S(this, static_cast<float>(pointsFontSizeBase)) * panelScale * 1.1f);
-                m_hintPointsText->setCharacterSize(scaledPointsFontSize);
-                m_hintPointsText->setFillColor(sf::Color(230, 230, 230));
-                sf::FloatRect ptBounds_hint = m_hintPointsText->getLocalBounds(); // Renamed local
-                m_hintPointsText->setOrigin(sf::Vector2f(ptBounds_hint.position.x, ptBounds_hint.position.y));
-                m_hintPointsText->setPosition(sf::Vector2f(panelX + pointsTextRelX, panelY + pointsTextRelY));
+        float availableWidthForFrame = hintZone.size.x - 2 * sidePaddingForFrames;
+        float panelScale = availableWidthForFrame / frameTexOriginalWidth;
+
+        float scaledFrameHeight = frameTexOriginalHeight * panelScale;
+        float scaledFrameWidth = frameTexOriginalWidth * panelScale;
+
+        float totalRequiredStackHeight = (numHintFrames * scaledFrameHeight) + ((numHintFrames - 1) * verticalSpacingBetweenFrames);
+        float availableTotalHeightForFrames = hintZone.position.y + hintZone.size.y - currentY;
+
+        if (totalRequiredStackHeight > availableTotalHeightForFrames && availableTotalHeightForFrames > 0) {
+            float newScaledFrameHeight = (availableTotalHeightForFrames - ((numHintFrames - 1) * verticalSpacingBetweenFrames)) / numHintFrames;
+            if (newScaledFrameHeight < S(this, 20.f)) newScaledFrameHeight = S(this, 20.f);
+            panelScale = newScaledFrameHeight / frameTexOriginalHeight;
+            scaledFrameWidth = frameTexOriginalWidth * panelScale;
+            scaledFrameHeight = newScaledFrameHeight;
+        }
+
+        // Relative positions/sizes of elements ON the HintButtonFrame.png
+        const float lightLensCenterXRel = 0.15f;  // Your tweaked value
+        const float lightLensCenterYRel = 0.46f;  // Your tweaked value
+        const float lightDiameterRel = 0.55f;     // ** CHANGE: Slightly larger light diameter **
+
+        // ** CHANGE: Adjust label start X and font size **
+        const float labelStartXRel = 0.33f;   // May need to adjust if light is much bigger or text wider
+        const float labelCenterYRel = 0.50f;
+        const unsigned int labelBaseFontSizeOnFrame = 75; // ** INCREASED FONT SIZE (relative to frame art) **
+
+
+        std::vector<std::unique_ptr<sf::Text>*> hintLabelTexts = {
+            &m_hintRevealFirstButtonText, &m_hintRevealRandomButtonText,
+            &m_hintRevealLastButtonText, &m_hintRevealFirstOfEachButtonText
+        };
+
+        for (int i = 0; i < numHintFrames; ++i) {
+            if (i >= m_hintFrameSprites.size() || !m_hintFrameSprites[i]) continue;
+
+            float frameX = hintZone.position.x + (hintZone.size.x - scaledFrameWidth) / 2.f;
+            m_hintFrameSprites[i]->setScale(sf::Vector2f(panelScale, panelScale));
+            m_hintFrameSprites[i]->setPosition(sf::Vector2f(frameX, currentY));
+
+            if (i < m_hintClickableRegions.size()) {
+                m_hintClickableRegions[i] = sf::FloatRect({ frameX, currentY }, { scaledFrameWidth, scaledFrameHeight });
             }
 
-            std::vector<std::unique_ptr<sf::Text>*> hintLabelsPtrs = {
-                &m_hintRevealFirstButtonText, &m_hintRevealRandomButtonText,
-                &m_hintRevealLastButtonText, &m_hintRevealFirstOfEachButtonText
-            };
-            std::vector<std::unique_ptr<sf::Text>*> hintCostsPtrs = {
-                &m_hintRevealFirstCostText, &m_hintRevealRandomCostText,
-                &m_hintRevealLastCostText, &m_hintRevealFirstOfEachCostText
-            };
+            sf::Vector2f frameTopLeftPos = m_hintFrameSprites[i]->getPosition();
 
-            for (int i = 0; i < 4; ++i) {
-                if (i < m_hintIndicatorLightSprs.size() && m_hintIndicatorLightSprs[i]) {
-                    const sf::Texture* lightTex = &m_hintIndicatorLightSprs[i]->getTexture();
-                    if (lightTex && lightTex->getSize().x > 0) {
-                        float lightOriginalTexSize = static_cast<float>(lightTex->getSize().x);
-                        float lightSpriteScale = indicatorSize / lightOriginalTexSize;
-                        m_hintIndicatorLightSprs[i]->setScale(sf::Vector2f(lightSpriteScale, lightSpriteScale));
-                        m_hintIndicatorLightSprs[i]->setOrigin(sf::Vector2f(lightOriginalTexSize / 2.f, lightOriginalTexSize / 2.f));
+            // Light Indicator
+            if (i < m_hintIndicatorLightSprs.size() && m_hintIndicatorLightSprs[i]) {
+                const sf::Texture* lightTex = &m_hintIndicatorLightSprs[i]->getTexture();
+                if (lightTex && lightTex->getSize().x > 0) {
+                    float lightOriginalTexSize = static_cast<float>(lightTex->getSize().x);
+                    float desiredLightScreenDiameter = frameTexOriginalHeight * lightDiameterRel * panelScale;
+                    float lightSpriteScale = desiredLightScreenDiameter / lightOriginalTexSize;
 
-                        float indicatorCenterX = panelX + indicatorRelX + indicatorSize / 2.f;
-                        float indicatorCenterY = panelY + firstIndicatorRelY + (i * indicatorVerticalSpacing) + indicatorSize / 2.f;
-                        m_hintIndicatorLightSprs[i]->setPosition(sf::Vector2f(indicatorCenterX, indicatorCenterY));
+                    m_hintIndicatorLightSprs[i]->setScale(sf::Vector2f(lightSpriteScale, lightSpriteScale));
+                    m_hintIndicatorLightSprs[i]->setOrigin(sf::Vector2f(lightOriginalTexSize / 2.f, lightOriginalTexSize / 2.f));
 
-                        sf::Text* currentLabel = hintLabelsPtrs[i]->get();
-                        sf::Text* currentCost = hintCostsPtrs[i]->get();
-
-                        if (currentLabel) {
-                            unsigned int scaledLabelSize = static_cast<unsigned int>(S(this, static_cast<float>(labelFontSizeBase)) * panelScale);
-                            currentLabel->setCharacterSize(scaledLabelSize);
-                            currentLabel->setFillColor(sf::Color(210, 210, 210));
-                            sf::FloatRect labelBounds_hint_loop = currentLabel->getLocalBounds();
-                            currentLabel->setOrigin(sf::Vector2f(labelBounds_hint_loop.position.x, labelBounds_hint_loop.position.y + labelBounds_hint_loop.size.y / 2.f));
-                            currentLabel->setPosition(sf::Vector2f(indicatorCenterX + textLabelOffsetX, indicatorCenterY));
-                        }
-
-                        if (currentCost) {
-                            unsigned int scaledCostSize = static_cast<unsigned int>(S(this, static_cast<float>(costFontSizeBase)) * panelScale);
-                            currentCost->setCharacterSize(scaledCostSize);
-                            currentCost->setFillColor(sf::Color(190, 190, 190));
-                            sf::FloatRect costBounds_hint_loop = currentCost->getLocalBounds();
-                            currentCost->setOrigin(sf::Vector2f(costBounds_hint_loop.position.x, costBounds_hint_loop.position.y + costBounds_hint_loop.size.y / 2.f));
-                            float costXPos = panelX + scaledPanelWidth - costBounds_hint_loop.size.x - (panelOriginalWidth * 0.05f * panelScale);
-                            if (currentLabel) {
-                                sf::FloatRect labelGlobalBounds_hint_loop = currentLabel->getGlobalBounds();
-                                costXPos = std::max(labelGlobalBounds_hint_loop.position.x + labelGlobalBounds_hint_loop.size.x + (10.f * panelScale), costXPos);
-                            }
-                            currentCost->setPosition(sf::Vector2f(costXPos, indicatorCenterY));
-                        }
-                        if (i < m_hintClickableRegions.size()) {
-                            float clickX = panelX + indicatorRelX;
-                            float clickY = panelY + firstIndicatorRelY + (i * indicatorVerticalSpacing);
-                            float clickWidth = scaledPanelWidth - indicatorRelX - (panelOriginalWidth * 0.02f * panelScale);
-                            float clickHeight = indicatorVerticalSpacing * 0.95f;
-                            m_hintClickableRegions[i] = sf::FloatRect({ clickX, clickY }, { clickWidth, clickHeight });
-                        }
-                    }
+                    float lightScreenCenterX = frameTopLeftPos.x + (frameTexOriginalWidth * lightLensCenterXRel * panelScale);
+                    float lightScreenCenterY = frameTopLeftPos.y + (frameTexOriginalHeight * lightLensCenterYRel * panelScale);
+                    m_hintIndicatorLightSprs[i]->setPosition(sf::Vector2f(lightScreenCenterX, lightScreenCenterY));
                 }
             }
+
+            // Hint Name (Label) Text
+            if (i < hintLabelTexts.size() && hintLabelTexts[i] && hintLabelTexts[i]->get()) {
+                sf::Text* label = hintLabelTexts[i]->get();
+                unsigned int scaledLabelFontSize = static_cast<unsigned int>(std::max(8.0f, static_cast<float>(labelBaseFontSizeOnFrame) * panelScale));
+                label->setCharacterSize(scaledLabelFontSize);
+                label->setFillColor(sf::Color(220, 220, 220));
+                sf::FloatRect labelBounds = label->getLocalBounds();
+                // Setting origin to vertical center, and horizontal start (position.x of local bounds)
+                label->setOrigin(sf::Vector2f(labelBounds.position.x, labelBounds.position.y + labelBounds.size.y / 2.f));
+
+                float labelScreenX = frameTopLeftPos.x + (frameTexOriginalWidth * labelStartXRel * panelScale);
+                float labelScreenY = frameTopLeftPos.y + (frameTexOriginalHeight * labelCenterYRel * panelScale);
+                label->setPosition(sf::Vector2f(labelScreenX, labelScreenY));
+            }
+            currentY += scaledFrameHeight + verticalSpacingBetweenFrames;
         }
+    }
+    else {
+        if (m_hintFrameTexture.getSize().x == 0) std::cerr << "Hint frame texture not loaded for layout." << std::endl;
+        if (m_hintFrameSprites.empty()) std::cerr << "Hint frame sprites vector is empty for layout." << std::endl;
     }
 
     // --- Update DEBUG Zone Shapes ---
@@ -2542,19 +2562,24 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
 
     // Hint "Points:" Text Display with Flourish
 
-    // --- Render New Hint UI ---
-        if (m_newHintPanelSpr) {
-            m_window.draw(*m_newHintPanelSpr);
+    // --- Render New Stacked Hint UI ---
+    // Draw the hint frames first
+        for (const auto& frameSpr_render : m_hintFrameSprites) { // Renamed local
+            if (frameSpr_render) {
+                m_window.draw(*frameSpr_render);
+            }
         }
+
         if (m_hintPointsText) {
+            // ... (m_hintPointsText drawing with flourish - remains the same as your last working version) ...
             m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
-            sf::Vector2f originalPosition_hintpts = m_hintPointsText->getPosition(); // Renamed local
-            sf::Vector2f originalOrigin_hintpts = m_hintPointsText->getOrigin();     // Renamed local
-            sf::Vector2f originalScale_hintpts = m_hintPointsText->getScale();       // Renamed local
+            sf::Vector2f originalPosition_hintpts = m_hintPointsText->getPosition();
+            sf::Vector2f originalOrigin_hintpts = m_hintPointsText->getOrigin();
+            sf::Vector2f originalScale_hintpts = m_hintPointsText->getScale();
             if (m_hintPointsTextFlourishTimer > 0.f) {
                 float progress_hintpts = (HINT_POINT_TEXT_FLOURISH_DURATION - m_hintPointsTextFlourishTimer) / HINT_POINT_TEXT_FLOURISH_DURATION;
                 float flourishScaleFactor_hintpts = 1.0f + 0.3f * std::sin(progress_hintpts * PI);
-                sf::FloatRect localBounds_hintpts = m_hintPointsText->getLocalBounds(); // SFML3: .position.x, .size.x
+                sf::FloatRect localBounds_hintpts = m_hintPointsText->getLocalBounds();
                 float centerX_hintpts = localBounds_hintpts.position.x + localBounds_hintpts.size.x / 2.f;
                 float centerY_hintpts = localBounds_hintpts.position.y + localBounds_hintpts.size.y / 2.f;
                 m_hintPointsText->setOrigin(sf::Vector2f(centerX_hintpts, centerY_hintpts));
@@ -2569,32 +2594,32 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                 m_hintPointsText->setPosition(originalPosition_hintpts);
             }
         }
-        const int HINT_COSTS_RENDER_ARR[] = { HINT_COST_REVEAL_FIRST, HINT_COST_REVEAL_RANDOM, HINT_COST_REVEAL_LAST, HINT_COST_REVEAL_FIRST_OF_EACH }; // Renamed local
-        std::vector<std::unique_ptr<sf::Text>*> hintLabelsPtrs_render_vec = { // Renamed local
+
+        const int HINT_COSTS_RENDER_DISPLAY[] = { HINT_COST_REVEAL_FIRST, HINT_COST_REVEAL_RANDOM, HINT_COST_REVEAL_LAST, HINT_COST_REVEAL_FIRST_OF_EACH }; // Renamed
+        std::vector<std::unique_ptr<sf::Text>*> hintLabels_render_display = { // Renamed
            &m_hintRevealFirstButtonText, &m_hintRevealRandomButtonText,
            &m_hintRevealLastButtonText, &m_hintRevealFirstOfEachButtonText
         };
-        std::vector<std::unique_ptr<sf::Text>*> hintCostsPtrs_render_vec = { // Renamed local
-            &m_hintRevealFirstCostText, &m_hintRevealRandomCostText,
-            &m_hintRevealLastCostText, &m_hintRevealFirstOfEachCostText
-        };
+        // Cost text pointers vector is removed as they are not drawn
+
         for (int i = 0; i < 4; ++i) {
             if (i < m_hintIndicatorLightSprs.size() && m_hintIndicatorLightSprs[i]) {
-                bool canAfford = (m_hintPoints >= HINT_COSTS_RENDER_ARR[i]);
-                sf::Color lightSpriteColor = canAfford ? sf::Color::White : sf::Color(100, 100, 100, 200);
+                bool canAfford = (m_hintPoints >= HINT_COSTS_RENDER_DISPLAY[i]);
+                sf::Color lightSpriteColor = canAfford ? sf::Color::White : sf::Color(70, 70, 70, 180);
                 m_hintIndicatorLightSprs[i]->setColor(lightSpriteColor);
                 m_window.draw(*m_hintIndicatorLightSprs[i]);
             }
-            sf::Text* currentLabel_render = hintLabelsPtrs_render_vec[i]->get(); // Renamed local
-            sf::Text* currentCost_render = hintCostsPtrs_render_vec[i]->get();   // Renamed local
-            if (currentLabel_render) m_window.draw(*currentLabel_render);
-            if (currentCost_render) {
-                currentCost_render->setString("Cost: " + std::to_string(HINT_COSTS_RENDER_ARR[i]));
-                m_window.draw(*currentCost_render);
+
+            if (i < hintLabels_render_display.size() && hintLabels_render_display[i] && hintLabels_render_display[i]->get()) { // Check pointer and unique_ptr
+                sf::Text* currentLabel_display = hintLabels_render_display[i]->get(); // Renamed
+                m_window.draw(*currentLabel_display);
             }
+     
         }
+
+        // Update hover state for bonus words popup trigger (remains the same, triggered by m_hintPointsText)
         if (m_hintPointsText && m_currentScreen == GameScreen::Playing) {
-            sf::FloatRect hintTextGlobalBounds_render = m_hintPointsText->getGlobalBounds(); // SFML3
+            sf::FloatRect hintTextGlobalBounds_render = m_hintPointsText->getGlobalBounds();
             m_isHoveringHintPointsText = hintTextGlobalBounds_render.contains(mousePos);
         }
         else {
