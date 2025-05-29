@@ -427,7 +427,7 @@ void Game::m_loadResources() {
     m_mainBackgroundTex.setSmooth(true);
 
     // Load scramble button texture
-    if (!m_scrambleTex.loadFromFile("assets/scramble.png")) {
+    if (!m_scrambleTex.loadFromFile("assets/scramble_02.png")) {
         std::cerr << "Error loading scramble texture!" << std::endl;
     }
     else {
@@ -1324,15 +1324,21 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
     // 7. Other UI Element Positions (Scramble, Continue, Guess Display)
     if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) {
-        float h_scramble = S(this, SCRAMBLE_BTN_HEIGHT);
+        // SCRAMBLE_BTN_HEIGHT is the desired height in DESIGN units (e.g., from Constants.h)
+        float desired_design_height = static_cast<float>(SCRAMBLE_BTN_HEIGHT); // Use the raw design height
+
         float texHeight_scramble = static_cast<float>(m_scrambleTex.getSize().y);
         if (texHeight_scramble > 0.1f) {
-            float s_scramble_scale = h_scramble / texHeight_scramble; // Renamed local
+            float s_scramble_scale = desired_design_height / texHeight_scramble;
             m_scrambleSpr->setScale(sf::Vector2f(s_scramble_scale, s_scramble_scale));
         }
-        m_scrambleSpr->setOrigin(sf::Vector2f(0.f, texHeight_scramble / 2.f));
-        m_scrambleSpr->setPosition(sf::Vector2f(m_wheelX + m_visualBgRadius + S(this, SCRAMBLE_BTN_OFFSET_X), // Constants
-            m_wheelY + S(this, SCRAMBLE_BTN_OFFSET_Y)));
+        m_scrambleSpr->setOrigin(sf::Vector2f(0.f, texHeight_scramble / 2.f)); // Origin based on texture
+
+        // Your new positioning code (as you modified it):
+        m_scrambleSpr->setPosition(sf::Vector2f(
+            m_wheelX + SCRAMBLE_BTN_OFFSET_X, 
+            m_wheelY + SCRAMBLE_BTN_OFFSET_Y  
+        ));
     }
 
     if (m_contTxt && m_contBtn.getPointCount() > 0) {
@@ -1451,7 +1457,7 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
         // --- Position "Points: XXX" Text ---
         const float pointsTextPaddingTop = S(this, 5.f);
-        const float pointsTextPaddingBottom = S(this, 10.f);
+        const float pointsTextPaddingBottom = S(this, 5.f);
         unsigned int pointsFontSize = static_cast<unsigned int>(S(this, 20.f));
 
         if (m_hintPointsText) {
@@ -1467,12 +1473,13 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
         // --- Calculate dimensions for individual hint frames (wider) ---
         const int numHintFrames = 4;
-        const float verticalSpacingBetweenFrames = S(this, 6.f);
+        const float verticalSpacingBetweenFrames = 2.f; //S(this, 6.f);
 
         // ** CHANGE: Reduce side padding to make frames wider **
-        const float sidePaddingForFrames = hintZone.size.x * 0.03f; // Reduced from 0.05f to make frames wider
+        const float sidePaddingForFrames = hintZone.size.x * 0.01f; // Reduced from 0.05f to make frames wider
 
-        float availableWidthForFrame = hintZone.size.x - 2 * sidePaddingForFrames;
+//        float availableWidthForFrame = hintZone.size.x - 2 * sidePaddingForFrames;
+        float availableWidthForFrame = hintZone.size.x;
         float panelScale = availableWidthForFrame / frameTexOriginalWidth;
 
         float scaledFrameHeight = frameTexOriginalHeight * panelScale;

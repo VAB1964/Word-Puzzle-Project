@@ -25,8 +25,8 @@ constexpr float UI_SCALE_MODIFIER = 0.75f;
 constexpr float GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK = 0.95f;
 // ******************************
 
-constexpr float SCRAMBLE_BTN_OFFSET_X = 10.f;// Keep as is
-constexpr float SCRAMBLE_BTN_OFFSET_Y = 10.f;// Keep as is
+constexpr float SCRAMBLE_BTN_OFFSET_X = 80.f;// Keep as is
+constexpr float SCRAMBLE_BTN_OFFSET_Y = 125.f;// Keep as is
 constexpr float CONTINUE_BTN_OFFSET_Y = 80.f;
 constexpr float WORD_LENGTH = 5.f; // Or 6.f or 7.f as needed
 constexpr float GRID_SIDE_MARGIN = 5.f;
@@ -90,7 +90,7 @@ const float HINT_POINT_ANIM_SPEED = 1.0f;
 
 // DEBUG: ---- Assuming REF_W = 1000, REF_H = 800 for these example values:
 const sf::FloatRect GRID_ZONE_RECT_DESIGN = { { 90.f,  122.f}, {815.f, 273.f} }; // Large central area for the word grid
-const sf::FloatRect HINT_ZONE_RECT_DESIGN = { { 110.f, 475.f}, {243.f, 245.f} }; // Bottom-left area for hints
+const sf::FloatRect HINT_ZONE_RECT_DESIGN = { { 110.f, 475.f}, {245.f, 245.f} }; // Bottom-left area for hints
 const sf::FloatRect WHEEL_ZONE_RECT_DESIGN = { {374.f, 450.f}, {285.f, 285.f} }; // Bottom-middle for letter wheel
 const sf::FloatRect SCORE_ZONE_RECT_DESIGN = { {660.f, 500.f}, {243.f, 195.f} }; // Bottom-right for score/bonus
 const sf::FloatRect TOP_BAR_ZONE_DESIGN = { { 50.f,  10.f}, {900.f,  30.f} }; // Area for current "Score: XXX" and "1/5"
