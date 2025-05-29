@@ -88,6 +88,21 @@ const float HINT_POINT_ANIM_FONT_SIZE_DESIGN = 20.f;
 const float HINT_POINT_TEXT_FLOURISH_DURATION = 0.5f; // Duration for "Points:" text flourish
 const float HINT_POINT_ANIM_SPEED = 1.0f;
 
+const float POPUP_PADDING_BASE = 12.f;
+const float MAJOR_COL_SPACING_BASE = 10.f;
+const float MINOR_COL_SPACING_BASE = 8.f;
+const float TITLE_BOTTOM_MARGIN_BASE = 6.f; 
+const float WORD_LINE_SPACING_BASE = 5.f;   
+const unsigned int POPUP_WORD_FONT_SIZE_BASE = 14; 
+const unsigned int POPUP_TITLE_FONT_SIZE_BASE = 16; 
+
+const float POPUP_MIN_TEXT_SCALE = 0.50f;       
+const float POPUP_CORNER_RADIUS_BASE = 10.f;
+const int MAX_MINOR_COLS_PER_GROUP = 3;
+
+const float POPUP_MAX_WIDTH_DESIGN_RATIO = 0.8f; // Or your desired ratio
+const float POPUP_MAX_HEIGHT_DESIGN_RATIO = 0.8f;
+
 
 // DEBUG: ---- Assuming REF_W = 1000, REF_H = 800 for these example values:
 const sf::FloatRect GRID_ZONE_RECT_DESIGN = { { 90.f,  122.f}, {815.f, 273.f} }; // Large central area for the word grid
@@ -118,7 +133,7 @@ constexpr float WHEEL_R = 68.f;
 // --- Score Zone Constants ---
 const float SCORE_ZONE_PADDING_X_DESIGN = 15.f;       
 const float SCORE_ZONE_PADDING_Y_DESIGN = 26.f;       
-const float SCORE_LABEL_VALUE_GAP_DESIGN = 10.f;       
+const float SCORE_LABEL_VALUE_GAP_DESIGN = 25.f;       
 const float SCORE_VALUE_BONUS_GAP_DESIGN = 10.f; 
 
 // Font Sizes for Score Zone (in design units, will be scaled by S())
