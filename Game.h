@@ -57,6 +57,20 @@ public:
 
 private:
 
+    const std::string HINT_DESC_REVEAL_FIRST = "\nThis hint will reveal the next\navailable letter.";
+    const std::string HINT_DESC_REVEAL_RANDOM = "\nThis hint will reveal one\n random letter for each word.";
+    const std::string HINT_DESC_REVEAL_LAST = "\nThis hint will reveal the last word\n that hasn't been revealed.";
+    const std::string HINT_DESC_REVEAL_FIRST_OF_EACH = "\nThis hint will reveal the first\n unrevealed letter for every word.";
+
+    std::unique_ptr<sf::Text> m_bonusWordsInHintZoneText;
+
+    // --- NEW: Hint Hover Pop-up Elements ---
+    int m_hoveredHintIndex; 
+    RoundedRectangleShape m_hintPopupBackground;
+    std::unique_ptr<sf::Text> m_popupAvailablePointsText;
+    std::unique_ptr<sf::Text> m_popupHintCostText;
+    std::unique_ptr<sf::Text> m_popupHintDescriptionText;
+
     // --- Hint UI New Assets ---
     sf::Texture m_hintFrameTexture; // Texture for the individual hint frame art
     std::vector<std::unique_ptr<sf::Sprite>> m_hintFrameSprites; // Vector of 4 sprites, one for each hint frame
