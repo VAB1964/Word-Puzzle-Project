@@ -156,7 +156,7 @@ Game::Game() :
     m_currentPuzzleIndex(0),
     m_isInSession(false),
     m_uiScale(1.f),
-    m_hintPoints(0),
+    m_hintPoints(999),
     m_scoreFlourishes(),
     m_hintPointAnims(),
     m_hintPointsTextFlourishTimer(0.f),
@@ -175,8 +175,10 @@ Game::Game() :
     m_progressMeterText(nullptr),
     m_mainBackgroundSpr(nullptr),
     m_returnToMenuButtonText(nullptr),
-
-    m_contBtn(sf::Vector2f(200.f, 50.f), 10.f, 10), 
+    m_hintFrameClickAnimTimers(4, 0.f), 
+    m_hintFrameClickColor(sf::Color::Green),
+    m_hintFrameNormalColor(sf::Color::White),
+    m_contBtn(sf::Vector2f(200.f, 50.f), 10.f, 10),
     m_solvedOverlay(sf::Vector2f(100.f, 50.f), 10.f, 10),
     m_scoreBar(sf::Vector2f(100.f, 30.f), 10.f, 10),
     m_guessDisplay_Bg(sf::Vector2f(50.f, 30.f), 5.f, 10),
@@ -427,7 +429,7 @@ void Game::m_loadResources() {
     m_mainBackgroundTex.setSmooth(true);
 
     // Load scramble button texture
-    if (!m_scrambleTex.loadFromFile("assets/scramble_02.png")) {
+    if (!m_scrambleTex.loadFromFile("assets/ScrambleButton.png")) {
         std::cerr << "Error loading scramble texture!" << std::endl;
     }
     else {
@@ -643,6 +645,16 @@ void Game::m_update(sf::Time dt) {
             }),
         m_gridFlourishes.end()
     );
+
+    // --- Update Hint Frame Click Animation Timers ---
+    for (size_t i = 0; i < m_hintFrameClickAnimTimers.size(); ++i) {
+        if (m_hintFrameClickAnimTimers[i] > 0.f) {
+            m_hintFrameClickAnimTimers[i] -= deltaSeconds;
+            if (m_hintFrameClickAnimTimers[i] < 0.f) {
+                m_hintFrameClickAnimTimers[i] = 0.f;
+            }
+        }
+    }
     
     // Update Bonus List Complete Effect 
     m_updateBonusListCompleteEffect(deltaSeconds);
@@ -670,7 +682,7 @@ void Game::m_render() {
     // --- END DRAW NEW MAIN BACKGROUND ---
 
 
-    m_decor.draw(m_window); // Draw background decor first
+    //m_decor.draw(m_window); // Draw background decor first
 
     // Get mouse position once for hover checks within render helpers
     sf::Vector2f mpos = m_window.mapPixelToCoords(sf::Mouse::getPosition(m_window));
@@ -1855,6 +1867,11 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 
             for (int i = 0; i < 4; ++i) {
                 if (i < m_hintClickableRegions.size() && m_hintClickableRegions[i].contains(mp)) {
+
+                    if (i < m_hintFrameClickAnimTimers.size()) {
+                        m_hintFrameClickAnimTimers[i] = HINT_FRAME_CLICK_DURATION;
+                    }
+
                     if (m_hintPoints >= HINT_COSTS_EVENT_ARR[i]) {
                         std::cout << "DEBUG: Clicked Hint " << (i + 1) << " (Type: " << static_cast<int>(HINT_TYPES_EVENT_ARR[i]) << ")" << std::endl;
                         m_hintPoints -= HINT_COSTS_EVENT_ARR[i];
@@ -2162,6 +2179,11 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 
             for (int i = 0; i < 4; ++i) {
                 if (i < m_hintClickableRegions.size() && m_hintClickableRegions[i].contains(mp)) {
+
+                    if (i < m_hintFrameClickAnimTimers.size()) {
+                        m_hintFrameClickAnimTimers[i] = HINT_FRAME_CLICK_DURATION;
+                    }
+
                     if (m_hintPoints >= HINT_COSTS_EVENT_ARR_LOCAL[i]) {
                         m_hintPoints -= HINT_COSTS_EVENT_ARR_LOCAL[i];
                         if (m_hintPointsText) m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints)); // Update display
@@ -2660,9 +2682,15 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
 
     // --- Render New Stacked Hint UI ---
     // Draw the hint frames first
-        for (const auto& frameSpr_render : m_hintFrameSprites) { // Renamed local
-            if (frameSpr_render) {
-                m_window.draw(*frameSpr_render);
+        for (size_t i = 0; i < m_hintFrameSprites.size(); ++i) {
+            if (m_hintFrameSprites[i]) { // Check if the sprite unique_ptr is valid
+                if (i < m_hintFrameClickAnimTimers.size() && m_hintFrameClickAnimTimers[i] > 0.f) {
+                    m_hintFrameSprites[i]->setColor(m_hintFrameClickColor);
+                }
+                else {
+                    m_hintFrameSprites[i]->setColor(m_hintFrameNormalColor);
+                }
+                m_window.draw(*m_hintFrameSprites[i]);
             }
         }
 

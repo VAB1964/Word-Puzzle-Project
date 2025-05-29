@@ -90,7 +90,7 @@ private:
     GameScreen m_currentScreen;
     GState m_gameState;
     int m_hintPoints;
-    // ... (and so on for all existing member variables)
+    
 
     // Example of keeping existing relevant members:
     float m_letterPositionRadius;
@@ -152,6 +152,12 @@ private:
     std::vector<ScoreParticleAnim> m_scoreAnims;
     std::vector< ScoreParticleAnim> bonusAnim;
     DecorLayer m_decor;
+
+    // --- Hint Button Click Feedback ---
+    std::vector<float> m_hintFrameClickAnimTimers; 
+    const float HINT_FRAME_CLICK_DURATION = 0.15f; 
+    sf::Color m_hintFrameClickColor;               
+    sf::Color m_hintFrameNormalColor;
 
     std::vector<ConfettiParticle> m_confetti;
     std::vector<Balloon> m_balloons;
