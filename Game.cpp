@@ -156,7 +156,7 @@ Game::Game() :
     m_currentPuzzleIndex(0),
     m_isInSession(false),
     m_uiScale(1.f),
-    m_hintPoints(999),
+    m_hintPoints(0),
     m_scoreFlourishes(),
     m_hintPointAnims(),
     m_hintPointsTextFlourishTimer(0.f),
@@ -3836,13 +3836,12 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
     // --- 2. Determine Internal Text Scale based on Design Units ---
     const sf::FloatRect gridZone = GRID_ZONE_RECT_DESIGN;
 
-    // These must be defined in Constants.h (as per Step 1 of my response)
     float maxPopupContentWidthDU = gridZone.size.x * POPUP_MAX_WIDTH_DESIGN_RATIO - 2 * POPUP_PADDING_BASE;
     float maxPopupContentHeightDU = gridZone.size.y * POPUP_MAX_HEIGHT_DESIGN_RATIO - 2 * POPUP_PADDING_BASE;
 
     float estimatedTotalContentWidthDU = 0.f;
     float estimatedMaxGroupContentHeightDU = 0.f;
-    sf::Text measureText(m_font, "", 10);
+    sf::Text measureText(m_font, "", 10); // Primitive type for character size
 
     bool firstMajorColEst = true;
     for (const auto& pair_len_words : bonusWordsByLength) {
@@ -3861,16 +3860,22 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
 
         float maxWordWidthInGroupEst = 0.f;
         float currentMinorColHeightEst = 0.f;
-        int numWordsInLongestMinorCol = (words.size() + MAX_MINOR_COLS_PER_GROUP - 1) / std::max(1, MAX_MINOR_COLS_PER_GROUP);
+        // Estimate height of one minor column (if all words were in it, or up to a reasonable limit)
+        int wordsInLongestMinorColEst = words.size(); // Simplified: assume one column for height estimation for now
+        // or more realistically: (words.size() + MAX_MINOR_COLS_PER_GROUP -1) / MAX_MINOR_COLS_PER_GROUP if trying to average early
 
-        for (int k = 0; k < numWordsInLongestMinorCol; ++k) {
-            measureText.setString("*******");
+        for (int k = 0; k < wordsInLongestMinorColEst; ++k) {
+            if (k >= words.size()) break; // if estimation is too large
+            // Use a representative string for estimation (e.g., all '*' or an actual word if available)
+            std::string est_disp = std::string(words[k].text.length(), '*');
+            measureText.setString(est_disp); // Use estimated display
             measureText.setCharacterSize(POPUP_WORD_FONT_SIZE_BASE);
             sf::FloatRect wordB = measureText.getLocalBounds();
-            if (k > 0) currentMinorColHeightEst += WORD_LINE_SPACING_BASE;
+            if (k > 0 && currentMinorColHeightEst > 0) currentMinorColHeightEst += WORD_LINE_SPACING_BASE;
             currentMinorColHeightEst += (wordB.position.y + wordB.size.y);
         }
         currentGroupHeightEst += currentMinorColHeightEst;
+
 
         for (const auto& wordInfo : words) {
             std::string tempDisp = std::string(wordInfo.text.length(), '*');
@@ -3879,6 +3884,7 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
             sf::FloatRect wordB_Est = measureText.getLocalBounds();
             maxWordWidthInGroupEst = std::max(maxWordWidthInGroupEst, wordB_Est.position.x + wordB_Est.size.x);
         }
+        // Estimate width based on potential number of columns
         float minorColsTotalWidthEst = static_cast<float>(MAX_MINOR_COLS_PER_GROUP) * maxWordWidthInGroupEst +
             (MAX_MINOR_COLS_PER_GROUP > 1 ? static_cast<float>(MAX_MINOR_COLS_PER_GROUP - 1) * MINOR_COL_SPACING_BASE : 0.f);
         currentGroupWidthEst = std::max(currentGroupWidthEst, minorColsTotalWidthEst);
@@ -3903,7 +3909,7 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
     const float actualTitleBottomMarginDU = TITLE_BOTTOM_MARGIN_BASE * textRenderScale;
     const float actualWordLineSpacingDU = WORD_LINE_SPACING_BASE * textRenderScale;
 
-    std::vector<MajorGroupRenderData> majorGroupsData; // Now correctly typed
+    std::vector<MajorGroupRenderData> majorGroupsData;
     float finalActualContentWidthDU = 0.f;
     float finalActualContentHeightDU = 0.f;
 
@@ -3916,7 +3922,7 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
         if (!firstMajorColDraw) finalActualContentWidthDU += actualMajorColSpacingDU;
         firstMajorColDraw = false;
 
-        MajorGroupRenderData currentGroup; // Now correctly typed
+        MajorGroupRenderData currentGroup;
         currentGroup.title = std::to_string(length) + "-Letter Words:";
         measureText.setString(currentGroup.title);
         measureText.setCharacterSize(finalTitleFontSizeDU);
@@ -3938,43 +3944,96 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
             maxWordTextWidthThisGroupDU = std::max(maxWordTextWidthThisGroupDU, wordB_DU.position.x + wordB_DU.size.x);
         }
 
+        // Determine numMinorCols
         int numMinorCols = 1;
         float totalWordListHeightForDist = 0;
         for (size_t i = 0; i < wordsToDistribute.size(); ++i) {
             totalWordListHeightForDist += wordsToDistribute[i].height;
             if (i < wordsToDistribute.size() - 1) totalWordListHeightForDist += actualWordLineSpacingDU;
         }
-        float maxMinorColContentHeightLimitDU = maxPopupContentHeightDU - (currentGroup.titleSize.y + actualTitleBottomMarginDU);
-        if (totalWordListHeightForDist > maxMinorColContentHeightLimitDU && wordsToDistribute.size() > 1) {
+        float currentMaxMinorColContentHeightLimitDU = maxPopupContentHeightDU - (currentGroup.titleSize.y + actualTitleBottomMarginDU);
+        if (currentMaxMinorColContentHeightLimitDU <= 0) currentMaxMinorColContentHeightLimitDU = finalWordFontSizeDU * 3; // Small fallback
+
+        if (totalWordListHeightForDist > currentMaxMinorColContentHeightLimitDU && wordsToDistribute.size() > 1) {
             for (int tryMinor = 2; tryMinor <= MAX_MINOR_COLS_PER_GROUP; ++tryMinor) {
-                if ((totalWordListHeightForDist / static_cast<float>(tryMinor)) < maxMinorColContentHeightLimitDU) { numMinorCols = tryMinor; break; }
+                if ((totalWordListHeightForDist / static_cast<float>(tryMinor)) + (finalWordFontSizeDU * 0.5f) < currentMaxMinorColContentHeightLimitDU) { // Add some buffer
+                    numMinorCols = tryMinor;
+                    break;
+                }
                 if (tryMinor == MAX_MINOR_COLS_PER_GROUP) numMinorCols = MAX_MINOR_COLS_PER_GROUP;
             }
         }
+
         currentGroup.minorColumns.resize(numMinorCols);
         std::vector<float> minorColumnHeightsDU(numMinorCols, 0.f);
-        for (size_t i = 0; i < wordsToDistribute.size(); ++i) {
-            int targetCol = i % numMinorCols;
-            if (minorColumnHeightsDU[targetCol] > 0.f) minorColumnHeightsDU[targetCol] += actualWordLineSpacingDU;
-            minorColumnHeightsDU[targetCol] += wordsToDistribute[i].height;
-            currentGroup.minorColumns[targetCol].push_back(wordsToDistribute[i]);
+
+        // Distribute words: Fill down one column, then move to the next.
+        int currentWordListIndex = 0;
+        for (int colIdx = 0; colIdx < numMinorCols; ++colIdx) {
+            int wordsRemainingInList = wordsToDistribute.size() - currentWordListIndex;
+            int colsRemainingToFill = numMinorCols - colIdx;
+            if (colsRemainingToFill <= 0) break;
+
+            int wordsToPlaceInThisColumn = (wordsRemainingInList + colsRemainingToFill - 1) / colsRemainingToFill;
+
+            for (int k = 0; k < wordsToPlaceInThisColumn; ++k) {
+                if (currentWordListIndex >= wordsToDistribute.size()) {
+                    break;
+                }
+
+                const auto& wordItem = wordsToDistribute[currentWordListIndex];
+
+                // Height check for this specific column to avoid overflow if calculation wasn't perfect
+                float prospectiveHeightOfWord = wordItem.height;
+                if (minorColumnHeightsDU[colIdx] > 0.f) prospectiveHeightOfWord += actualWordLineSpacingDU;
+
+                if (minorColumnHeightsDU[colIdx] + prospectiveHeightOfWord > currentMaxMinorColContentHeightLimitDU &&
+                    !currentGroup.minorColumns[colIdx].empty() && // If column already has items
+                    colIdx < numMinorCols - 1) { // And it's not the last allowed column
+                    // This word would make current column too tall, try to move to next column
+                    // This check should ideally not be hit if numMinorCols is well-calculated,
+                    // but acts as a safeguard.
+                    break; // Break from adding words to *this* column, outer loop will move to next colIdx
+                }
+
+                if (minorColumnHeightsDU[colIdx] > 0.f) {
+                    minorColumnHeightsDU[colIdx] += actualWordLineSpacingDU;
+                }
+                minorColumnHeightsDU[colIdx] += wordItem.height;
+                currentGroup.minorColumns[colIdx].push_back(wordItem);
+                currentWordListIndex++;
+            }
         }
+        // If any words remain undistributed (e.g. due to aggressive height check break), put them in the last column.
+        // This is a fallback; ideally, numMinorCols and wordsToPlaceInThisColumn handle it.
+        while (currentWordListIndex < wordsToDistribute.size() && numMinorCols > 0) {
+            const auto& wordItem = wordsToDistribute[currentWordListIndex];
+            int lastColIdx = numMinorCols - 1;
+            if (minorColumnHeightsDU[lastColIdx] > 0.f) {
+                minorColumnHeightsDU[lastColIdx] += actualWordLineSpacingDU;
+            }
+            minorColumnHeightsDU[lastColIdx] += wordItem.height;
+            currentGroup.minorColumns[lastColIdx].push_back(wordItem);
+            currentWordListIndex++;
+        }
+
+
         float thisGroupMinorColsWidthDU = static_cast<float>(numMinorCols) * maxWordTextWidthThisGroupDU + (numMinorCols > 1 ? static_cast<float>(numMinorCols - 1) * actualMinorColSpacingDU : 0.f);
-        currentGroup.totalWidth = std::max(currentGroup.titleSize.x, thisGroupMinorColsWidthDU); // std::max with floats
+        currentGroup.totalWidth = std::max(currentGroup.titleSize.x, thisGroupMinorColsWidthDU);
         float maxActualMinorColH_DU = 0.f;
         for (float h : minorColumnHeightsDU) maxActualMinorColH_DU = std::max(maxActualMinorColH_DU, h);
         currentGroup.totalHeight += maxActualMinorColH_DU;
 
         majorGroupsData.push_back(currentGroup);
         finalActualContentWidthDU += currentGroup.totalWidth;
-        finalActualContentHeightDU = std::max(finalActualContentHeightDU, currentGroup.totalHeight); // std::max with floats
+        finalActualContentHeightDU = std::max(finalActualContentHeightDU, currentGroup.totalHeight);
     }
 
     float finalPopupWidthDU = finalActualContentWidthDU + 2 * POPUP_PADDING_BASE;
     float finalPopupHeightDU = finalActualContentHeightDU + 2 * POPUP_PADDING_BASE;
 
-    finalPopupWidthDU = std::min(finalPopupWidthDU, gridZone.size.x * POPUP_MAX_WIDTH_DESIGN_RATIO);     // std::min with floats
-    finalPopupHeightDU = std::min(finalPopupHeightDU, gridZone.size.y * POPUP_MAX_HEIGHT_DESIGN_RATIO);  // std::min with floats
+    finalPopupWidthDU = std::min(finalPopupWidthDU, gridZone.size.x * POPUP_MAX_WIDTH_DESIGN_RATIO);
+    finalPopupHeightDU = std::min(finalPopupHeightDU, gridZone.size.y * POPUP_MAX_HEIGHT_DESIGN_RATIO);
 
     float popupX_DU = gridZone.position.x + (gridZone.size.x - finalPopupWidthDU) / 2.f;
     float popupY_DU = gridZone.position.y + (gridZone.size.y - finalPopupHeightDU) / 2.f;
@@ -3986,11 +4045,11 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
     popupBackground.setOutlineThickness(S(this, 1.5f));
     target.draw(popupBackground);
 
-    sf::Text drawTextObj(m_font, "", 10);
+    sf::Text drawTextObj(m_font, "", 10); // Primitive type for character size
     float currentMajorColX_DU = popupX_DU + POPUP_PADDING_BASE;
 
     for (const auto& group : majorGroupsData) {
-        if (currentMajorColX_DU + group.totalWidth > popupX_DU + finalPopupWidthDU - POPUP_PADDING_BASE + 1.f) break;
+        if (currentMajorColX_DU + group.totalWidth > popupX_DU + finalPopupWidthDU - POPUP_PADDING_BASE + S(this, 1.f)) break; // Added S() for robust comparison
         float currentDrawY_DU = popupY_DU + POPUP_PADDING_BASE;
 
         drawTextObj.setString(group.title);
@@ -4003,19 +4062,24 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
         currentDrawY_DU += group.titleSize.y + actualTitleBottomMarginDU;
 
         float currentMinorColX_DU = currentMajorColX_DU;
-        float maxWordWThisGroupForLayoutDU = 0.f;
-        for (const auto& minorC_loop : group.minorColumns) { // Renamed to avoid conflict if any
-            for (const auto& item_loop : minorC_loop) { // Renamed to avoid conflict if any
-                maxWordWThisGroupForLayoutDU = std::max(maxWordWThisGroupForLayoutDU, item_loop.width); // std::max with floats
+        float maxWordWThisGroupForLayoutDU = 0.f; // Recalculate or use stored maxWordTextWidthThisGroupDU if it was accurate enough
+        // For drawing, it's better to use the actual max width of items in *this group*
+        for (const auto& minorC_loop : group.minorColumns) {
+            for (const auto& item_loop : minorC_loop) {
+                measureText.setString(item_loop.textDisplay); // Measure again with final font size
+                measureText.setCharacterSize(finalWordFontSizeDU);
+                sf::FloatRect b = measureText.getLocalBounds();
+                maxWordWThisGroupForLayoutDU = std::max(maxWordWThisGroupForLayoutDU, b.position.x + b.size.x);
             }
         }
+        if (group.minorColumns.empty()) maxWordWThisGroupForLayoutDU = group.totalWidth; // fallback if no minor cols somehow
 
-        for (const auto& minorCol_data : group.minorColumns) { // Renamed to avoid conflict
+        for (const auto& minorCol_data : group.minorColumns) {
             float minorColDrawY_DU = currentDrawY_DU;
-            if (currentMinorColX_DU + maxWordWThisGroupForLayoutDU > popupX_DU + finalPopupWidthDU - POPUP_PADDING_BASE + 1.f && &minorCol_data != &group.minorColumns[0]) break;
+            if (currentMinorColX_DU + maxWordWThisGroupForLayoutDU > popupX_DU + finalPopupWidthDU - POPUP_PADDING_BASE + S(this, 1.f) && &minorCol_data != &group.minorColumns[0]) break;
 
-            for (const auto& item_data : minorCol_data) { // Renamed to avoid conflict
-                if (minorColDrawY_DU + item_data.height > popupY_DU + finalPopupHeightDU - POPUP_PADDING_BASE + 1.f) break;
+            for (const auto& item_data : minorCol_data) {
+                if (minorColDrawY_DU + item_data.height > popupY_DU + finalPopupHeightDU - POPUP_PADDING_BASE + S(this, 1.f)) break;
                 drawTextObj.setString(item_data.textDisplay);
                 drawTextObj.setCharacterSize(finalWordFontSizeDU);
                 drawTextObj.setFillColor(item_data.color);
