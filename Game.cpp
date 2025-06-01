@@ -1096,7 +1096,6 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     // 2. Define Design Space References
     const float designW = static_cast<float>(REF_W);
     const float designH = static_cast<float>(REF_H);
-    // const sf::Vector2f designCenter = sf::Vector2f(designW / 2.f, designH / 2.f); // Defined in original but not used in direct copy
 
     bool sizeChanged = (windowSize != m_lastLayoutSize);
     if (sizeChanged) {
@@ -1122,61 +1121,78 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         }
     }
 
-    // 3. Position Top Elements (Score Bar, Progress Meter, Return Button)
-    // --- Score Zone Elements ---
-    if (m_scoreLabelText && m_scoreValueText) {
+    // 3. Position Top Elements (Return Button) & Score Zone Elements (Score Texts, Progress Meter)
+
+    // --- Score Zone Elements (including Progress Meter now) ---
+    if (m_scoreLabelText && m_scoreValueText) { // Ensure these core texts exist
         const float zoneX_score = SCORE_ZONE_RECT_DESIGN.position.x;
         const float zoneY_score = SCORE_ZONE_RECT_DESIGN.position.y;
         const float zoneWidth_score = SCORE_ZONE_RECT_DESIGN.size.x;
-        const float scaledPaddingY_score = S(this, SCORE_ZONE_PADDING_Y_DESIGN);
+        const float zoneHeight_score = SCORE_ZONE_RECT_DESIGN.size.y;
+        const float scaledPaddingY_score = S(this, SCORE_ZONE_PADDING_Y_DESIGN); // Padding from top of zone
         const float scaledLabelValueGap_score = S(this, SCORE_LABEL_VALUE_GAP_DESIGN);
 
+        // Position Score Label ("SCORE:")
         m_scoreLabelText->setFont(m_font);
         m_scoreLabelText->setString("SCORE:");
         m_scoreLabelText->setCharacterSize(static_cast<unsigned int>(S(this, SCORE_ZONE_LABEL_FONT_SIZE)));
-        m_scoreLabelText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
+        m_scoreLabelText->setFillColor(GLOWING_TUBE_TEXT_COLOR); // Or your theme color
         sf::FloatRect labelBounds_score = m_scoreLabelText->getLocalBounds();
         m_scoreLabelText->setOrigin(sf::Vector2f(labelBounds_score.position.x + labelBounds_score.size.x / 2.f,
-            labelBounds_score.position.y));
+            labelBounds_score.position.y)); // Origin top-center for x, top for y
         m_scoreLabelText->setPosition(sf::Vector2f(zoneX_score + zoneWidth_score / 2.f,
             zoneY_score + scaledPaddingY_score));
 
+        // Position Score Value (the number)
         m_scoreValueText->setFont(m_font);
         m_scoreValueText->setCharacterSize(static_cast<unsigned int>(S(this, SCORE_ZONE_VALUE_FONT_SIZE)));
-        m_scoreValueText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
-        // String is set in render, so getLocalBounds for origin might be tricky here if string changes width a lot.
-        // For now, assume it's handled by re-centering in render or that this initial origin is okay.
+        m_scoreValueText->setFillColor(GLOWING_TUBE_TEXT_COLOR); // Or your theme color
+        // Set a representative string for accurate bounds if string changes width significantly.
+        // If scoreValueText->setString happens in render, this bounds might not be perfect for all scores.
+        m_scoreValueText->setString("000000"); // Max possible score string for width
         sf::FloatRect valueBounds_score = m_scoreValueText->getLocalBounds();
         m_scoreValueText->setOrigin(sf::Vector2f(valueBounds_score.position.x + valueBounds_score.size.x / 2.f,
-            valueBounds_score.position.y));
+            valueBounds_score.position.y)); // Origin top-center for x, top for y
+
+        float scoreLabelBottomY = m_scoreLabelText->getPosition().y - m_scoreLabelText->getOrigin().y + labelBounds_score.size.y;
         m_scoreValueText->setPosition(sf::Vector2f(zoneX_score + zoneWidth_score / 2.f,
-            m_scoreLabelText->getPosition().y +
-            (labelBounds_score.position.y + labelBounds_score.size.y) -
-            m_scoreLabelText->getOrigin().y +
-            scaledLabelValueGap_score));
-    }
-    // --- Progress Meter ---
-    if (m_progressMeterBg.getPointCount() > 0 && m_progressMeterFill.getPointCount() > 0) {
-        const float meterWidth_prog = S(this, TOP_BAR_ZONE_DESIGN.size.x * 0.4f);
-        const float meterHeight_prog = S(this, PROGRESS_METER_HEIGHT_DESIGN);
-        m_progressMeterBg.setSize(sf::Vector2f(meterWidth_prog, meterHeight_prog));
-        m_progressMeterBg.setOrigin(sf::Vector2f(meterWidth_prog / 2.f, meterHeight_prog / 2.f));
-        m_progressMeterBg.setPosition(sf::Vector2f(
-            TOP_BAR_ZONE_DESIGN.position.x + TOP_BAR_ZONE_DESIGN.size.x / 2.f,
-            TOP_BAR_ZONE_DESIGN.position.y + TOP_BAR_ZONE_DESIGN.size.y / 2.f
-        ));
-        m_progressMeterFill.setSize(sf::Vector2f(0.f, meterHeight_prog));
-        m_progressMeterFill.setOrigin(sf::Vector2f(0.f, meterHeight_prog / 2.f));
-        m_progressMeterFill.setPosition(sf::Vector2f(
-            m_progressMeterBg.getPosition().x - meterWidth_prog / 2.f,
-            m_progressMeterBg.getPosition().y
-        ));
-        if (m_progressMeterText) { // Text positioning is usually in render to update string
-            m_progressMeterText->setCharacterSize(static_cast<unsigned int>(S(this, 16.f))); // Example size
-            // Centering logic would be similar to other texts, typically after string is set
+            scoreLabelBottomY + scaledLabelValueGap_score));
+
+
+        // --- Progress Meter (Moved to Score Zone) ---
+        if (m_progressMeterBg.getPointCount() > 0 && m_progressMeterFill.getPointCount() > 0) { // m_isInSession check is in render
+            // Define some padding values (these could be constants from Constants.h)
+            // Example: const float PROGRESS_METER_PADDING_FROM_BOTTOM_SCORE_ZONE_DESIGN = S(this, 10.f); 
+            // Example: const float PROGRESS_METER_SIDE_PADDING_IN_SCORE_ZONE_DESIGN = S(this, 10.f);
+            const float PROGRESS_METER_PADDING_FROM_BOTTOM_SCORE_ZONE_DESIGN = 40.f; // Using a small value for now
+            const float PROGRESS_METER_SIDE_PADDING_IN_SCORE_ZONE_DESIGN = 45.f; // Using a small value
+
+
+            const float meterHeight_prog = S(this, PROGRESS_METER_HEIGHT_DESIGN);
+            const float meterWidth_prog_new = zoneWidth_score - 2 * PROGRESS_METER_SIDE_PADDING_IN_SCORE_ZONE_DESIGN;
+
+            m_progressMeterBg.setSize(sf::Vector2f(std::max(0.f, meterWidth_prog_new), meterHeight_prog)); // Ensure width isn't negative
+            m_progressMeterBg.setOrigin(sf::Vector2f(m_progressMeterBg.getSize().x / 2.f, m_progressMeterBg.getSize().y / 2.f)); // Center origin
+
+            float meterBgX = zoneX_score + zoneWidth_score / 2.f; // Center X in score zone
+            float meterBgY = zoneY_score + zoneHeight_score - PROGRESS_METER_PADDING_FROM_BOTTOM_SCORE_ZONE_DESIGN - meterHeight_prog / 2.f; // Position near bottom
+            m_progressMeterBg.setPosition(sf::Vector2f(meterBgX, meterBgY));
+
+            m_progressMeterFill.setSize(sf::Vector2f(0.f, meterHeight_prog)); // Width will be set in render based on progress
+            m_progressMeterFill.setOrigin(sf::Vector2f(0.f, meterHeight_prog / 2.f)); // Origin left-center
+            m_progressMeterFill.setPosition(sf::Vector2f(
+                m_progressMeterBg.getPosition().x - m_progressMeterBg.getSize().x / 2.f, // Align left edge with bg's left edge
+                m_progressMeterBg.getPosition().y
+            ));
+
+            if (m_progressMeterText) {
+                m_progressMeterText->setCharacterSize(static_cast<unsigned int>(8.f)); // Example base size for layout
+                // Centering logic (centerTextOnShape_General) is handled in m_renderGameScreen after string is set
+            }
         }
     }
-    // --- Return to Menu Button ---
+
+    // --- Return to Menu Button (remains in Top Bar zone for this example) ---
     if (m_returnToMenuButtonShape.getPointCount() > 0 && m_returnToMenuButtonText) {
         const float btnWidth_return = S(this, RETURN_BTN_WIDTH_DESIGN);
         const float btnHeight_return = S(this, RETURN_BTN_HEIGHT_DESIGN);
@@ -1196,9 +1212,9 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     const float zoneInnerY_grid = GRID_ZONE_RECT_DESIGN.position.y + GRID_ZONE_PADDING_Y_DESIGN;
     const float zoneInnerWidth_grid = GRID_ZONE_RECT_DESIGN.size.x - 2 * GRID_ZONE_PADDING_X_DESIGN;
     const float zoneInnerHeight_grid = GRID_ZONE_RECT_DESIGN.size.y - 2 * GRID_ZONE_PADDING_Y_DESIGN;
-    float actualGridFinalHeight = 0.f; // To be calculated
+    float actualGridFinalHeight = 0.f;
 
-    m_gridStartY = zoneInnerY_grid; // Initial value, might be adjusted by vertical centering
+    m_gridStartY = zoneInnerY_grid;
     int numCols = 1;
     int maxRowsPerCol = m_sorted.empty() ? 1 : static_cast<int>(m_sorted.size());
     m_wordCol.clear(); m_wordRow.clear(); m_colMaxLen.clear(); m_colXOffset.clear();
@@ -1224,7 +1240,7 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         }
         int chosenCols = narrowestOverallCols;
         int chosenRows = narrowestOverallRows;
-        const int MAX_ROWS_LIMIT_GRID = 5; // Using unique name from original
+        const int MAX_ROWS_LIMIT_GRID = 5;
         if (chosenRows > MAX_ROWS_LIMIT_GRID) {
             chosenRows = MAX_ROWS_LIMIT_GRID;
             chosenCols = (static_cast<int>(m_sorted.size()) + chosenRows - 1) / chosenRows;
@@ -1264,7 +1280,6 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
         if (sizeChanged) {
             std::cout << "  GRID ZONE: Inner W=" << zoneInnerWidth_grid << ", Inner H=" << zoneInnerHeight_grid << std::endl;
-            // ... other grid logging
         }
 
         const float st_final = TILE_SIZE * gridElementsScaleFactor;
@@ -1298,7 +1313,6 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         m_wordCol.resize(m_sorted.size()); m_wordRow.resize(m_sorted.size());
         for (size_t w = 0; w < m_sorted.size(); ++w) { int c = static_cast<int>(w) / maxRowsPerCol; int r = static_cast<int>(w) % maxRowsPerCol; if (c >= numCols) c = numCols - 1; m_wordCol[w] = c; m_wordRow[w] = r; }
         m_currentGridLayoutScale = gridElementsScaleFactor;
-        // actualGridFinalHeight = static_cast<float>(maxRowsPerCol) * stph_final - (maxRowsPerCol > 0 ? sp_final : 0.f); // Recalculate just in case, though should be same
     }
     else {
         m_gridStartX = zoneInnerX_grid + zoneInnerWidth_grid / 2.f;
@@ -1314,8 +1328,6 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     const float wheelZoneInnerY_val = WHEEL_ZONE_RECT_DESIGN.position.y + WHEEL_ZONE_PADDING_DESIGN;
     const float wheelZoneInnerWidth_val = WHEEL_ZONE_RECT_DESIGN.size.x - 2 * WHEEL_ZONE_PADDING_DESIGN;
     const float wheelZoneInnerHeight_val = WHEEL_ZONE_RECT_DESIGN.size.y - 2 * WHEEL_ZONE_PADDING_DESIGN;
-    // const float scaledGridWheelGap = S(this, GRID_WHEEL_GAP); // From original, ensure GRID_WHEEL_GAP is float
-    // float gridAreaLimitY = calculatedGridActualBottomY + scaledGridWheelGap; // From original
 
     if (sizeChanged) {
         std::cout << "  WHEEL ZONE: Inner X=" << wheelZoneInnerX_val << ", Y=" << wheelZoneInnerY_val
@@ -1325,8 +1337,8 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     m_wheelX = wheelZoneInnerX_val + wheelZoneInnerWidth_val / 2.f;
     m_wheelY = wheelZoneInnerY_val + wheelZoneInnerHeight_val / 2.f;
     float maxRadiusForZone = std::min(wheelZoneInnerWidth_val / 2.f, wheelZoneInnerHeight_val / 2.f);
-    m_currentWheelRadius = std::min(maxRadiusForZone, WHEEL_R); // WHEEL_R from Constants.h
-    float minSensibleRadius = LETTER_R * 1.5f; // LETTER_R from Constants.h
+    m_currentWheelRadius = std::min(maxRadiusForZone, WHEEL_R);
+    float minSensibleRadius = LETTER_R * 1.5f;
     m_currentWheelRadius = std::max(m_currentWheelRadius, minSensibleRadius);
 
     if (sizeChanged) {
@@ -1340,80 +1352,75 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         float radiusBasedOnCount = (PI * m_currentWheelRadius) / static_cast<float>(m_base.size());
         radiusBasedOnCount *= 0.75f;
         float scaleFactorFromDesign = 1.0f;
-        if (WHEEL_R > 0.1f) { // WHEEL_R from Constants
+        if (WHEEL_R > 0.1f) {
             scaleFactorFromDesign = m_currentWheelRadius / WHEEL_R;
         }
-        float radiusBasedOnOverallScale = LETTER_R_BASE_DESIGN * scaleFactorFromDesign; // LETTER_R_BASE_DESIGN from Constants
+        float radiusBasedOnOverallScale = LETTER_R_BASE_DESIGN * scaleFactorFromDesign;
         m_currentLetterRenderRadius = std::min(radiusBasedOnCount, radiusBasedOnOverallScale);
-        float minAbsRadius = m_currentWheelRadius * MIN_LETTER_RADIUS_FACTOR; // Constants
-        float maxAbsRadius = m_currentWheelRadius * MAX_LETTER_RADIUS_FACTOR; // Constants
+        float minAbsRadius = m_currentWheelRadius * MIN_LETTER_RADIUS_FACTOR;
+        float maxAbsRadius = m_currentWheelRadius * MAX_LETTER_RADIUS_FACTOR;
         m_currentLetterRenderRadius = std::clamp(m_currentLetterRenderRadius, minAbsRadius, maxAbsRadius);
-        m_currentLetterRenderRadius = std::max(m_currentLetterRenderRadius, 5.f); // Min practical size
+        m_currentLetterRenderRadius = std::max(m_currentLetterRenderRadius, 5.f);
     }
     else {
-        m_currentLetterRenderRadius = LETTER_R_BASE_DESIGN; // Constant
+        m_currentLetterRenderRadius = LETTER_R_BASE_DESIGN;
     }
-    m_letterPositionRadius = m_currentWheelRadius; // Start with this (from original logic)
+    m_letterPositionRadius = m_currentWheelRadius;
     m_letterPositionRadius = std::max(m_letterPositionRadius, m_currentLetterRenderRadius * 0.5f);
     m_letterPositionRadius = std::max(m_letterPositionRadius, m_currentWheelRadius * 0.3f);
 
     float letterSizeRatioForPadding = (LETTER_R_BASE_DESIGN > 0.01f) ? (m_currentLetterRenderRadius / LETTER_R_BASE_DESIGN) : 1.0f;
     m_visualBgRadius = this->m_letterPositionRadius + m_currentLetterRenderRadius +
-        (WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN * letterSizeRatioForPadding); // Constant
+        (WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN * letterSizeRatioForPadding);
 
     m_wheelLetterRenderPos.resize(m_base.size());
     if (!m_base.empty()) {
         float angleStep = (2.f * PI) / static_cast<float>(m_base.size());
         for (size_t i = 0; i < m_base.size(); ++i) {
-            float ang = static_cast<float>(i) * angleStep - PI / 2.f; // Start at top
+            float ang = static_cast<float>(i) * angleStep - PI / 2.f;
             m_wheelLetterRenderPos[i] = sf::Vector2f(
                 m_wheelX + this->m_letterPositionRadius * std::cos(ang),
                 m_wheelY + this->m_letterPositionRadius * std::sin(ang)
             );
         }
     }
-    if (sizeChanged || true) { // Original had 'true' for constant logging here
+    if (sizeChanged || true) {
         std::cout << "  WHEEL PATH: m_currentWheelRadius = " << m_currentWheelRadius << std::endl;
-        // ... other wheel logging from original
     }
 
     // 7. Other UI Element Positions (Scramble, Continue, Guess Display)
     if (m_scrambleSpr && m_scrambleTex.getSize().y > 0) {
-        // SCRAMBLE_BTN_HEIGHT is the desired height in DESIGN units (e.g., from Constants.h)
-        float desired_design_height = static_cast<float>(SCRAMBLE_BTN_HEIGHT); // Use the raw design height
-
+        float desired_design_height = static_cast<float>(SCRAMBLE_BTN_HEIGHT);
         float texHeight_scramble = static_cast<float>(m_scrambleTex.getSize().y);
         if (texHeight_scramble > 0.1f) {
             float s_scramble_scale = desired_design_height / texHeight_scramble;
             m_scrambleSpr->setScale(sf::Vector2f(s_scramble_scale, s_scramble_scale));
         }
-        m_scrambleSpr->setOrigin(sf::Vector2f(0.f, texHeight_scramble / 2.f)); // Origin based on texture
-
-        // Your new positioning code (as you modified it):
+        m_scrambleSpr->setOrigin(sf::Vector2f(0.f, texHeight_scramble / 2.f));
         m_scrambleSpr->setPosition(sf::Vector2f(
-            m_wheelX + SCRAMBLE_BTN_OFFSET_X, 
-            m_wheelY + SCRAMBLE_BTN_OFFSET_Y  
+            m_wheelX + SCRAMBLE_BTN_OFFSET_X,
+            m_wheelY + SCRAMBLE_BTN_OFFSET_Y
         ));
     }
 
     if (m_contTxt && m_contBtn.getPointCount() > 0) {
-        sf::Vector2f s_size_contBtn = sf::Vector2f(S(this, 200.f), S(this, 50.f)); // Renamed local
+        sf::Vector2f s_size_contBtn = sf::Vector2f(S(this, 200.f), S(this, 50.f));
         m_contBtn.setSize(s_size_contBtn);
         m_contBtn.setRadius(S(this, 10.f));
         m_contBtn.setOrigin(sf::Vector2f(s_size_contBtn.x / 2.f, 0.f));
         m_contBtn.setPosition(sf::Vector2f(m_wheelX,
-            m_wheelY + m_visualBgRadius + S(this, CONTINUE_BTN_OFFSET_Y))); // Constant
-        const unsigned int bf_cont_font_val = 24; // Renamed local
+            m_wheelY + m_visualBgRadius + S(this, CONTINUE_BTN_OFFSET_Y)));
+        const unsigned int bf_cont_font_val = 24;
         unsigned int sf_cont_font_val = static_cast<unsigned int>(std::max(10.0f, S(this, static_cast<float>(bf_cont_font_val))));
         m_contTxt->setCharacterSize(sf_cont_font_val);
-        sf::FloatRect tb_cont_textbounds = m_contTxt->getLocalBounds(); // Renamed local
+        sf::FloatRect tb_cont_textbounds = m_contTxt->getLocalBounds();
         m_contTxt->setOrigin(sf::Vector2f(tb_cont_textbounds.position.x + tb_cont_textbounds.size.x / 2.f,
             tb_cont_textbounds.position.y + tb_cont_textbounds.size.y / 2.f));
         m_contTxt->setPosition(m_contBtn.getPosition() + sf::Vector2f(0.f, s_size_contBtn.y / 2.f));
     }
 
     if (m_guessDisplay_Text) {
-        const unsigned int bf_guess_font_val = 30; // Renamed local
+        const unsigned int bf_guess_font_val = 30;
         unsigned int sf_guess_font_val = static_cast<unsigned int>(std::max(10.0f, S(this, static_cast<float>(bf_guess_font_val))));
         m_guessDisplay_Text->setCharacterSize(sf_guess_font_val);
     }
@@ -1421,8 +1428,8 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         m_guessDisplay_Bg.setRadius(S(this, 8.f));
         m_guessDisplay_Bg.setOutlineThickness(S(this, 1.f));
     }
-    // HUD Logging from original
-    const float designBottomEdge_val = designH; // Local copy
+
+    const float designBottomEdge_val = designH;
     const float scaledHudOffsetY_val = S(this, HUD_TEXT_OFFSET_Y);
     float calculatedHudStartY_val = m_wheelY + m_visualBgRadius + scaledHudOffsetY_val;
     float visualWheelTopEdgeY_val = m_wheelY - m_visualBgRadius;
@@ -1438,7 +1445,7 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         }
     }
 
-    // 8. Menu Layouts (Copied from original, with SFML3 API changes for Rect and setOrigin/setPosition)
+    // 8. Menu Layouts
     sf::Vector2f windowCenterPix_menu = sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)) / 2.f;
     sf::Vector2f mappedWindowCenter_menu = m_window.mapPixelToCoords(sf::Vector2i(static_cast<int>(windowCenterPix_menu.x), static_cast<int>(windowCenterPix_menu.y)));
     const float scaledMenuPadding_menu = S(this, 40.f);
@@ -1503,33 +1510,27 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     }
 
     // --- 9. REVISED Stacked Hint UI Layout ---
-    const sf::FloatRect hintZone = HINT_ZONE_RECT_DESIGN; // From Constants.h
-    float currentY_for_buttons = hintZone.position.y; // Initialize starting Y for button stack
+    const sf::FloatRect hintZone = HINT_ZONE_RECT_DESIGN;
+    float currentY_for_buttons = hintZone.position.y;
 
-    // --- Position "Bonus Words: X/Y" Text at the top of Hint Zone ---
     if (m_bonusWordsInHintZoneText) {
         const float bonusTextPaddingTop = 5.f;
         unsigned int bonusTextFontSize = 20.f;
 
         m_bonusWordsInHintZoneText->setCharacterSize(bonusTextFontSize);
-        m_bonusWordsInHintZoneText->setString("Bonus Words: 00/00"); // Representative string for layout
+        m_bonusWordsInHintZoneText->setString("Bonus Words: 00/00");
         sf::FloatRect btBounds = m_bonusWordsInHintZoneText->getLocalBounds();
 
-        // Center it horizontally in the hint zone
         float bonusWordsTextX = (hintZone.position.x + (hintZone.size.x - (btBounds.position.x + btBounds.size.x)) / 2.f) + 10.f;
         float bonusWordsTextY = hintZone.position.y + bonusTextPaddingTop;
 
-        // Origin should be consistent with how you handle text (e.g., top-left from its local bounds)
         m_bonusWordsInHintZoneText->setOrigin(sf::Vector2f(btBounds.position.x, btBounds.position.y));
         m_bonusWordsInHintZoneText->setPosition(sf::Vector2f(bonusWordsTextX, bonusWordsTextY));
 
-        // Update starting Y for hint buttons to be below this text
-        // Using text's global bounds after positioning and scaling ensures accuracy
         sf::FloatRect positionedBtGlobalBounds = m_bonusWordsInHintZoneText->getGlobalBounds();
-        currentY_for_buttons = positionedBtGlobalBounds.position.y + positionedBtGlobalBounds.size.y + S(this, 5.f); // Add some padding
+        currentY_for_buttons = positionedBtGlobalBounds.position.y + positionedBtGlobalBounds.size.y + S(this, 5.f);
     }
 
-    // --- Layout for Hint Buttons (using currentY_for_buttons) ---
     if (m_hintFrameTexture.getSize().x > 0 && !m_hintFrameSprites.empty()) {
         const float frameTexOriginalWidth = static_cast<float>(m_hintFrameTexture.getSize().x);
         const float frameTexOriginalHeight = static_cast<float>(m_hintFrameTexture.getSize().y);
@@ -1574,7 +1575,6 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
             m_hintFrameSprites[i]->setPosition(sf::Vector2f(frameX, currentY_for_buttons));
 
             if (i < static_cast<int>(m_hintClickableRegions.size())) {
-                // Use sf::Vector2f for position and size for FloatRect constructor
                 m_hintClickableRegions[i] = sf::FloatRect({ frameX, currentY_for_buttons }, { scaledFrameWidth, scaledFrameHeight });
             }
 
@@ -1582,7 +1582,7 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
             if (i < static_cast<int>(m_hintIndicatorLightSprs.size()) && m_hintIndicatorLightSprs[i]) {
                 const sf::Texture* lightTex = &m_hintIndicatorLightSprs[i]->getTexture();
-                if (lightTex && lightTex->getSize().x > 0) { // Assuming getTexture() returns a valid pointer
+                if (lightTex && lightTex->getSize().x > 0) {
                     float lightOriginalTexSize = static_cast<float>(lightTex->getSize().x);
                     float desiredLightScreenDiameter = frameTexOriginalHeight * lightDiameterRel * panelScale;
                     float lightSpriteScale = desiredLightScreenDiameter / lightOriginalTexSize;
@@ -1614,26 +1614,20 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     }
 
     // --- NEW: Layout for Hint Pop-up ---
-    const sf::FloatRect gridZone = GRID_ZONE_RECT_DESIGN; // Target zone for centering
+    const sf::FloatRect gridZone_popup = GRID_ZONE_RECT_DESIGN; // Renamed to avoid conflict
 
     const float popupPadding = S(this, 10.f);
-    // Define base dimensions for the hint detail pop-up. These might need adjustment
-    // based on the longest description or if you implement dynamic sizing.
-    const float popupDesignWidth = S(this, 240.f);  // Base width in design units
-    const float popupDesignHeight = S(this, 120.f); // Base height for 3-4 lines of text
+    const float popupDesignWidth = S(this, 240.f);
+    const float popupDesignHeight = S(this, 120.f);
 
-    // Center the pop-up within GRID_ZONE_RECT_DESIGN
-    float gridZoneCenterX = gridZone.position.x + gridZone.size.x / 2.f;
-    float gridZoneCenterY = gridZone.position.y + gridZone.size.y / 2.f;
+    float gridZoneCenterX = gridZone_popup.position.x + gridZone_popup.size.x / 2.f;
+    float gridZoneCenterY = gridZone_popup.position.y + gridZone_popup.size.y / 2.f;
 
     float popupX = gridZoneCenterX - popupDesignWidth / 2.f;
     float popupY = gridZoneCenterY - popupDesignHeight / 2.f;
 
-    // Optional: Clamp to screen edges if necessary, though centering in grid usually handles this.
-    // If GRID_ZONE_RECT_DESIGN can be very small, this pop-up might appear too large *for it*,
-    // but it will be centered *relative to it*.
-    popupX = std::max(popupX, S(this, 5.f)); // Min screen padding from left
-    popupY = std::max(popupY, S(this, 5.f)); // Min screen padding from top
+    popupX = std::max(popupX, S(this, 5.f));
+    popupY = std::max(popupY, S(this, 5.f));
     if (popupX + popupDesignWidth > static_cast<float>(REF_W) - S(this, 5.f)) {
         popupX = static_cast<float>(REF_W) - popupDesignWidth - S(this, 5.f);
     }
@@ -1641,26 +1635,23 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         popupY = static_cast<float>(REF_H) - popupDesignHeight - S(this, 5.f);
     }
 
-
     m_hintPopupBackground.setSize({ popupDesignWidth, popupDesignHeight });
     m_hintPopupBackground.setRadius(S(this, 8.f));
     m_hintPopupBackground.setPosition({ popupX, popupY });
-    m_hintPopupBackground.setFillColor(sf::Color(40, 45, 60, 240)); // Darker, more opaque
+    m_hintPopupBackground.setFillColor(sf::Color(40, 45, 60, 240));
     m_hintPopupBackground.setOutlineColor(sf::Color(150, 150, 180, 220));
     m_hintPopupBackground.setOutlineThickness(S(this, 1.5f));
 
-    // Position texts within the popup background (top-left aligned within popup padding)
     float textCurrentY_popup = popupY + popupPadding;
     float textStartX_popup = popupX + popupPadding;
-    float textMaxWidth_popup = popupDesignWidth - 2 * popupPadding; // For potential text wrapping
 
     unsigned int popupLineFontSize = static_cast<unsigned int>(S(this, 16.f));
     unsigned int popupDescFontSize = static_cast<unsigned int>(S(this, 14.f));
-    float lineSpacing_popup = S(this, 7.f); // Slightly increased spacing for readability
+    float lineSpacing_popup = S(this, 7.f);
 
     if (m_popupAvailablePointsText) {
         m_popupAvailablePointsText->setCharacterSize(popupLineFontSize);
-        m_popupAvailablePointsText->setString("Available Points: 0000"); // Placeholder for layout
+        m_popupAvailablePointsText->setString("Available Points: 0000");
         sf::FloatRect textBounds = m_popupAvailablePointsText->getLocalBounds();
         m_popupAvailablePointsText->setOrigin({ textBounds.position.x, textBounds.position.y });
         m_popupAvailablePointsText->setPosition({ textStartX_popup, textCurrentY_popup });
@@ -1668,7 +1659,7 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     }
     if (m_popupHintCostText) {
         m_popupHintCostText->setCharacterSize(popupLineFontSize);
-        m_popupHintCostText->setString("Cost: 000"); // Placeholder
+        m_popupHintCostText->setString("Cost: 000");
         sf::FloatRect textBounds = m_popupHintCostText->getLocalBounds();
         m_popupHintCostText->setOrigin({ textBounds.position.x, textBounds.position.y });
         m_popupHintCostText->setPosition({ textStartX_popup, textCurrentY_popup });
@@ -1676,13 +1667,10 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     }
     if (m_popupHintDescriptionText) {
         m_popupHintDescriptionText->setCharacterSize(popupDescFontSize);
-        m_popupHintDescriptionText->setString("This is a sample hint description for layout purposes."); // Placeholder
+        m_popupHintDescriptionText->setString("This is a sample hint description for layout purposes.");
         sf::FloatRect textBounds = m_popupHintDescriptionText->getLocalBounds();
         m_popupHintDescriptionText->setOrigin({ textBounds.position.x, textBounds.position.y });
         m_popupHintDescriptionText->setPosition({ textStartX_popup, textCurrentY_popup });
-        // Note: For actual rendering, Game::m_renderGameScreen updates the string content.
-        // If descriptions are long, you'll need text wrapping logic here or in render.
-        // The current popupDesignHeight might need to be dynamic if descriptions vary greatly.
     }
 
     // --- Update DEBUG Zone Shapes ---
@@ -2399,10 +2387,8 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
 } // End m_handleGameOverEvents
 
 // --- Render Game Screen ---
-void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is already mapped to coords
+void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
-    // --- Scaled values (ensure S function is S(this, value)) ---
-    // (These are mostly from your original full code, ensure they are correct for your needs)
     const float scaledWheelOutlineThickness = S(this, 3.f);
     const float scaledLetterCircleOutline = S(this, 2.f);
     const float scaledPathThickness = S(this, 5.0f);
@@ -2411,40 +2397,13 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     const float scaledGuessDisplayPadY = S(this, 5.f);
     const float scaledGuessDisplayRadius = S(this, 8.f);
     const float scaledGuessDisplayOutline = S(this, 1.f);
-    const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y); // Used for old HUD elements below wheel
-    // const float scaledHudLineSpacing = S(this, HUD_LINE_SPACING); // Used for old HUD elements
+    const float scaledHudOffsetY = S(this, HUD_TEXT_OFFSET_Y);
 
     const unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f) * m_currentGridLayoutScale));
     const unsigned int scaledFlyingLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
     const unsigned int scaledGuessDisplayFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 30.f)));
     const unsigned int scaledSolvedFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 26.f)));
     const unsigned int scaledContinueFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 24.f)));
-
-    // --- Progress Meter (Top Bar) ---
-    if (m_isInSession && m_progressMeterBg.getPointCount() > 0 && m_progressMeterFill.getPointCount() > 0 && m_progressMeterText) {
-        m_progressMeterBg.setFillColor(sf::Color(50, 50, 50, 150));
-        m_progressMeterBg.setOutlineColor(sf::Color(150, 150, 150));
-        m_progressMeterBg.setOutlineThickness(S(this, PROGRESS_METER_OUTLINE));
-        m_progressMeterFill.setFillColor(sf::Color(0, 180, 0, 200));
-
-        float progressRatio = 0.f;
-        if (m_puzzlesPerSession > 0) {
-            progressRatio = static_cast<float>(m_currentPuzzleIndex + 1) / static_cast<float>(m_puzzlesPerSession);
-        }
-        float fillWidth = m_progressMeterBg.getSize().x * progressRatio;
-        m_progressMeterFill.setSize(sf::Vector2f(fillWidth, m_progressMeterBg.getSize().y));
-
-        m_window.draw(m_progressMeterBg);
-        m_window.draw(m_progressMeterFill);
-
-        const unsigned int scaledProgressFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 16.f)));
-        m_progressMeterText->setCharacterSize(scaledProgressFontSize);
-        std::string progressStr = std::to_string(m_currentPuzzleIndex + 1) + "/" + std::to_string(m_puzzlesPerSession);
-        m_progressMeterText->setString(progressStr);
-        // Recenter text on its shape (m_progressMeterBg)
-        centerTextOnShape_General(*m_progressMeterText, m_progressMeterBg); // Use your general centering helper
-        m_window.draw(*m_progressMeterText);
-    }
 
     // --- Return to Menu Button (Top Bar) ---
     if ((m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) && m_returnToMenuButtonShape.getPointCount() > 0 && m_returnToMenuButtonText) {
@@ -2460,48 +2419,71 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     if (m_scoreLabelText) { m_window.draw(*m_scoreLabelText); }
     if (m_scoreValueText) {
         m_scoreValueText->setString(std::to_string(m_currentScore));
-        // Ensure origin is correct for flourish (center of text)
-        sf::FloatRect valBounds = m_scoreValueText->getLocalBounds();
-        m_scoreValueText->setOrigin({ valBounds.position.x + valBounds.size.x  / 2.f , valBounds.position.y + valBounds.size.y / 2.f});
-        // Keep original position, adjust origin for scaling effect
-        sf::Vector2f valOriginalPos = m_scoreValueText->getPosition(); // This was set in m_updateLayout
-        sf::Vector2f valOriginalScale = m_scoreValueText->getScale(); // Should be {1,1} unless already scaled
+        sf::FloatRect valBounds = m_scoreValueText->getLocalBounds(); // Get bounds after string is set
+        m_scoreValueText->setOrigin({ valBounds.position.x + valBounds.size.x / 2.f , valBounds.position.y + valBounds.size.y / 2.f });
+
+        sf::Vector2f valOriginalScale = m_scoreValueText->getScale();
 
         if (m_scoreFlourishTimer > 0.f) {
             float scaleFactor = 1.0f + SCORE_FLOURISH_SCALE * std::sin((SCORE_FLOURISH_DURATION - m_scoreFlourishTimer) / SCORE_FLOURISH_DURATION * PI);
             m_scoreValueText->setScale(sf::Vector2f(scaleFactor, scaleFactor));
         }
         m_window.draw(*m_scoreValueText);
-        if (m_scoreFlourishTimer > 0.f) { // Restore scale
+        if (m_scoreFlourishTimer > 0.f) {
             m_scoreValueText->setScale(valOriginalScale);
         }
     }
-    // "Bonus Words: X/Y" text is NO LONGER drawn in the Score Zone.
+
+    // --- Progress Meter (Now drawn in Score Zone) ---
+    if (m_isInSession && m_progressMeterBg.getPointCount() > 0 && m_progressMeterFill.getPointCount() > 0 && m_progressMeterText) {
+        m_progressMeterBg.setFillColor(sf::Color(50, 50, 50, 150));
+        m_progressMeterBg.setOutlineColor(GLOWING_TUBE_TEXT_COLOR);
+        m_progressMeterBg.setOutlineThickness(S(this, PROGRESS_METER_OUTLINE));
+        m_progressMeterFill.setFillColor(GLOWING_TUBE_TEXT_COLOR);
+
+        float progressRatio = 0.f;
+        if (m_puzzlesPerSession > 0) {
+            progressRatio = static_cast<float>(m_currentPuzzleIndex + 1) / static_cast<float>(m_puzzlesPerSession);
+        }
+        float fillWidth = m_progressMeterBg.getSize().x * progressRatio;
+        m_progressMeterFill.setSize(sf::Vector2f(std::max(0.f, fillWidth), m_progressMeterBg.getSize().y));
+
+        m_window.draw(m_progressMeterBg);
+        m_window.draw(m_progressMeterFill);
+
+        const unsigned int scaledProgressFontSize = static_cast<unsigned int>(std::max(8.0f, 16.f));
+        m_progressMeterText->setCharacterSize(scaledProgressFontSize);
+        std::string progressStr = std::to_string(m_currentPuzzleIndex + 1) + "/" + std::to_string(m_puzzlesPerSession);
+        m_progressMeterText->setString(progressStr);
+        m_progressMeterText->setFillColor(sf::Color::White);
+        centerTextOnShape_General(*m_progressMeterText, m_progressMeterBg);
+        m_window.draw(*m_progressMeterText);
+    }
 
     // --- Draw Letter Grid ---
     if (!m_sorted.empty() && !m_grid.empty()) {
         const float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale;
-        const float finalRenderTileRadius = finalRenderTileSize * 0.18f; // Example radius for RoundedRect
-        const float tileOutlineRenderThickness = S(this, 1.0f); // Scaled outline
+        const float finalRenderTileRadius = finalRenderTileSize * 0.18f;
+        const float tileOutlineRenderThickness = S(this, 1.0f);
 
         RoundedRectangleShape tileBackground(sf::Vector2f(finalRenderTileSize, finalRenderTileSize), finalRenderTileRadius, 10);
         tileBackground.setOutlineThickness(tileOutlineRenderThickness);
         sf::Text letterText_grid(m_font, "", scaledGridLetterFontSize);
 
         for (std::size_t w = 0; w < m_sorted.size(); ++w) {
-            if (w >= m_grid.size()) continue; // Safety check
+            if (w >= m_grid.size()) continue;
             int wordRarity = m_sorted[w].rarity;
             for (std::size_t c = 0; c < m_sorted[w].text.length(); ++c) {
-                if (c >= m_grid[w].size()) continue; // Safety check
+                if (c >= m_grid[w].size()) continue;
 
                 sf::Vector2f p_tile = m_tilePos(static_cast<int>(w), static_cast<int>(c));
                 bool isFilled = (m_grid[w][c] != '_');
                 tileBackground.setPosition(p_tile);
                 tileBackground.setFillColor(isFilled ? m_currentTheme.gridFilledTile : m_currentTheme.gridEmptyTile);
-                tileBackground.setOutlineColor(isFilled ? m_currentTheme.gridEmptyTile : m_currentTheme.gridEmptyTile); // Use distinct outline colors
+                tileBackground.setOutlineColor(isFilled ? m_currentTheme.gridFilledTile : m_currentTheme.gridEmptyTile);
                 m_window.draw(tileBackground);
 
-                if (!isFilled) { // Draw gem if tile is empty and word has rarity
+                if (!isFilled) {
                     sf::Sprite* gemSprite = nullptr;
                     const sf::Texture* gemTexture = nullptr;
                     if (wordRarity == 2 && m_sapphireSpr) { gemSprite = m_sapphireSpr.get(); gemTexture = &m_sapphireTex; }
@@ -2517,7 +2499,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                         m_window.draw(*gemSprite);
                     }
                 }
-                else { // Draw letter if tile is filled
+                else {
                     bool isAnimatingToTile = false;
                     for (const auto& anim : m_anims) {
                         if (anim.target == AnimTarget::Grid && anim.wordIdx == static_cast<int>(w) && anim.charIdx == static_cast<int>(c) && anim.t < 1.0f) {
@@ -2530,7 +2512,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                         for (const auto& flourish : m_gridFlourishes) {
                             if (flourish.wordIdx == static_cast<int>(w) && flourish.charIdx == static_cast<int>(c)) {
                                 float progress = (GRID_FLOURISH_DURATION - flourish.timer) / GRID_FLOURISH_DURATION;
-                                currentFlourishScale = 1.0f + 0.4f * std::sin(progress * PI); // Example flourish
+                                currentFlourishScale = 1.0f + 0.4f * std::sin(progress * PI);
                                 break;
                             }
                         }
@@ -2541,22 +2523,15 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
                         letterText_grid.setPosition(p_tile + sf::Vector2f(finalRenderTileSize / 2.f, finalRenderTileSize / 2.f));
                         letterText_grid.setScale(sf::Vector2f(currentFlourishScale, currentFlourishScale));
                         m_window.draw(letterText_grid);
-                        if (currentFlourishScale != 1.0f) letterText_grid.setScale(sf::Vector2f(1.f, 1.f)); // Reset scale
+                        if (currentFlourishScale != 1.0f) letterText_grid.setScale(sf::Vector2f(1.f, 1.f));
                     }
                 }
             }
         }
     }
 
-    // --- Draw Path Lines (for word selection on wheel) ---
+    // --- Draw Path Lines ---
     if (m_dragging && !m_path.empty() && !m_wheelLetterRenderPos.empty()) {
-        // ... (Existing path line drawing logic using TriangleStrip - ensure this is SFML 3.0 compatible if it had specific API uses) ...
-        // This was:
-        // if (m_path.size() >= 2) { sf::VertexArray finalPathStrip ... m_window.draw(finalPathStrip); }
-        // if (m_path.back() >= 0 && ...) { sf::VertexArray rubberBandStrip ... m_window.draw(rubberBandStrip); }
-        // This logic itself should be fine with SFML 3 as VertexArray is still core.
-        // Just ensure any Vector math or Rect usage was updated if it existed there.
-        // For brevity, assuming this detailed block is correct from previous.
         const float halfThickness = scaledPathThickness / 2.0f;
         const sf::Color pathColor = m_currentTheme.dragLine;
 
@@ -2597,7 +2572,6 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         }
     }
 
-
     // --- Draw Wheel Letters ---
     if (!m_base.empty() && !m_wheelLetterRenderPos.empty()) {
         float fontScaleRatio = 1.f;
@@ -2615,7 +2589,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
             bool isHilited = std::find(m_path.begin(), m_path.end(), static_cast<int>(i)) != m_path.end();
             sf::Vector2f renderPos_wheel = m_wheelLetterRenderPos[i];
 
-            sf::CircleShape letterCircle(m_currentLetterRenderRadius); // Radius already scaled by layout
+            sf::CircleShape letterCircle(m_currentLetterRenderRadius);
             letterCircle.setOrigin(sf::Vector2f(m_currentLetterRenderRadius, m_currentLetterRenderRadius));
             letterCircle.setPosition(renderPos_wheel);
             letterCircle.setFillColor(isHilited ? m_currentTheme.wheelOutline : m_currentTheme.letterCircleNormal);
@@ -2635,14 +2609,14 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     // --- Draw Flying Letter Animations ---
     if (!m_anims.empty()) {
         sf::Text flyingLetterText(m_font, "", scaledFlyingLetterFontSize);
-        sf::Color flyColorBase = m_currentTheme.gridLetter; // Or a generic flying letter color
+        sf::Color flyColorBase = m_currentTheme.gridLetter;
         for (const auto& a : m_anims) {
             sf::Color currentFlyColor = (a.target == AnimTarget::Score) ? sf::Color::Yellow : flyColorBase;
             float alpha_ratio = (a.t > 0.7f) ? std::max(0.0f, (1.0f - a.t) / 0.3f) : 1.0f;
             currentFlyColor.a = static_cast<std::uint8_t>(255.f * alpha_ratio);
             flyingLetterText.setFillColor(currentFlyColor);
 
-            float eased_t = a.t * a.t * (3.f - 2.f * a.t); // Simple ease-out cubic
+            float eased_t = a.t * a.t * (3.f - 2.f * a.t);
             sf::Vector2f p_anim = a.start + (a.end - a.start) * eased_t;
 
             flyingLetterText.setString(std::string(1, a.ch));
@@ -2654,97 +2628,72 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     }
 
     // --- Draw Score Flourishes & Hint Point Animations ---
-    m_renderScoreFlourishes(m_window);  // Pass target (m_window)
-    m_renderHintPointAnims(m_window); // Pass target (m_window)
+    m_renderScoreFlourishes(m_window);
+    m_renderHintPointAnims(m_window);
 
     // --- Draw Guess Display (above wheel) ---
     if (m_gameState == GState::Playing && !m_currentGuess.empty() && m_guessDisplay_Text && m_guessDisplay_Bg.getPointCount() > 0) {
-        // Scaled values needed for this section (ensure these are defined at the top of m_renderGameScreen or are members)
-        const float scaledGuessDisplayPadX = S(this, 15.f);
-        const float scaledGuessDisplayPadY = S(this, 5.f);
-        const float scaledGuessDisplayGap = S(this, GUESS_DISPLAY_GAP); // From Constants.h
-        // scaledGuessDisplayFontSize is already defined at the top of m_renderGameScreen
+        const float scaledGuessDisplayPadX_local = S(this, 15.f); // Use local to avoid redefinition warning
+        const float scaledGuessDisplayPadY_local = S(this, 5.f);
+        const float scaledGuessDisplayGap_local = S(this, GUESS_DISPLAY_GAP);
 
         m_guessDisplay_Text->setCharacterSize(scaledGuessDisplayFontSize);
         m_guessDisplay_Text->setString(m_currentGuess);
 
-        // 1. Calculate dynamic size for the background based on current text
         sf::FloatRect textBounds = m_guessDisplay_Text->getLocalBounds();
         sf::Vector2f bgSize = {
-            textBounds.position.x + textBounds.size.x + 2 * scaledGuessDisplayPadX,
-            textBounds.position.y + textBounds.size.y + 2 * scaledGuessDisplayPadY
+            textBounds.position.x + textBounds.size.x + 2 * scaledGuessDisplayPadX_local,
+            textBounds.position.y + textBounds.size.y + 2 * scaledGuessDisplayPadY_local
         };
         m_guessDisplay_Bg.setSize(bgSize);
-        // Radius and outline thickness are usually set in m_updateLayout, but ensure they are reasonable
-        // m_guessDisplay_Bg.setRadius(S(this, 8.f));
-        // m_guessDisplay_Bg.setOutlineThickness(S(this, 1.f));
 
-        // 2. Calculate position for the background and text
-        // m_wheelX, m_wheelY, and m_visualBgRadius are member variables updated in m_updateLayout
-        float wheelVisualTopY = m_wheelY - m_visualBgRadius; // Top edge of the visual wheel area
-        float guessDisplayCenterY = wheelVisualTopY - (bgSize.y / 2.f) - scaledGuessDisplayGap;
+        float wheelVisualTopY = m_wheelY - m_visualBgRadius;
+        float guessDisplayCenterY = wheelVisualTopY - (bgSize.y / 2.f) - scaledGuessDisplayGap_local;
 
-        // 3. Position the background
-        m_guessDisplay_Bg.setOrigin({ bgSize.x / 2.f, bgSize.y / 2.f }); // Origin to center
-        m_guessDisplay_Bg.setPosition({ m_wheelX, guessDisplayCenterY }); // Centered above wheel
+        m_guessDisplay_Bg.setOrigin({ bgSize.x / 2.f, bgSize.y / 2.f });
+        m_guessDisplay_Bg.setPosition({ m_wheelX, guessDisplayCenterY });
 
-        // 4. Position the text on the (now correctly positioned) background
-        // centerTextOnShape_General will use m_guessDisplay_Bg's new position
         centerTextOnShape_General(*m_guessDisplay_Text, m_guessDisplay_Bg);
 
-        // 5. Set colors from theme
         m_guessDisplay_Text->setFillColor(m_currentTheme.letterTextNormal);
         m_guessDisplay_Bg.setFillColor(m_currentTheme.gridFilledTile);
         m_guessDisplay_Bg.setOutlineColor(m_currentTheme.gridFilledTile);
 
-        // 6. Draw
         m_window.draw(m_guessDisplay_Bg);
         m_window.draw(*m_guessDisplay_Text);
     }
 
     // --- Hint Zone UI (Left Side) ---
-    // 1. Draw "Bonus Words: X/Y" at the top of the Hint Zone
     if (m_bonusWordsInHintZoneText) {
         int totalPossibleBonus = m_calculateTotalPossibleBonusWords();
         std::string bonusTextStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
         m_bonusWordsInHintZoneText->setString(bonusTextStr);
-        m_bonusWordsInHintZoneText->setFillColor(GLOWING_TUBE_TEXT_COLOR); // Or your theme color
+        m_bonusWordsInHintZoneText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
 
-        // Store original state (position is what layout set, origin usually top-left from layout)
         sf::Vector2f originalPosition = m_bonusWordsInHintZoneText->getPosition();
         sf::Vector2f originalOrigin = m_bonusWordsInHintZoneText->getOrigin();
-        sf::Vector2f originalScale = m_bonusWordsInHintZoneText->getScale(); // Should be {1,1}
+        sf::Vector2f originalScale = m_bonusWordsInHintZoneText->getScale();
 
         if (m_bonusTextFlourishTimer > 0.f) {
             float progress = (BONUS_TEXT_FLOURISH_DURATION - m_bonusTextFlourishTimer) / BONUS_TEXT_FLOURISH_DURATION;
-            float scaleFactor = 1.0f + 0.4f * std::sin(progress * PI); // Flourish scale
+            float scaleFactor = 1.0f + 0.4f * std::sin(progress * PI);
 
-            // Get bounds and calculate visual center *before* changing origin or scale
             sf::FloatRect localBounds = m_bonusWordsInHintZoneText->getLocalBounds();
-
-            // Calculate the current visual center of the text on the screen
-            // This considers the originalOrigin and originalPosition
             sf::Vector2f visualCenterOnScreen = {
                 originalPosition.x - originalOrigin.x * originalScale.x + (localBounds.position.x + localBounds.size.x / 2.f) * originalScale.x,
                 originalPosition.y - originalOrigin.y * originalScale.y + (localBounds.position.y + localBounds.size.y / 2.f) * originalScale.y
             };
-
-            // Set origin to local center of the text
             sf::Vector2f newLocalCenterOrigin = {
                 localBounds.position.x + localBounds.size.x / 2.f,
                 localBounds.position.y + localBounds.size.y / 2.f
             };
             m_bonusWordsInHintZoneText->setOrigin(newLocalCenterOrigin);
-
-            // Set position to the previously calculated visualCenterOnScreen
-            // Now, scaling will happen around this new origin, which is at the visual center.
             m_bonusWordsInHintZoneText->setPosition(visualCenterOnScreen);
             m_bonusWordsInHintZoneText->setScale({ scaleFactor, scaleFactor });
         }
 
         m_window.draw(*m_bonusWordsInHintZoneText);
 
-        // Restore original state if it was changed for flourish
         if (m_bonusTextFlourishTimer > 0.f) {
             m_bonusWordsInHintZoneText->setOrigin(originalOrigin);
             m_bonusWordsInHintZoneText->setPosition(originalPosition);
@@ -2752,7 +2701,6 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         }
     }
 
-    // 2. Draw Hint Buttons (Frames with click feedback, Lights, Labels)
     const int HINT_COSTS_FOR_LIGHTS[] = { HINT_COST_REVEAL_FIRST, HINT_COST_REVEAL_RANDOM, HINT_COST_REVEAL_LAST, HINT_COST_REVEAL_FIRST_OF_EACH };
     std::vector<std::unique_ptr<sf::Text>*> hintLabels_render = {
        &m_hintRevealFirstButtonText, &m_hintRevealRandomButtonText,
@@ -2761,38 +2709,32 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
 
     for (size_t i = 0; i < m_hintFrameSprites.size(); ++i) {
         if (m_hintFrameSprites[i]) {
-            // Click feedback color
             if (i < m_hintFrameClickAnimTimers.size() && m_hintFrameClickAnimTimers[i] > 0.f) {
                 m_hintFrameSprites[i]->setColor(m_hintFrameClickColor);
             }
             else {
-                m_hintFrameSprites[i]->setColor(m_hintFrameNormalColor); // sf::Color::White for normal texture
+                m_hintFrameSprites[i]->setColor(m_hintFrameNormalColor);
             }
             m_window.draw(*m_hintFrameSprites[i]);
 
-            // Draw Indicator Light on top of the frame
             if (i < m_hintIndicatorLightSprs.size() && m_hintIndicatorLightSprs[i]) {
                 bool canAfford = (m_hintPoints >= HINT_COSTS_FOR_LIGHTS[i]);
-                m_hintIndicatorLightSprs[i]->setColor(canAfford ? sf::Color::White : sf::Color(70, 70, 70, 180)); // Dim if cannot afford
+                m_hintIndicatorLightSprs[i]->setColor(canAfford ? sf::Color::White : sf::Color(70, 70, 70, 180));
                 m_window.draw(*m_hintIndicatorLightSprs[i]);
             }
 
-            // Draw Hint Label Text on top of the frame
             if (i < hintLabels_render.size() && hintLabels_render[i] && hintLabels_render[i]->get()) {
-                hintLabels_render[i]->get()->setFillColor(m_currentTheme.scoreTextLabel); // Theme color
+                hintLabels_render[i]->get()->setFillColor(m_currentTheme.scoreTextLabel);
                 m_window.draw(*(hintLabels_render[i]->get()));
             }
         }
     }
-    // Old m_hintPointsText and individual cost texts are NOT drawn here anymore.
 
-    // 3. Draw Hint Hover Pop-up
     if (m_hoveredHintIndex != -1 && m_popupAvailablePointsText && m_popupHintCostText && m_popupHintDescriptionText) {
         m_popupAvailablePointsText->setString("Available Points: " + std::to_string(m_hintPoints));
 
         int cost = 0;
         std::string desc = "";
-        // HintType typeForPopup = HintType::RevealFirst; // Not strictly needed for display
 
         switch (m_hoveredHintIndex) {
         case 0: cost = HINT_COST_REVEAL_FIRST; desc = HINT_DESC_REVEAL_FIRST; break;
@@ -2803,16 +2745,12 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         m_popupHintCostText->setString("Cost: " + std::to_string(cost));
         m_popupHintDescriptionText->setString(desc);
 
-        // Set colors for pop-up text (can be themed)
         m_popupAvailablePointsText->setFillColor(sf::Color(220, 220, 220));
         m_popupHintCostText->setFillColor(sf::Color(220, 220, 200));
         m_popupHintDescriptionText->setFillColor(sf::Color(180, 190, 200));
 
-        // Background and text positions are set in m_updateLayout.
-        // Re-set origin for description text if it needs to wrap and you want to align.
-        // For now, assuming top-left origin and short enough descriptions.
         sf::FloatRect descBounds = m_popupHintDescriptionText->getLocalBounds();
-        m_popupHintDescriptionText->setOrigin(sf::Vector2f(descBounds.position.x, descBounds.position.y)); // Ensure top-left for potentially wrapped text
+        m_popupHintDescriptionText->setOrigin(sf::Vector2f(descBounds.position.x, descBounds.position.y));
 
         m_window.draw(m_hintPopupBackground);
         m_window.draw(*m_popupAvailablePointsText);
@@ -2823,21 +2761,16 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
     // --- Scramble Button (Bottom near wheel) ---
     if (m_gameState == GState::Playing && m_scrambleSpr) {
         bool scrambleHover = m_scrambleSpr->getGlobalBounds().contains(mousePos);
-        m_scrambleSpr->setColor(scrambleHover ? sf::Color::White : sf::Color(255, 255, 255, 200)); // Hover effect
+        m_scrambleSpr->setColor(scrambleHover ? sf::Color::White : sf::Color(255, 255, 255, 200));
         m_window.draw(*m_scrambleSpr);
     }
 
     // --- Draw Solved State Overlay (if game over) ---
     if (m_currentScreen == GameScreen::GameOver && m_contBtn.getPointCount() > 0 && m_contTxt) {
-        // m_solvedOverlay, winTxt, m_contBtn, m_contTxt positions are set in m_updateLayout
-        // or should be if they are specific to this screen state.
-        // For now, assume m_updateLayout handles their general game-over positions.
-
         sf::Text winTxt(m_font, "Puzzle Solved!", scaledSolvedFontSize);
         winTxt.setFillColor(m_currentTheme.hudTextSolved);
         winTxt.setStyle(sf::Text::Bold);
 
-        // Simplified overlay positioning for this example - ideally done in layout
         sf::FloatRect winTxtBounds = winTxt.getLocalBounds();
         float overlayWidth = std::max(winTxtBounds.size.x, m_contBtn.getSize().x) + S(this, 50.f);
         float overlayHeight = winTxtBounds.size.y + m_contBtn.getSize().y + S(this, 70.f);
@@ -2845,24 +2778,21 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) { // mousePos is alr
         m_solvedOverlay.setSize(sf::Vector2f(overlayWidth, overlayHeight));
         m_solvedOverlay.setRadius(S(this, 15.f));
         m_solvedOverlay.setFillColor(m_currentTheme.solvedOverlayBg);
-        // Center overlay on screen (design space)
         sf::Vector2f screenCenter(static_cast<float>(REF_W) / 2.f, static_cast<float>(REF_H) / 2.f);
         m_solvedOverlay.setOrigin(sf::Vector2f(overlayWidth / 2.f, overlayHeight / 2.f));
         m_solvedOverlay.setPosition(screenCenter);
 
-        // Position "Puzzle Solved!" text
         winTxt.setOrigin(sf::Vector2f(winTxtBounds.position.x + winTxtBounds.size.x / 2.f, winTxtBounds.position.y + winTxtBounds.size.y / 2.f));
         winTxt.setPosition(sf::Vector2f(screenCenter.x, screenCenter.y - overlayHeight / 2.f + winTxtBounds.size.y / 2.f + S(this, 20.f)));
 
-        // Position Continue Button
-        m_contBtn.setOrigin(sf::Vector2f(m_contBtn.getSize().x / 2.f, 0.f)); // Origin top-center for easier stacking
+        m_contBtn.setOrigin(sf::Vector2f(m_contBtn.getSize().x / 2.f, 0.f));
         m_contBtn.setPosition(sf::Vector2f(screenCenter.x, winTxt.getPosition().y + winTxt.getGlobalBounds().size.y / 2.f + S(this, 15.f)));
 
         bool contHover = m_contBtn.getGlobalBounds().contains(mousePos);
         m_contBtn.setFillColor(contHover ? adjustColorBrightness(m_currentTheme.continueButton, 1.2f) : m_currentTheme.continueButton);
 
         m_contTxt->setCharacterSize(scaledContinueFontSize);
-        centerTextOnShape_General(*m_contTxt, m_contBtn); // Center text on button
+        centerTextOnShape_General(*m_contTxt, m_contBtn);
         m_contTxt->setFillColor(m_currentTheme.letterTextNormal);
 
         m_window.draw(m_solvedOverlay);

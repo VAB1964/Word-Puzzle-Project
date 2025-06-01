@@ -59,10 +59,10 @@ const float METER_SCORE_GAP = 8.f;
 const float PROGRESS_METER_WIDTH = 300.0f;
 const float PROGRESS_METER_HEIGHT = 20.0f;
 const float PROGRESS_METER_TOP_MARGIN = 15.0f;
-const float PROGRESS_METER_OUTLINE = 1.0f;
+const float PROGRESS_METER_OUTLINE = 2.0f;
 
 // For Progress Meter
-const float PROGRESS_METER_HEIGHT_DESIGN = 20.f; // Example: 20 design units high
+const float PROGRESS_METER_HEIGHT_DESIGN = 10.f; // Example: 20 design units high
 
 
 // For Return to Menu Button in Top Bar
