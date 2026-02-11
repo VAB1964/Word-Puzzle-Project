@@ -1,4 +1,4 @@
-﻿#include <utility>
+#include <utility>
 #include <cstdint>
 #include <fstream>
 #include <sstream>
@@ -35,6 +35,63 @@
 #include "Words.h"
 #include "Utils.h"
 #include <vector>
+
+// --- Windows-specific includes (for custom maximize behavior) ---
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+
+// Keep previous window procedure so SFML continues to receive messages
+static WNDPROC g_previousWndProc = nullptr;
+
+// Custom WndProc to control maximize size:
+// Fill vertical (work-area height), set width to height * designAspect, center horizontally.
+static LRESULT CALLBACK WordPuzzle_CustomWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    if (msg == WM_GETMINMAXINFO)
+    {
+        MINMAXINFO* minMaxInfo = reinterpret_cast<MINMAXINFO*>(lParam);
+
+        // Determine the monitor work area (excludes taskbar)
+        HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO monitorInfo{};
+        monitorInfo.cbSize = sizeof(MONITORINFO);
+        if (GetMonitorInfoW(monitor, &monitorInfo))
+        {
+            const RECT workArea = monitorInfo.rcWork;
+            const int workWidth  = workArea.right - workArea.left;
+            const int workHeight = workArea.bottom - workArea.top;
+
+            // Target aspect equals the game's design aspect
+            const double designAspect = static_cast<double>(REF_W) / static_cast<double>(REF_H);
+
+            // Desired maximized size: full height, width derived from aspect (clamped to work area width)
+            int desiredWidth  = static_cast<int>(std::floor(workHeight * designAspect + 0.5));
+            if (desiredWidth > workWidth) desiredWidth = workWidth;
+            const int desiredHeight = workHeight;
+
+            // Position: horizontally centered, top-aligned
+            const int left = workArea.left + (workWidth - desiredWidth) / 2;
+
+            minMaxInfo->ptMaxSize.x = desiredWidth;
+            minMaxInfo->ptMaxSize.y = desiredHeight;
+            minMaxInfo->ptMaxPosition.x = left;
+            minMaxInfo->ptMaxPosition.y = workArea.top;
+            return 0; // handled
+        }
+    }
+
+    // Defer to original WndProc for everything else
+    if (g_previousWndProc)
+        return CallWindowProcW(g_previousWndProc, hWnd, msg, wParam, lParam);
+    return DefWindowProcW(hWnd, msg, wParam, lParam);
+}
+#endif // _WIN32
 
 //--------------------------------------------------------------------
 //  Game Class Implementation
@@ -87,6 +144,72 @@ namespace { // Anonymous namespace for helper functions
 
         // 4. Position the text (whose origin is now its center) at the shape's visual center.
         text.setPosition(shapeVisualCenter); // setPosition also takes a single sf::Vector2f
+    }
+
+    std::string wrapSingleLine(sf::Text& text, const std::string& line, float maxWidth) {
+        if (maxWidth <= 0.f) return line;
+        std::istringstream words(line);
+        std::string word;
+        std::string currentLine;
+        std::string result;
+
+        auto flushLine = [&]() {
+            if (!currentLine.empty()) {
+                if (!result.empty()) result += "\n";
+                result += currentLine;
+                currentLine.clear();
+            }
+        };
+
+        while (words >> word) {
+            std::string testLine = currentLine.empty() ? word : currentLine + " " + word;
+            text.setString(testLine);
+            if (text.getLocalBounds().size.x > maxWidth && !currentLine.empty()) {
+                flushLine();
+                currentLine = word;
+            }
+            else if (text.getLocalBounds().size.x > maxWidth && currentLine.empty()) {
+                std::string chopped;
+                for (char ch : word) {
+                    std::string testChopped = chopped + ch;
+                    text.setString(testChopped);
+                    if (text.getLocalBounds().size.x > maxWidth && !chopped.empty()) {
+                        if (!result.empty()) result += "\n";
+                        result += chopped;
+                        chopped.clear();
+                    }
+                    chopped += ch;
+                }
+                if (!chopped.empty()) {
+                    if (!result.empty()) result += "\n";
+                    result += chopped;
+                }
+            }
+            else {
+                currentLine = testLine;
+            }
+        }
+
+        if (!currentLine.empty()) {
+            flushLine();
+        }
+
+        return result;
+    }
+
+    std::string wrapTextForWidth(sf::Text& text, const std::string& source, float maxWidth) {
+        if (maxWidth <= 0.f) return source;
+        std::string result;
+        std::string line;
+        std::istringstream lines(source);
+        bool first = true;
+        while (std::getline(lines, line)) {
+            std::string wrapped = wrapSingleLine(text, line, maxWidth);
+            if (!first) result += "\n";
+            result += wrapped;
+            first = false;
+        }
+        return result;
     }
 }
 
@@ -165,11 +288,13 @@ Game::Game() :
     m_hintClickableRegions(4),
     m_hoveredHintIndex(-1),
     m_hintPopupBackground(sf::Vector2f(200.f, 100.f), 8.f, 10),
+    m_hoveredSolvedWordIndex(-1),
+    m_wordInfoPopupBackground(sf::Vector2f(200.f, 100.f), 8.f, 10),
     m_scrambleTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
     m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), m_errorWordBuffer(),
     m_selectSound(nullptr), m_placeSound(nullptr), m_winSound(nullptr), m_clickSound(nullptr), m_hintUsedSound(nullptr), m_errorWordSound(nullptr),
     m_backgroundMusic(),
-    m_scrambleSpr(nullptr), m_sapphireSpr(nullptr), m_rubySpr(nullptr), m_diamondSpr(nullptr),
+    m_scrambleSpr(nullptr), m_sapphireSpr(nullptr), m_rubySpr(nullptr), m_diamondSpr(nullptr), m_buttonSpr(nullptr),
     m_contTxt(nullptr), m_scoreLabelText(nullptr), m_scoreValueText(nullptr), m_hintCountTxt(nullptr),
     m_mainMenuTitle(nullptr), m_casualButtonText(nullptr), m_competitiveButtonText(nullptr), m_quitButtonText(nullptr),
     m_casualMenuTitle(nullptr), m_easyButtonText(nullptr), m_mediumButtonText(nullptr), m_hardButtonText(nullptr), m_returnButtonText(nullptr),
@@ -188,19 +313,21 @@ Game::Game() :
     m_needsLayoutUpdate(false),
     m_lastKnownSize(sf::Vector2u(0, 0)), 
     m_mainMenuBg(sf::Vector2f(300.f, 300.f), 15.f, 10),
-    m_casualButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
-    m_competitiveButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
-    m_quitButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_casualButtonShape(sf::Vector2f(MENU_BUTTON_WIDTH_DESIGN, MENU_BUTTON_HEIGHT_DESIGN), 10.f, 10),
+    m_competitiveButtonShape(sf::Vector2f(MENU_BUTTON_WIDTH_DESIGN, MENU_BUTTON_HEIGHT_DESIGN), 10.f, 10),
+    m_quitButtonShape(sf::Vector2f(MENU_BUTTON_WIDTH_DESIGN, MENU_BUTTON_HEIGHT_DESIGN), 10.f, 10),
     m_casualMenuBg(sf::Vector2f(300.f, 400.f), 15.f, 10),
-    m_easyButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
-    m_mediumButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
-    m_hardButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
-    m_returnButtonShape(sf::Vector2f(250.f, 50.f), 10.f, 10),
+    m_easyButtonShape(sf::Vector2f(MENU_BUTTON_WIDTH_DESIGN, MENU_BUTTON_HEIGHT_DESIGN), 10.f, 10),
+    m_mediumButtonShape(sf::Vector2f(MENU_BUTTON_WIDTH_DESIGN, MENU_BUTTON_HEIGHT_DESIGN), 10.f, 10),
+    m_hardButtonShape(sf::Vector2f(MENU_BUTTON_WIDTH_DESIGN, MENU_BUTTON_HEIGHT_DESIGN), 10.f, 10),
+    m_returnButtonShape(sf::Vector2f(MENU_BUTTON_WIDTH_DESIGN, MENU_BUTTON_HEIGHT_DESIGN), 10.f, 10),
     m_progressMeterBg(sf::Vector2f(100.f, 20.f)),
     m_progressMeterFill(sf::Vector2f(100.f, 20.f)),
     m_returnToMenuButtonShape(sf::Vector2f(100.f, 40.f), 8.f, 10),
     m_isHoveringHintPointsText(false),
     m_bonusWordsCacheIsValid(false),
+    m_bonusWordsPopupScrollOffset(0.f),
+    m_bonusWordsPopupMaxScrollOffset(0.f),
     m_showDebugZones(false),
     m_bonusListCompleteEffectActive(false),
     m_bonusListCompleteAnimTimer(0.f),
@@ -219,6 +346,19 @@ Game::Game() :
     m_window.setFramerateLimit(60);
     m_window.setVerticalSyncEnabled(true);
 
+#ifdef _WIN32
+    // Install our custom WndProc after the SFML window has been created
+    {
+        HWND hwnd = static_cast<HWND>(m_window.getNativeHandle());
+        if (hwnd)
+        {
+            g_previousWndProc = reinterpret_cast<WNDPROC>(
+                SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WordPuzzle_CustomWndProc))
+            );
+        }
+    }
+#endif
+
     m_loadResources();
 
     if (m_selectBuffer.getSampleCount() > 0) m_selectSound = std::make_unique<sf::Sound>(m_selectBuffer);
@@ -232,6 +372,7 @@ Game::Game() :
     if (m_sapphireTex.getSize().x > 0) m_sapphireSpr = std::make_unique<sf::Sprite>(m_sapphireTex);
     if (m_rubyTex.getSize().x > 0) m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
     if (m_diamondTex.getSize().x > 0) m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
+    if (m_buttonTex.getSize().x > 0) m_buttonSpr = std::make_unique<sf::Sprite>(m_buttonTex);
 
     // Setup new hint panel sprites (plural)
     if (m_hintFrameTexture.getSize().x > 0) { // Check if the frame texture loaded
@@ -430,12 +571,48 @@ void Game::m_loadResources() {
     }
     m_mainBackgroundTex.setSmooth(true);
 
+    // --- Load Menu Background Texture (wooden framed plaque for all menus) ---
+    if (m_menuBgTexture.loadFromFile("assets/MenuBackground.png")) {
+        m_menuBgTexture.setSmooth(true);
+        m_mainMenuBgSpr = std::make_unique<sf::Sprite>(m_menuBgTexture);
+        m_casualMenuBgSpr = std::make_unique<sf::Sprite>(m_menuBgTexture);
+        m_hintPopupBgSpr = std::make_unique<sf::Sprite>(m_menuBgTexture);
+        m_genericPopupBgSpr = std::make_unique<sf::Sprite>(m_menuBgTexture);
+    }
+    else {
+        std::cerr << "Note: Could not load menu background (assets/MenuBackground.png); using theme color." << std::endl;
+    }
+
+    // --- Load Menu Button Texture (golden-bronze frame for menu line items) ---
+    if (m_menuButtonTexture.loadFromFile("assets/MenuButton.png")) {
+        m_menuButtonTexture.setSmooth(true);
+        m_casualButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+        m_competitiveButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+        m_quitButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+        m_easyButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+        m_mediumButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+        m_hardButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+        m_returnButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+        m_returnToMenuButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+    }
+    else {
+        std::cerr << "Note: Could not load menu button (assets/MenuButton.png); using theme color." << std::endl;
+    }
+
     // Load scramble button texture
     if (!m_scrambleTex.loadFromFile("assets/ScrambleButton.png")) {
         std::cerr << "Error loading scramble texture!" << std::endl;
     }
     else {
         m_scrambleTex.setSmooth(true);
+    }
+
+    // Load button texture for grid tiles
+    if (!m_buttonTex.loadFromFile("assets/Button.png")) {
+        std::cerr << "Error loading button texture (assets/Button.png)!" << std::endl;
+    }
+    else {
+        m_buttonTex.setSmooth(true);
     }
 
     // --- Create Text Objects FIRST (as some might be used by other resource setups) ---
@@ -487,6 +664,16 @@ void Game::m_loadResources() {
     if (m_popupHintCostText) m_popupHintCostText->setFillColor(sf::Color::White);
     if (m_popupHintDescriptionText) m_popupHintDescriptionText->setFillColor(sf::Color(200, 200, 200));
 
+    // --- NEW: Solved Word Info Pop-up Texts ---
+    m_popupWordText = std::make_unique<sf::Text>(m_font, "Word:", 16);
+    m_popupPosText = std::make_unique<sf::Text>(m_font, "POS:", 14);
+    m_popupDefinitionText = std::make_unique<sf::Text>(m_font, "Definition:", 14);
+    m_popupSentenceText = std::make_unique<sf::Text>(m_font, "Sentence:", 14);
+    if (m_popupWordText) m_popupWordText->setFillColor(sf::Color(230, 230, 230));
+    if (m_popupPosText) m_popupPosText->setFillColor(sf::Color(200, 210, 220));
+    if (m_popupDefinitionText) m_popupDefinitionText->setFillColor(sf::Color(190, 200, 210));
+    if (m_popupSentenceText) m_popupSentenceText->setFillColor(sf::Color(190, 200, 210));
+
     if (m_contTxt) m_contTxt->setFillColor(sf::Color::White); // Example of setting color after creation
     if (m_returnToMenuButtonText) m_returnToMenuButtonText->setFillColor(sf::Color::White);
 
@@ -535,6 +722,7 @@ void Game::m_loadResources() {
     if (m_sapphireTex.getSize().x > 0) m_sapphireSpr = std::make_unique<sf::Sprite>(m_sapphireTex);
     if (m_rubyTex.getSize().x > 0) m_rubySpr = std::make_unique<sf::Sprite>(m_rubyTex);
     if (m_diamondTex.getSize().x > 0) m_diamondSpr = std::make_unique<sf::Sprite>(m_diamondTex);
+    if (m_buttonTex.getSize().x > 0) m_buttonSpr = std::make_unique<sf::Sprite>(m_buttonTex);
 
     if (m_mainBackgroundTex.getSize().x > 0) { // Ensure texture loaded before creating sprite
         m_mainBackgroundSpr = std::make_unique<sf::Sprite>(m_mainBackgroundTex);
@@ -682,19 +870,39 @@ void Game::m_update(sf::Time dt) {
             }
         }
 
-        // --- NEW/RESTORED: For Bonus Words List Pop-up (m_renderBonusWordsPopup) ---
-        if (m_bonusWordsInHintZoneText) { // Check if the text object exists
+        // --- Bonus Words popup: show only when cursor over "Bonus Words: 0/XX" (so solved-word definitions remain visible when cursor is on grid) ---
+        if (m_bonusWordsInHintZoneText) {
             m_isHoveringHintPointsText = m_bonusWordsInHintZoneText->getGlobalBounds().contains(mappedMousePos);
         }
         else {
             m_isHoveringHintPointsText = false;
         }
-        // --- END NEW/RESTORED ---
+        // --- END ---
+
+        // --- Solved Word Hover Detection (grid tiles) ---
+        m_hoveredSolvedWordIndex = -1;
+        if (!m_sorted.empty() && !m_grid.empty() && !m_found.empty()) {
+            const float tileSize = TILE_SIZE * m_currentGridLayoutScale;
+            for (std::size_t w = 0; w < m_sorted.size() && w < m_grid.size(); ++w) {
+                if (!m_found.count(m_sorted[w].text)) continue;
+                for (std::size_t c = 0; c < m_sorted[w].text.length() && c < m_grid[w].size(); ++c) {
+                    sf::Vector2f p_tile = m_tilePos(static_cast<int>(w), static_cast<int>(c));
+                    sf::FloatRect tileRect({ p_tile.x, p_tile.y }, { tileSize, tileSize });
+                    if (tileRect.contains(mappedMousePos)) {
+                        m_hoveredSolvedWordIndex = static_cast<int>(w);
+                        break;
+                    }
+                }
+                if (m_hoveredSolvedWordIndex != -1) break;
+            }
+        }
 
     }
     else {
         m_hoveredHintIndex = -1;
         m_isHoveringHintPointsText = false; // Ensure this is also reset if not on relevant screens
+        m_bonusWordsPopupScrollOffset = 0.f; // reset scroll when popup is hidden
+        m_hoveredSolvedWordIndex = -1;
     }
     
     // Update Bonus List Complete Effect 
@@ -785,6 +993,7 @@ void Game::m_rebuild() {
 
     // --- Base Word Selection (Collect Candidates, Pick Randomly) ---
     std::string selectedBaseWord = "";
+    std::string baseWordForGrid = "";
     bool baseWordFound = false;
 
     if (m_roots.empty()) {
@@ -842,8 +1051,8 @@ void Game::m_rebuild() {
             case DifficultyLevel::Hard:   validSubCount = rootInfo.hardValidCount; break;
             default:                      validSubCount = rootInfo.countGE4;
             }
-            // Check if it meets the "ideal" threshold (good sub-word count and quality score)
-            if (validSubCount >= MIN_DESIRED_GRID_WORDS && rootInfo.avgSubLen > 0) {
+            // Check if it meets the "ideal" threshold (good sub-word count)
+            if (validSubCount >= MIN_DESIRED_GRID_WORDS) {
                 idealCandidateIndices.push_back(static_cast<int>(i));
                 isIdeal = true;
             }
@@ -921,6 +1130,7 @@ void Game::m_rebuild() {
         }
 
         m_base = selectedBaseWord; // Assign the final selected word (or "ERROR")
+        baseWordForGrid = selectedBaseWord; // Preserve original base before shuffle
     } // End if (!m_roots.empty())
 
 
@@ -938,7 +1148,7 @@ void Game::m_rebuild() {
         std::vector<WordInfo> filtered_sub_solutions; // Initial filtering target
         std::vector<int> allowedSubRarities;
         switch (m_selectedDifficulty) { /* ... set allowedSubRarities ... */
-        case DifficultyLevel::Easy:   allowedSubRarities = { 1, 2 };    break;
+        case DifficultyLevel::Easy:   allowedSubRarities = { 1, 2};    break;
         case DifficultyLevel::Medium: allowedSubRarities = { 1, 2, 3 }; break;
         case DifficultyLevel::Hard:   allowedSubRarities = { 2, 3, 4 }; break;
         default:                      allowedSubRarities = { 1, 2, 3, 4 }; break;
@@ -980,6 +1190,86 @@ void Game::m_rebuild() {
 
         final_solutions = std::move(unique_solutions_temp); // Assign final unique list
 
+        // --- Ensure the base word itself is included in the grid list ---
+        if (!baseWordForGrid.empty()) {
+            std::string baseLower = baseWordForGrid;
+            std::transform(baseLower.begin(), baseLower.end(), baseLower.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+            bool baseAlreadyIncluded = false;
+            for (const auto& info : final_solutions) {
+                if (info.text == baseLower) {
+                    baseAlreadyIncluded = true;
+                    break;
+                }
+            }
+
+            if (!baseAlreadyIncluded) {
+                WordInfo baseInfo;
+                bool foundBaseInfo = false;
+                for (const auto& info : m_roots) {
+                    if (info.text == baseLower) {
+                        baseInfo = info;
+                        foundBaseInfo = true;
+                        break;
+                    }
+                }
+                if (!foundBaseInfo) {
+                    for (const auto& info : m_fullWordList) {
+                        if (info.text == baseLower) {
+                            baseInfo = info;
+                            foundBaseInfo = true;
+                            break;
+                        }
+                    }
+                }
+                if (!foundBaseInfo) {
+                    baseInfo.text = baseLower;
+                    baseInfo.rarity = 0;
+                }
+
+                if (baseInfo.text.length() >= static_cast<std::size_t>(minSubLengthForDifficulty)) {
+                    final_solutions.push_back(baseInfo);
+                }
+            }
+        }
+
+        // --- Fallback: Ensure minimum grid words by promoting bonus words ---
+        const std::size_t minGridTarget = static_cast<std::size_t>(std::min(MIN_DESIRED_GRID_WORDS, maxSolutionsForDifficulty));
+        if (final_solutions.size() < minGridTarget) {
+            std::set<std::string> existingTexts;
+            for (const auto& info : final_solutions) {
+                existingTexts.insert(info.text);
+            }
+
+            std::vector<WordInfo> fallbackCandidates;
+            fallbackCandidates.reserve(m_allPotentialSolutions.size());
+            for (const auto& info : m_allPotentialSolutions) {
+                if (info.text.length() < minSubLengthForDifficulty) {
+                    continue;
+                }
+                if (existingTexts.count(info.text)) {
+                    continue;
+                }
+                fallbackCandidates.push_back(info);
+            }
+
+            std::sort(fallbackCandidates.begin(), fallbackCandidates.end(),
+                [](const WordInfo& a, const WordInfo& b) {
+                    if (a.text.length() != b.text.length()) return a.text.length() > b.text.length();
+                    if (a.rarity != b.rarity) return a.rarity < b.rarity;
+                    return a.text < b.text;
+                });
+
+            for (const auto& info : fallbackCandidates) {
+                final_solutions.push_back(info);
+                existingTexts.insert(info.text);
+                if (final_solutions.size() >= minGridTarget) {
+                    break;
+                }
+            }
+        }
+
     }
     else { // Handle m_base == "ERROR"
         m_allPotentialSolutions.clear(); final_solutions.clear();
@@ -991,6 +1281,7 @@ void Game::m_rebuild() {
 
     m_bonusWordsCacheIsValid = false;
     m_cachedBonusWords.clear();
+    m_bonusWordsPopupScrollOffset = 0.f; // reset scroll when puzzle changes
 
     // --- Debug Print ---
     std::cout << "DEBUG: m_rebuild - Final Base: '" << m_base << "', FINAL m_solutions count (Grid Target): " << m_solutions.size() << ", m_sorted count: " << m_sorted.size() << std::endl;
@@ -1199,10 +1490,14 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         m_returnToMenuButtonShape.setSize(sf::Vector2f(btnWidth_return, btnHeight_return));
         m_returnToMenuButtonShape.setRadius(S(this, 8.f));
         m_returnToMenuButtonShape.setOrigin(sf::Vector2f(0.f, 0.f));
-        m_returnToMenuButtonShape.setPosition(sf::Vector2f(
-            TOP_BAR_ZONE_DESIGN.position.x + S(this, TOP_BAR_PADDING_X_DESIGN),
-            TOP_BAR_ZONE_DESIGN.position.y + (TOP_BAR_ZONE_DESIGN.size.y - btnHeight_return) / 2.f
-        ));
+        sf::Vector2f returnBtnPos(TOP_BAR_ZONE_DESIGN.position.x + S(this, TOP_BAR_PADDING_X_DESIGN), TOP_BAR_ZONE_DESIGN.position.y + (TOP_BAR_ZONE_DESIGN.size.y - btnHeight_return) / 2.f);
+        m_returnToMenuButtonShape.setPosition(returnBtnPos);
+        if (m_returnToMenuButtonSpr && m_menuButtonTexture.getSize().x > 0) {
+            sf::Vector2u mbt = m_menuButtonTexture.getSize();
+            m_returnToMenuButtonSpr->setOrigin(sf::Vector2f(0.f, 0.f));
+            m_returnToMenuButtonSpr->setPosition(returnBtnPos);
+            m_returnToMenuButtonSpr->setScale(sf::Vector2f(btnWidth_return / static_cast<float>(mbt.x), btnHeight_return / static_cast<float>(mbt.y)));
+        }
         m_returnToMenuButtonText->setCharacterSize(static_cast<unsigned int>(S(this, RETURN_BTN_FONT_SIZE_DESIGN)));
         centerTextOnShape_General(*m_returnToMenuButtonText, m_returnToMenuButtonShape);
     }
@@ -1448,11 +1743,11 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     // 8. Menu Layouts
     sf::Vector2f windowCenterPix_menu = sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)) / 2.f;
     sf::Vector2f mappedWindowCenter_menu = m_window.mapPixelToCoords(sf::Vector2i(static_cast<int>(windowCenterPix_menu.x), static_cast<int>(windowCenterPix_menu.y)));
-    const float scaledMenuPadding_menu = S(this, 40.f);
-    const float scaledButtonSpacing_menu = S(this, 20.f);
+    const float scaledMenuPadding_menu = S(this, MENU_PANEL_PADDING_DESIGN);
+    const float scaledButtonSpacing_menu = S(this, MENU_BUTTON_SPACING_DESIGN);
     const unsigned int scaledTitleSize_menu = static_cast<unsigned int>(std::max(12.0f, S(this, 36.f)));
     const unsigned int scaledButtonFontSize_menu = static_cast<unsigned int>(std::max(10.0f, S(this, 24.f)));
-    const sf::Vector2f scaledButtonSize_menu_vec = sf::Vector2f(S(this, 250.f), S(this, 50.f));
+    const sf::Vector2f scaledButtonSize_menu_vec = sf::Vector2f(S(this, MENU_BUTTON_WIDTH_DESIGN), S(this, MENU_BUTTON_HEIGHT_DESIGN));
     const float scaledButtonRadius_menu_val = S(this, 10.f);
     const float scaledMenuRadius_menu_val = S(this, 15.f);
     auto centerTextOnButton_lambda_menu = [&](const std::unique_ptr<sf::Text>& textPtr, const RoundedRectangleShape& button) {
@@ -1468,19 +1763,28 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         sf::FloatRect titleBounds_main_menu = m_mainMenuTitle->getLocalBounds();
         float sths_main_menu = titleBounds_main_menu.size.y + titleBounds_main_menu.position.y + scaledButtonSpacing_menu;
         float tbh_main_menu = 3 * scaledButtonSize_menu_vec.y + 2 * scaledButtonSpacing_menu;
-        float smmh_main_menu = scaledMenuPadding_menu + sths_main_menu + tbh_main_menu + scaledMenuPadding_menu;
-        float smmw_main_menu = std::max(scaledButtonSize_menu_vec.x, titleBounds_main_menu.size.x + titleBounds_main_menu.position.x) + 2 * scaledMenuPadding_menu;
+        float smmh_main_menu = scaledMenuPadding_menu + sths_main_menu + tbh_main_menu + scaledMenuPadding_menu + S(this, MENU_PANEL_EXTRA_HEIGHT_DESIGN);
+        float smmw_main_menu = std::max(scaledButtonSize_menu_vec.x, titleBounds_main_menu.size.x + titleBounds_main_menu.position.x) + 2 * scaledMenuPadding_menu + S(this, MENU_PANEL_EXTRA_WIDTH_DESIGN);
         m_mainMenuBg.setSize(sf::Vector2f(smmw_main_menu, smmh_main_menu)); m_mainMenuBg.setRadius(scaledMenuRadius_menu_val);
         m_mainMenuBg.setOrigin(sf::Vector2f(smmw_main_menu / 2.f, smmh_main_menu / 2.f)); m_mainMenuBg.setPosition(mappedWindowCenter_menu);
+        if (m_mainMenuBgSpr && m_menuBgTexture.getSize().x > 0) {
+            sf::Vector2u texSize = m_menuBgTexture.getSize();
+            m_mainMenuBgSpr->setOrigin(sf::Vector2f(static_cast<float>(texSize.x) / 2.f, static_cast<float>(texSize.y) / 2.f));
+            m_mainMenuBgSpr->setPosition(mappedWindowCenter_menu);
+            m_mainMenuBgSpr->setScale(sf::Vector2f(smmw_main_menu / static_cast<float>(texSize.x), smmh_main_menu / static_cast<float>(texSize.y)));
+        }
         sf::Vector2f mbp_main_menu_pos = m_mainMenuBg.getPosition(); float mty_main_menu_pos = mbp_main_menu_pos.y - smmh_main_menu / 2.f;
         m_mainMenuTitle->setOrigin(sf::Vector2f(titleBounds_main_menu.position.x + titleBounds_main_menu.size.x / 2.f, titleBounds_main_menu.position.y));
         m_mainMenuTitle->setPosition(sf::Vector2f(mbp_main_menu_pos.x, mty_main_menu_pos + scaledMenuPadding_menu));
         float currentY_main_menu = mty_main_menu_pos + scaledMenuPadding_menu + sths_main_menu;
         m_casualButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_casualButtonShape.setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu));
+        if (m_casualButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_casualButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_casualButtonSpr->setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu)); m_casualButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
         centerTextOnButton_lambda_menu(m_casualButtonText, m_casualButtonShape); currentY_main_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
         m_competitiveButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_competitiveButtonShape.setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu));
+        if (m_competitiveButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_competitiveButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_competitiveButtonSpr->setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu)); m_competitiveButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
         centerTextOnButton_lambda_menu(m_competitiveButtonText, m_competitiveButtonShape); currentY_main_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
         m_quitButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_quitButtonShape.setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu));
+        if (m_quitButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_quitButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_quitButtonSpr->setPosition(sf::Vector2f(mbp_main_menu_pos.x, currentY_main_menu)); m_quitButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
         centerTextOnButton_lambda_menu(m_quitButtonText, m_quitButtonShape);
     }
     if (m_casualMenuTitle && m_easyButtonShape.getPointCount() > 0) {
@@ -1491,21 +1795,31 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         sf::FloatRect ctb_casual_menu = m_casualMenuTitle->getLocalBounds();
         float sths_c_casual_menu = ctb_casual_menu.size.y + ctb_casual_menu.position.y + scaledButtonSpacing_menu;
         float tbh_c_casual_menu = 4 * scaledButtonSize_menu_vec.y + 3 * scaledButtonSpacing_menu;
-        float scmh_casual_menu = scaledMenuPadding_menu + sths_c_casual_menu + tbh_c_casual_menu + scaledMenuPadding_menu;
-        float scmw_casual_menu = std::max(scaledButtonSize_menu_vec.x, ctb_casual_menu.size.x + ctb_casual_menu.position.x) + 2 * scaledMenuPadding_menu;
+        float scmh_casual_menu = scaledMenuPadding_menu + sths_c_casual_menu + tbh_c_casual_menu + scaledMenuPadding_menu + S(this, MENU_PANEL_EXTRA_HEIGHT_DESIGN);
+        float scmw_casual_menu = std::max(scaledButtonSize_menu_vec.x, ctb_casual_menu.size.x + ctb_casual_menu.position.x) + 2 * scaledMenuPadding_menu + S(this, MENU_PANEL_EXTRA_WIDTH_DESIGN);
         m_casualMenuBg.setSize(sf::Vector2f(scmw_casual_menu, scmh_casual_menu)); m_casualMenuBg.setRadius(scaledMenuRadius_menu_val);
         m_casualMenuBg.setOrigin(sf::Vector2f(scmw_casual_menu / 2.f, scmh_casual_menu / 2.f)); m_casualMenuBg.setPosition(mappedWindowCenter_menu);
+        if (m_casualMenuBgSpr && m_menuBgTexture.getSize().x > 0) {
+            sf::Vector2u texSize = m_menuBgTexture.getSize();
+            m_casualMenuBgSpr->setOrigin(sf::Vector2f(static_cast<float>(texSize.x) / 2.f, static_cast<float>(texSize.y) / 2.f));
+            m_casualMenuBgSpr->setPosition(mappedWindowCenter_menu);
+            m_casualMenuBgSpr->setScale(sf::Vector2f(scmw_casual_menu / static_cast<float>(texSize.x), scmh_casual_menu / static_cast<float>(texSize.y)));
+        }
         sf::Vector2f cmbp_casual_menu_pos = m_casualMenuBg.getPosition(); float cmty_casual_menu_pos = cmbp_casual_menu_pos.y - scmh_casual_menu / 2.f;
         m_casualMenuTitle->setOrigin(sf::Vector2f(ctb_casual_menu.position.x + ctb_casual_menu.size.x / 2.f, ctb_casual_menu.position.y));
         m_casualMenuTitle->setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, cmty_casual_menu_pos + scaledMenuPadding_menu));
         float ccy_casual_menu = cmty_casual_menu_pos + scaledMenuPadding_menu + sths_c_casual_menu;
         m_easyButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_easyButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
+        if (m_easyButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_easyButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_easyButtonSpr->setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu)); m_easyButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
         centerTextOnButton_lambda_menu(m_easyButtonText, m_easyButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
         m_mediumButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_mediumButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
+        if (m_mediumButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_mediumButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_mediumButtonSpr->setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu)); m_mediumButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
         centerTextOnButton_lambda_menu(m_mediumButtonText, m_mediumButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
         m_hardButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_hardButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
+        if (m_hardButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_hardButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_hardButtonSpr->setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu)); m_hardButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
         centerTextOnButton_lambda_menu(m_hardButtonText, m_hardButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
         m_returnButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_returnButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
+        if (m_returnButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_returnButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_returnButtonSpr->setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu)); m_returnButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
         centerTextOnButton_lambda_menu(m_returnButtonText, m_returnButtonShape);
     }
 
@@ -1616,9 +1930,10 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     // --- NEW: Layout for Hint Pop-up ---
     const sf::FloatRect gridZone_popup = GRID_ZONE_RECT_DESIGN; // Renamed to avoid conflict
 
-    const float popupPadding = S(this, 10.f);
-    const float popupDesignWidth = S(this, 240.f);
-    const float popupDesignHeight = S(this, 120.f);
+    const float popupPadding = S(this, HINT_POPUP_PADDING_DESIGN);
+    const float popupDesignWidth = S(this, HINT_POPUP_WIDTH_DESIGN);
+    const float popupDesignHeight = S(this, HINT_POPUP_HEIGHT_DESIGN);
+    const float popupScreenMargin = S(this, POPUP_SCREEN_MARGIN_DESIGN);
 
     float gridZoneCenterX = gridZone_popup.position.x + gridZone_popup.size.x / 2.f;
     float gridZoneCenterY = gridZone_popup.position.y + gridZone_popup.size.y / 2.f;
@@ -1626,13 +1941,13 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     float popupX = gridZoneCenterX - popupDesignWidth / 2.f;
     float popupY = gridZoneCenterY - popupDesignHeight / 2.f;
 
-    popupX = std::max(popupX, S(this, 5.f));
-    popupY = std::max(popupY, S(this, 5.f));
-    if (popupX + popupDesignWidth > static_cast<float>(REF_W) - S(this, 5.f)) {
-        popupX = static_cast<float>(REF_W) - popupDesignWidth - S(this, 5.f);
+    popupX = std::max(popupX, popupScreenMargin);
+    popupY = std::max(popupY, popupScreenMargin);
+    if (popupX + popupDesignWidth > static_cast<float>(REF_W) - popupScreenMargin) {
+        popupX = static_cast<float>(REF_W) - popupDesignWidth - popupScreenMargin;
     }
-    if (popupY + popupDesignHeight > static_cast<float>(REF_H) - S(this, 5.f)) {
-        popupY = static_cast<float>(REF_H) - popupDesignHeight - S(this, 5.f);
+    if (popupY + popupDesignHeight > static_cast<float>(REF_H) - popupScreenMargin) {
+        popupY = static_cast<float>(REF_H) - popupDesignHeight - popupScreenMargin;
     }
 
     m_hintPopupBackground.setSize({ popupDesignWidth, popupDesignHeight });
@@ -1641,13 +1956,19 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     m_hintPopupBackground.setFillColor(sf::Color(40, 45, 60, 240));
     m_hintPopupBackground.setOutlineColor(sf::Color(150, 150, 180, 220));
     m_hintPopupBackground.setOutlineThickness(S(this, 1.5f));
+    if (m_hintPopupBgSpr && m_menuBgTexture.getSize().x > 0) {
+        sf::Vector2u texSize = m_menuBgTexture.getSize();
+        m_hintPopupBgSpr->setOrigin(sf::Vector2f(0.f, 0.f));
+        m_hintPopupBgSpr->setPosition(sf::Vector2f(popupX, popupY));
+        m_hintPopupBgSpr->setScale(sf::Vector2f(popupDesignWidth / static_cast<float>(texSize.x), popupDesignHeight / static_cast<float>(texSize.y)));
+    }
 
     float textCurrentY_popup = popupY + popupPadding;
     float textStartX_popup = popupX + popupPadding;
 
     unsigned int popupLineFontSize = static_cast<unsigned int>(S(this, 16.f));
     unsigned int popupDescFontSize = static_cast<unsigned int>(S(this, 14.f));
-    float lineSpacing_popup = S(this, 7.f);
+    float lineSpacing_popup = S(this, HINT_POPUP_LINE_SPACING_DESIGN);
 
     if (m_popupAvailablePointsText) {
         m_popupAvailablePointsText->setCharacterSize(popupLineFontSize);
@@ -1818,32 +2139,20 @@ Game::PuzzleCriteria Game::m_getCriteriaForCurrentPuzzle() const {
     switch (m_selectedDifficulty) {
     case DifficultyLevel::Easy:
         criteria.allowedRarities = { 1 }; // Primarily Rarity 1
-        if (isLastPuzzle) {
-            criteria.allowedLengths = { 6 }; // Last puzzle is 6 letters
-        }
-        else {
-            criteria.allowedLengths = { 4, 5 }; // Regular puzzles are 4 or 5
-        }
+        criteria.allowedLengths = { 7 }; // Force 7-letter puzzles
         break;
 
     case DifficultyLevel::Medium:
         criteria.allowedRarities = { 1, 2, 3 }; // Rarity 1, 2, or 3
-        if (isLastPuzzle) {
-            criteria.allowedLengths = { 7 }; // Last puzzle is 7 letters
-            // Optional: Could tighten rarity for last word, e.g. {2, 3}
-        }
-        else {
-            criteria.allowedLengths = { 4, 5, 6 }; // Regular puzzles
-        }
+        criteria.allowedLengths = { 7 }; // Force 7-letter puzzles
         break;
 
     case DifficultyLevel::Hard:
+        criteria.allowedLengths = { 7 };   // Force 7-letter puzzles
         if (isLastPuzzle) {
-            criteria.allowedLengths = { 7 };   // Last puzzle is 7 letters
             criteria.allowedRarities = { 4 };  // Last puzzle is Rarity 4
         }
         else {
-            criteria.allowedLengths = { 5, 6, 7 }; // Regular puzzles
             criteria.allowedRarities = { 3, 4 };   // Rarity 3 or 4
         }
         break;
@@ -1859,7 +2168,7 @@ Game::PuzzleCriteria Game::m_getCriteriaForCurrentPuzzle() const {
 }
 
 void Game::m_renderMainMenu(const sf::Vector2f& mousePos) {
-    // Apply theme colors
+    // Apply theme colors (fallback when menu background texture not used)
     m_mainMenuBg.setFillColor(m_currentTheme.menuBg);
     m_mainMenuTitle->setFillColor(m_currentTheme.menuTitleText);
     m_casualButtonText->setFillColor(m_currentTheme.menuButtonText); // Use -> for unique_ptr
@@ -1871,19 +2180,22 @@ void Game::m_renderMainMenu(const sf::Vector2f& mousePos) {
     m_competitiveButtonShape.setFillColor(m_competitiveButtonShape.getGlobalBounds().contains(mousePos) ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
     m_quitButtonShape.setFillColor(m_quitButtonShape.getGlobalBounds().contains(mousePos) ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
 
-    // Draw Main Menu elements
-    m_window.draw(m_mainMenuBg);
+    // Draw Main Menu elements (menu panel: image or theme-colored fallback)
+    if (m_mainMenuBgSpr && m_menuBgTexture.getSize().x > 0)
+        m_window.draw(*m_mainMenuBgSpr);
+    else
+        m_window.draw(m_mainMenuBg);
     m_window.draw(*m_mainMenuTitle); // Use * to dereference unique_ptr for drawing
-    m_window.draw(m_casualButtonShape);
+    if (m_casualButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_casualButtonSpr); else m_window.draw(m_casualButtonShape);
     m_window.draw(*m_casualButtonText);
-    m_window.draw(m_competitiveButtonShape);
+    if (m_competitiveButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_competitiveButtonSpr); else m_window.draw(m_competitiveButtonShape);
     m_window.draw(*m_competitiveButtonText);
-    m_window.draw(m_quitButtonShape);
+    if (m_quitButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_quitButtonSpr); else m_window.draw(m_quitButtonShape);
     m_window.draw(*m_quitButtonText);
 }
 
 void Game::m_renderCasualMenu(const sf::Vector2f& mousePos) {
-    // Apply theme colors
+    // Apply theme colors (fallback when menu background texture not used)
     m_casualMenuBg.setFillColor(m_currentTheme.menuBg);
     m_casualMenuTitle->setFillColor(m_currentTheme.menuTitleText);
     m_easyButtonText->setFillColor(m_currentTheme.menuButtonText);
@@ -1897,16 +2209,19 @@ void Game::m_renderCasualMenu(const sf::Vector2f& mousePos) {
     m_hardButtonShape.setFillColor(m_hardButtonShape.getGlobalBounds().contains(mousePos) ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
     m_returnButtonShape.setFillColor(m_returnButtonShape.getGlobalBounds().contains(mousePos) ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
 
-    // Draw Casual Menu elements
-    m_window.draw(m_casualMenuBg);
+    // Draw Casual Menu elements (menu panel: image or theme-colored fallback)
+    if (m_casualMenuBgSpr && m_menuBgTexture.getSize().x > 0)
+        m_window.draw(*m_casualMenuBgSpr);
+    else
+        m_window.draw(m_casualMenuBg);
     m_window.draw(*m_casualMenuTitle);
-    m_window.draw(m_easyButtonShape);
+    if (m_easyButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_easyButtonSpr); else m_window.draw(m_easyButtonShape);
     m_window.draw(*m_easyButtonText);
-    m_window.draw(m_mediumButtonShape);
+    if (m_mediumButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_mediumButtonSpr); else m_window.draw(m_mediumButtonShape);
     m_window.draw(*m_mediumButtonText);
-    m_window.draw(m_hardButtonShape);
+    if (m_hardButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_hardButtonSpr); else m_window.draw(m_hardButtonShape);
     m_window.draw(*m_hardButtonText);
-    m_window.draw(m_returnButtonShape);
+    if (m_returnButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_returnButtonSpr); else m_window.draw(m_returnButtonShape);
     m_window.draw(*m_returnButtonText);
 
     // TODO: Draw pop-up if hovering
@@ -1936,6 +2251,16 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 
     if (m_gameState != GState::Playing) {
         return;
+    }
+
+    // --- Mouse wheel: scroll bonus words popup whenever it is visible (cursor can be over "Bonus Words" text or the popup) ---
+    if (const auto* wheel = event.getIf<sf::Event::MouseWheelScrolled>()) {
+        if (m_isHoveringHintPointsText) {
+            // delta: positive = scroll up (content moves down) = decrease offset; negative = scroll down = increase offset
+            m_bonusWordsPopupScrollOffset -= wheel->delta * BONUS_POPUP_SCROLL_SPEED;
+            m_bonusWordsPopupScrollOffset = std::max(0.f, std::min(m_bonusWordsPopupScrollOffset, m_bonusWordsPopupMaxScrollOffset));
+            return; // consumed so wheel doesn't affect other UI
+        }
     }
 
     if (const auto* mb_pressed = event.getIf<sf::Event::MouseButtonPressed>()) { // Renamed local
@@ -2409,7 +2734,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
     if ((m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) && m_returnToMenuButtonShape.getPointCount() > 0 && m_returnToMenuButtonText) {
         bool returnHover = m_returnToMenuButtonShape.getGlobalBounds().contains(mousePos);
         m_returnToMenuButtonShape.setFillColor(returnHover ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
-        m_window.draw(m_returnToMenuButtonShape);
+        if (m_returnToMenuButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_returnToMenuButtonSpr); else m_window.draw(m_returnToMenuButtonShape);
         m_returnToMenuButtonText->setFillColor(m_currentTheme.menuButtonText);
         centerTextOnShape_General(*m_returnToMenuButtonText, m_returnToMenuButtonShape);
         m_window.draw(*m_returnToMenuButtonText);
@@ -2455,7 +2780,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         m_progressMeterText->setCharacterSize(scaledProgressFontSize);
         std::string progressStr = std::to_string(m_currentPuzzleIndex + 1) + "/" + std::to_string(m_puzzlesPerSession);
         m_progressMeterText->setString(progressStr);
-        m_progressMeterText->setFillColor(sf::Color::White);
+        m_progressMeterText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
         centerTextOnShape_General(*m_progressMeterText, m_progressMeterBg);
         m_window.draw(*m_progressMeterText);
     }
@@ -2463,11 +2788,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
     // --- Draw Letter Grid ---
     if (!m_sorted.empty() && !m_grid.empty()) {
         const float finalRenderTileSize = TILE_SIZE * m_currentGridLayoutScale;
-        const float finalRenderTileRadius = finalRenderTileSize * 0.18f;
-        const float tileOutlineRenderThickness = S(this, 1.0f);
 
-        RoundedRectangleShape tileBackground(sf::Vector2f(finalRenderTileSize, finalRenderTileSize), finalRenderTileRadius, 10);
-        tileBackground.setOutlineThickness(tileOutlineRenderThickness);
         sf::Text letterText_grid(m_font, "", scaledGridLetterFontSize);
 
         for (std::size_t w = 0; w < m_sorted.size(); ++w) {
@@ -2478,10 +2799,15 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
                 sf::Vector2f p_tile = m_tilePos(static_cast<int>(w), static_cast<int>(c));
                 bool isFilled = (m_grid[w][c] != '_');
-                tileBackground.setPosition(p_tile);
-                tileBackground.setFillColor(isFilled ? m_currentTheme.gridFilledTile : m_currentTheme.gridEmptyTile);
-                tileBackground.setOutlineColor(isFilled ? m_currentTheme.gridFilledTile : m_currentTheme.gridEmptyTile);
-                m_window.draw(tileBackground);
+                
+                // Draw button sprite instead of grey box (origin top-left so guess-display use of same sprite doesn't affect grid)
+                if (m_buttonSpr && m_buttonTex.getSize().x > 0) {
+                    m_buttonSpr->setOrigin(sf::Vector2f(0.f, 0.f));
+                    float buttonScale = finalRenderTileSize / static_cast<float>(m_buttonTex.getSize().x);
+                    m_buttonSpr->setScale(sf::Vector2f(buttonScale, buttonScale));
+                    m_buttonSpr->setPosition(p_tile);
+                    m_window.draw(*m_buttonSpr);
+                }
 
                 if (!isFilled) {
                     sf::Sprite* gemSprite = nullptr;
@@ -2526,6 +2852,26 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
                         if (currentFlourishScale != 1.0f) letterText_grid.setScale(sf::Vector2f(1.f, 1.f));
                     }
                 }
+            }
+        }
+
+        // --- Draw column dividers so words don't run together ---
+        if (GRID_COLUMN_DIVIDER_WIDTH > 0.f && m_colXOffset.size() >= 2u) {
+            const int numCols = static_cast<int>(m_colXOffset.size());
+            const float scaledTileSize = TILE_SIZE * m_currentGridLayoutScale;
+            const float scaledTilePad = TILE_PAD * m_currentGridLayoutScale;
+            const float scaledColPad = COL_PAD * m_currentGridLayoutScale;
+            // Extend divider to full GRID_COLUMN_DIVIDER_ROWS height so it runs full length on Easy/Medium (fewer rows)
+            const int dividerRows = GRID_COLUMN_DIVIDER_ROWS;
+            const float dividerHeight = static_cast<float>(dividerRows) * (scaledTileSize + scaledTilePad) - (dividerRows > 0 ? scaledTilePad : 0.f);
+
+            sf::RectangleShape divider(sf::Vector2f(GRID_COLUMN_DIVIDER_WIDTH, dividerHeight));
+            divider.setFillColor(sf::Color(120, 100, 80, 200)); // Muted metal/brown to match steampunk; tweak as needed
+
+            for (int c = 0; c < numCols - 1; ++c) {
+                const float gapCenterX = m_colXOffset[c + 1] - scaledColPad * 0.5f;
+                divider.setPosition(sf::Vector2f(gapCenterX - GRID_COLUMN_DIVIDER_WIDTH * 0.5f, m_gridStartY));
+                m_window.draw(divider);
             }
         }
     }
@@ -2631,36 +2977,47 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
     m_renderScoreFlourishes(m_window);
     m_renderHintPointAnims(m_window);
 
-    // --- Draw Guess Display (above wheel) ---
+    // --- Draw Guess Display (above wheel): one button per letter with spacing like the grid ---
     if (m_gameState == GState::Playing && !m_currentGuess.empty() && m_guessDisplay_Text && m_guessDisplay_Bg.getPointCount() > 0) {
-        const float scaledGuessDisplayPadX_local = S(this, 15.f); // Use local to avoid redefinition warning
-        const float scaledGuessDisplayPadY_local = S(this, 5.f);
-        const float scaledGuessDisplayGap_local = S(this, GUESS_DISPLAY_GAP);
+        // Use design-space gap/offset (no S()) so guess row doesn't move when window is resized/maximized
+        const float guessDisplayGap_design = GUESS_DISPLAY_GAP;
+        const float guessDisplayOffsetY_design = GUESS_DISPLAY_OFFSET_Y;
+        const float guessTileSize = TILE_SIZE * m_currentGridLayoutScale * GUESS_TILE_SCALE;
+        const float guessPad = TILE_PAD * m_currentGridLayoutScale;
 
-        m_guessDisplay_Text->setCharacterSize(scaledGuessDisplayFontSize);
-        m_guessDisplay_Text->setString(m_currentGuess);
+        const std::size_t n = m_currentGuess.length();
+        const float totalWidth = (n > 0) ? (n * guessTileSize + (n - 1) * guessPad) : 0.f;
+        const float wheelVisualTopY = m_wheelY - m_visualBgRadius;
+        const float guessRowTopY = wheelVisualTopY - guessTileSize - guessDisplayGap_design - guessDisplayOffsetY_design;
 
-        sf::FloatRect textBounds = m_guessDisplay_Text->getLocalBounds();
-        sf::Vector2f bgSize = {
-            textBounds.position.x + textBounds.size.x + 2 * scaledGuessDisplayPadX_local,
-            textBounds.position.y + textBounds.size.y + 2 * scaledGuessDisplayPadY_local
-        };
-        m_guessDisplay_Bg.setSize(bgSize);
+        const unsigned int guessLetterFontSize = static_cast<unsigned int>(std::max(8.0f, guessTileSize * GUESS_LETTER_FONT_SCALE));
+        m_guessDisplay_Text->setCharacterSize(guessLetterFontSize);
+        m_guessDisplay_Text->setFillColor(m_currentTheme.gridLetter);
 
-        float wheelVisualTopY = m_wheelY - m_visualBgRadius;
-        float guessDisplayCenterY = wheelVisualTopY - (bgSize.y / 2.f) - scaledGuessDisplayGap_local;
+        if (m_buttonSpr && m_buttonTex.getSize().x > 0) {
+            m_buttonSpr->setOrigin(sf::Vector2f(0.f, 0.f));
+            const float buttonScale = guessTileSize / static_cast<float>(m_buttonTex.getSize().x);
+            m_buttonSpr->setScale(sf::Vector2f(buttonScale, buttonScale));
 
-        m_guessDisplay_Bg.setOrigin({ bgSize.x / 2.f, bgSize.y / 2.f });
-        m_guessDisplay_Bg.setPosition({ m_wheelX, guessDisplayCenterY });
+            for (std::size_t i = 0; i < n; ++i) {
+                const float tileLeft = m_wheelX - totalWidth / 2.f + i * (guessTileSize + guessPad);
+                m_buttonSpr->setPosition(sf::Vector2f(tileLeft, guessRowTopY));
+                m_window.draw(*m_buttonSpr);
 
-        centerTextOnShape_General(*m_guessDisplay_Text, m_guessDisplay_Bg);
-
-        m_guessDisplay_Text->setFillColor(m_currentTheme.letterTextNormal);
-        m_guessDisplay_Bg.setFillColor(m_currentTheme.gridFilledTile);
-        m_guessDisplay_Bg.setOutlineColor(m_currentTheme.gridFilledTile);
-
-        m_window.draw(m_guessDisplay_Bg);
-        m_window.draw(*m_guessDisplay_Text);
+                // Draw letter centered in this button
+                m_guessDisplay_Text->setString(std::string(1, m_currentGuess[i]));
+                sf::FloatRect letterBounds = m_guessDisplay_Text->getLocalBounds();
+                m_guessDisplay_Text->setOrigin(sf::Vector2f(
+                    letterBounds.position.x + letterBounds.size.x / 2.f,
+                    letterBounds.position.y + letterBounds.size.y / 2.f
+                ));
+                m_guessDisplay_Text->setPosition(sf::Vector2f(
+                    tileLeft + guessTileSize / 2.f,
+                    guessRowTopY + guessTileSize / 2.f
+                ));
+                m_window.draw(*m_guessDisplay_Text);
+            }
+        }
     }
 
     // --- Hint Zone UI (Left Side) ---
@@ -2752,10 +3109,100 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         sf::FloatRect descBounds = m_popupHintDescriptionText->getLocalBounds();
         m_popupHintDescriptionText->setOrigin(sf::Vector2f(descBounds.position.x, descBounds.position.y));
 
-        m_window.draw(m_hintPopupBackground);
+        if (m_hintPopupBgSpr && m_menuBgTexture.getSize().x > 0)
+            m_window.draw(*m_hintPopupBgSpr);
+        else
+            m_window.draw(m_hintPopupBackground);
         m_window.draw(*m_popupAvailablePointsText);
         m_window.draw(*m_popupHintCostText);
         m_window.draw(*m_popupHintDescriptionText);
+    }
+
+    // --- Solved Word Info Popup (hovered grid word) ---
+    if (m_hoveredSolvedWordIndex != -1 && m_popupWordText && m_popupPosText && m_popupDefinitionText && m_popupSentenceText) {
+        const WordInfo& info = m_sorted[m_hoveredSolvedWordIndex];
+
+        const float popupPadding = S(this, WORD_INFO_POPUP_PADDING_DESIGN);
+        const float popupMaxWidth = S(this, WORD_INFO_POPUP_MAX_WIDTH_DESIGN);
+        const float lineSpacing = S(this, WORD_INFO_POPUP_LINE_SPACING_DESIGN);
+        const float contentWidthLimit = std::max(S(this, 120.f), popupMaxWidth - popupPadding * 2.f);
+
+        unsigned int titleFontSize = static_cast<unsigned int>(std::max(10.0f, S(this, 16.f)));
+        unsigned int bodyFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 14.f)));
+
+        m_popupWordText->setCharacterSize(titleFontSize);
+        m_popupPosText->setCharacterSize(bodyFontSize);
+        m_popupDefinitionText->setCharacterSize(bodyFontSize);
+        m_popupSentenceText->setCharacterSize(bodyFontSize);
+
+        const std::string wordLine = "Word: " + info.text;
+        const std::string posLine = "POS: " + (info.pos.empty() ? "N/A" : info.pos);
+        const std::string defLine = "Definition: " + (info.definition.empty() ? "N/A" : info.definition);
+        const std::string sentenceLine = "Sentence: " + (info.sentence.empty() ? "N/A" : info.sentence);
+
+        m_popupWordText->setString(wrapTextForWidth(*m_popupWordText, wordLine, contentWidthLimit));
+        m_popupPosText->setString(wrapTextForWidth(*m_popupPosText, posLine, contentWidthLimit));
+        m_popupDefinitionText->setString(wrapTextForWidth(*m_popupDefinitionText, defLine, contentWidthLimit));
+        m_popupSentenceText->setString(wrapTextForWidth(*m_popupSentenceText, sentenceLine, contentWidthLimit));
+
+        sf::FloatRect wordBounds = m_popupWordText->getLocalBounds();
+        sf::FloatRect posBounds = m_popupPosText->getLocalBounds();
+        sf::FloatRect defBounds = m_popupDefinitionText->getLocalBounds();
+        sf::FloatRect sentBounds = m_popupSentenceText->getLocalBounds();
+
+        float maxTextWidth = std::max(std::max(wordBounds.size.x, posBounds.size.x),
+            std::max(defBounds.size.x, sentBounds.size.x));
+        float popupWidth = std::min(popupMaxWidth, maxTextWidth + popupPadding * 2.f);
+        float popupHeight = wordBounds.size.y + posBounds.size.y + defBounds.size.y + sentBounds.size.y + lineSpacing * 3.f + popupPadding * 2.f;
+
+        const float popupOffset = S(this, WORD_INFO_POPUP_OFFSET_FROM_MOUSE_DESIGN);
+        const float popupScreenMargin = S(this, POPUP_SCREEN_MARGIN_DESIGN);
+        float popupX = mousePos.x + popupOffset;
+        float popupY = mousePos.y + popupOffset;
+        if (popupX + popupWidth > static_cast<float>(REF_W) - popupScreenMargin) {
+            popupX = static_cast<float>(REF_W) - popupWidth - popupScreenMargin;
+        }
+        if (popupY + popupHeight > static_cast<float>(REF_H) - popupScreenMargin) {
+            popupY = static_cast<float>(REF_H) - popupHeight - popupScreenMargin;
+        }
+        popupX = std::max(popupX, popupScreenMargin);
+        popupY = std::max(popupY, popupScreenMargin);
+
+        m_wordInfoPopupBackground.setSize({ popupWidth, popupHeight });
+        m_wordInfoPopupBackground.setRadius(S(this, 8.f));
+        m_wordInfoPopupBackground.setPosition({ popupX, popupY });
+        m_wordInfoPopupBackground.setFillColor(sf::Color(30, 35, 50, 235));
+        m_wordInfoPopupBackground.setOutlineColor(sf::Color(150, 160, 190, 220));
+        m_wordInfoPopupBackground.setOutlineThickness(S(this, 1.5f));
+        if (m_genericPopupBgSpr && m_menuBgTexture.getSize().x > 0) {
+            sf::Vector2u texSize = m_menuBgTexture.getSize();
+            m_genericPopupBgSpr->setOrigin(sf::Vector2f(0.f, 0.f));
+            m_genericPopupBgSpr->setPosition(sf::Vector2f(popupX, popupY));
+            m_genericPopupBgSpr->setScale(sf::Vector2f(popupWidth / static_cast<float>(texSize.x), popupHeight / static_cast<float>(texSize.y)));
+        }
+
+        float textX = popupX + popupPadding;
+        float textY = popupY + popupPadding;
+
+        auto placeText = [&](sf::Text& textObj, const sf::FloatRect& bounds) {
+            textObj.setOrigin({ bounds.position.x, bounds.position.y });
+            textObj.setPosition({ textX, textY });
+            textY += bounds.size.y + lineSpacing;
+        };
+
+        placeText(*m_popupWordText, wordBounds);
+        placeText(*m_popupPosText, posBounds);
+        placeText(*m_popupDefinitionText, defBounds);
+        placeText(*m_popupSentenceText, sentBounds);
+
+        if (m_genericPopupBgSpr && m_menuBgTexture.getSize().x > 0)
+            m_window.draw(*m_genericPopupBgSpr);
+        else
+            m_window.draw(m_wordInfoPopupBackground);
+        m_window.draw(*m_popupWordText);
+        m_window.draw(*m_popupPosText);
+        m_window.draw(*m_popupDefinitionText);
+        m_window.draw(*m_popupSentenceText);
     }
 
     // --- Scramble Button (Bottom near wheel) ---
@@ -3823,14 +4270,15 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
         estimatedMaxGroupContentHeightDU = std::max(estimatedMaxGroupContentHeightDU, currentGroupHeightEst);
     }
 
+    // Scale to fit content in the popup; allow scaling up when content is small so text fills the panel
     float textRenderScale = 1.0f;
-    if (estimatedTotalContentWidthDU > maxPopupContentWidthDU && maxPopupContentWidthDU > 0) {
+    if (estimatedTotalContentWidthDU > 0 && maxPopupContentWidthDU > 0) {
         textRenderScale = std::min(textRenderScale, maxPopupContentWidthDU / estimatedTotalContentWidthDU);
     }
-    if (estimatedMaxGroupContentHeightDU > maxPopupContentHeightDU && maxPopupContentHeightDU > 0) {
+    if (estimatedMaxGroupContentHeightDU > 0 && maxPopupContentHeightDU > 0) {
         textRenderScale = std::min(textRenderScale, maxPopupContentHeightDU / estimatedMaxGroupContentHeightDU);
     }
-    textRenderScale = std::max(textRenderScale, POPUP_MIN_TEXT_SCALE);
+    textRenderScale = std::max(POPUP_MIN_TEXT_SCALE, std::min(POPUP_MAX_TEXT_SCALE, textRenderScale));
 
     const unsigned int finalWordFontSizeDU = static_cast<unsigned int>(std::max(5.0f, static_cast<float>(POPUP_WORD_FONT_SIZE_BASE) * textRenderScale));
     const unsigned int finalTitleFontSizeDU = static_cast<unsigned int>(std::max(7.0f, static_cast<float>(POPUP_TITLE_FONT_SIZE_BASE) * textRenderScale));
@@ -3874,79 +4322,34 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
             maxWordTextWidthThisGroupDU = std::max(maxWordTextWidthThisGroupDU, wordB_DU.position.x + wordB_DU.size.x);
         }
 
-        // Determine numMinorCols
+        // Determine numMinorCols: use more columns when we have many words (scrolling handles height now).
+        const size_t wordCount = wordsToDistribute.size();
         int numMinorCols = 1;
-        float totalWordListHeightForDist = 0;
-        for (size_t i = 0; i < wordsToDistribute.size(); ++i) {
-            totalWordListHeightForDist += wordsToDistribute[i].height;
-            if (i < wordsToDistribute.size() - 1) totalWordListHeightForDist += actualWordLineSpacingDU;
-        }
-        float currentMaxMinorColContentHeightLimitDU = maxPopupContentHeightDU - (currentGroup.titleSize.y + actualTitleBottomMarginDU);
-        if (currentMaxMinorColContentHeightLimitDU <= 0) currentMaxMinorColContentHeightLimitDU = finalWordFontSizeDU * 3; // Small fallback
-
-        if (totalWordListHeightForDist > currentMaxMinorColContentHeightLimitDU && wordsToDistribute.size() > 1) {
-            for (int tryMinor = 2; tryMinor <= MAX_MINOR_COLS_PER_GROUP; ++tryMinor) {
-                if ((totalWordListHeightForDist / static_cast<float>(tryMinor)) + (finalWordFontSizeDU * 0.5f) < currentMaxMinorColContentHeightLimitDU) { // Add some buffer
-                    numMinorCols = tryMinor;
-                    break;
-                }
-                if (tryMinor == MAX_MINOR_COLS_PER_GROUP) numMinorCols = MAX_MINOR_COLS_PER_GROUP;
-            }
+        if (wordCount > 1) {
+            if (wordCount >= 15) numMinorCols = MAX_MINOR_COLS_PER_GROUP;
+            else if (wordCount >= 6) numMinorCols = 2;
         }
 
         currentGroup.minorColumns.resize(numMinorCols);
         std::vector<float> minorColumnHeightsDU(numMinorCols, 0.f);
 
-        // Distribute words: Fill down one column, then move to the next.
+        // Distribute words evenly by count so column lengths differ by at most 1 (scrolling handles overflow).
+        const int n = static_cast<int>(wordCount);
+        const int c = numMinorCols;
+        const int baseCount = n / c;
+        const int remainder = n % c;
         int currentWordListIndex = 0;
-        for (int colIdx = 0; colIdx < numMinorCols; ++colIdx) {
-            int wordsRemainingInList = wordsToDistribute.size() - currentWordListIndex;
-            int colsRemainingToFill = numMinorCols - colIdx;
-            if (colsRemainingToFill <= 0) break;
-
-            int wordsToPlaceInThisColumn = (wordsRemainingInList + colsRemainingToFill - 1) / colsRemainingToFill;
-
-            for (int k = 0; k < wordsToPlaceInThisColumn; ++k) {
-                if (currentWordListIndex >= wordsToDistribute.size()) {
-                    break;
-                }
-
+        for (int colIdx = 0; colIdx < c; ++colIdx) {
+            const int countInThisCol = baseCount + (colIdx < remainder ? 1 : 0);
+            for (int k = 0; k < countInThisCol; ++k) {
+                if (currentWordListIndex >= wordsToDistribute.size()) break;
                 const auto& wordItem = wordsToDistribute[currentWordListIndex];
-
-                // Height check for this specific column to avoid overflow if calculation wasn't perfect
-                float prospectiveHeightOfWord = wordItem.height;
-                if (minorColumnHeightsDU[colIdx] > 0.f) prospectiveHeightOfWord += actualWordLineSpacingDU;
-
-                if (minorColumnHeightsDU[colIdx] + prospectiveHeightOfWord > currentMaxMinorColContentHeightLimitDU &&
-                    !currentGroup.minorColumns[colIdx].empty() && // If column already has items
-                    colIdx < numMinorCols - 1) { // And it's not the last allowed column
-                    // This word would make current column too tall, try to move to next column
-                    // This check should ideally not be hit if numMinorCols is well-calculated,
-                    // but acts as a safeguard.
-                    break; // Break from adding words to *this* column, outer loop will move to next colIdx
-                }
-
-                if (minorColumnHeightsDU[colIdx] > 0.f) {
-                    minorColumnHeightsDU[colIdx] += actualWordLineSpacingDU;
-                }
+                if (minorColumnHeightsDU[colIdx] > 0.f) minorColumnHeightsDU[colIdx] += actualWordLineSpacingDU;
                 minorColumnHeightsDU[colIdx] += wordItem.height;
                 currentGroup.minorColumns[colIdx].push_back(wordItem);
                 currentWordListIndex++;
             }
         }
-        // If any words remain undistributed (e.g. due to aggressive height check break), put them in the last column.
-        // This is a fallback; ideally, numMinorCols and wordsToPlaceInThisColumn handle it.
-        while (currentWordListIndex < wordsToDistribute.size() && numMinorCols > 0) {
-            const auto& wordItem = wordsToDistribute[currentWordListIndex];
-            int lastColIdx = numMinorCols - 1;
-            if (minorColumnHeightsDU[lastColIdx] > 0.f) {
-                minorColumnHeightsDU[lastColIdx] += actualWordLineSpacingDU;
-            }
-            minorColumnHeightsDU[lastColIdx] += wordItem.height;
-            currentGroup.minorColumns[lastColIdx].push_back(wordItem);
-            currentWordListIndex++;
-        }
-
 
         float thisGroupMinorColsWidthDU = static_cast<float>(numMinorCols) * maxWordTextWidthThisGroupDU + (numMinorCols > 1 ? static_cast<float>(numMinorCols - 1) * actualMinorColSpacingDU : 0.f);
         currentGroup.totalWidth = std::max(currentGroup.titleSize.x, thisGroupMinorColsWidthDU);
@@ -3959,63 +4362,122 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
         finalActualContentHeightDU = std::max(finalActualContentHeightDU, currentGroup.totalHeight);
     }
 
-    float finalPopupWidthDU = finalActualContentWidthDU + 2 * POPUP_PADDING_BASE;
-    float finalPopupHeightDU = finalActualContentHeightDU + 2 * POPUP_PADDING_BASE;
-
-    finalPopupWidthDU = std::min(finalPopupWidthDU, gridZone.size.x * POPUP_MAX_WIDTH_DESIGN_RATIO);
-    finalPopupHeightDU = std::min(finalPopupHeightDU, gridZone.size.y * POPUP_MAX_HEIGHT_DESIGN_RATIO);
+    // Use maximum allowed grid area for the popup frame so it's always as large as possible,
+    // instead of shrinking to content size (which made the frame tiny with 100+ bonus words).
+    const float maxPopupWidthDU = gridZone.size.x * POPUP_MAX_WIDTH_DESIGN_RATIO;
+    const float maxPopupHeightDU = gridZone.size.y * POPUP_MAX_HEIGHT_DESIGN_RATIO;
+    float finalPopupWidthDU = maxPopupWidthDU;
+    float finalPopupHeightDU = maxPopupHeightDU;
 
     float popupX_DU = gridZone.position.x + (gridZone.size.x - finalPopupWidthDU) / 2.f;
     float popupY_DU = gridZone.position.y + (gridZone.size.y - finalPopupHeightDU) / 2.f;
+
+    // Scroll viewport (red square): header row fixed above it; only word list scrolls inside it
+    const float headerRowHeightDU = finalTitleFontSizeDU + actualTitleBottomMarginDU;
+    const float topBufferDU = POPUP_PADDING_BASE + headerRowHeightDU;   // clip area starts below header (red line)
+    const float bottomBufferDU = POPUP_SCROLL_BOTTOM_BUFFER;
+    const float scrollViewportHeightDU = finalPopupHeightDU - topBufferDU - bottomBufferDU;
+
+    float wordContentHeightDU = 0.f;
+    for (const auto& g : majorGroupsData) {
+        const float groupWordsHeight = g.totalHeight - g.titleSize.y - actualTitleBottomMarginDU;
+        wordContentHeightDU = std::max(wordContentHeightDU, groupWordsHeight);
+    }
+
+    const bool wordContentTallerThanViewport = (wordContentHeightDU > scrollViewportHeightDU);
+    const float contentStartY_DU_forScroll = wordContentTallerThanViewport
+        ? (popupY_DU + topBufferDU)
+        : (popupY_DU + topBufferDU + (scrollViewportHeightDU - wordContentHeightDU) * 0.5f);
+    m_bonusWordsPopupMaxScrollOffset = std::max(0.f, wordContentHeightDU - scrollViewportHeightDU);
+    m_bonusWordsPopupScrollOffset = std::max(0.f, std::min(m_bonusWordsPopupScrollOffset, m_bonusWordsPopupMaxScrollOffset));
+    const float scrollY_DU = contentStartY_DU_forScroll - m_bonusWordsPopupScrollOffset;
+
+    const sf::View savedView = target.getView();
+    const sf::FloatRect vp = savedView.getViewport();
+
+    // Full popup view: draw background and fixed headers (above the red line)
+    sf::View popupView(sf::FloatRect({ popupX_DU, popupY_DU }, { finalPopupWidthDU, finalPopupHeightDU }));
+    const float vpLeft = vp.position.x + (popupX_DU / static_cast<float>(REF_W)) * vp.size.x;
+    const float vpTop = vp.position.y + (popupY_DU / static_cast<float>(REF_H)) * vp.size.y;
+    const float vpW = (finalPopupWidthDU / static_cast<float>(REF_W)) * vp.size.x;
+    const float vpH = (finalPopupHeightDU / static_cast<float>(REF_H)) * vp.size.y;
+    popupView.setViewport(sf::FloatRect({ vpLeft, vpTop }, { vpW, vpH }));
+    target.setView(popupView);
 
     RoundedRectangleShape popupBackground({ finalPopupWidthDU, finalPopupHeightDU }, S(this, POPUP_CORNER_RADIUS_BASE), 10);
     popupBackground.setPosition({ popupX_DU, popupY_DU });
     popupBackground.setFillColor(m_currentTheme.menuBg);
     popupBackground.setOutlineColor(m_currentTheme.menuButtonHover);
     popupBackground.setOutlineThickness(S(this, 1.5f));
-    target.draw(popupBackground);
+    if (m_genericPopupBgSpr && m_menuBgTexture.getSize().x > 0) {
+        sf::Vector2u texSize = m_menuBgTexture.getSize();
+        m_genericPopupBgSpr->setOrigin(sf::Vector2f(0.f, 0.f));
+        m_genericPopupBgSpr->setPosition(sf::Vector2f(popupX_DU, popupY_DU));
+        m_genericPopupBgSpr->setScale(sf::Vector2f(finalPopupWidthDU / static_cast<float>(texSize.x), finalPopupHeightDU / static_cast<float>(texSize.y)));
+        target.draw(*m_genericPopupBgSpr);
+    }
+    else {
+        target.draw(popupBackground);
+    }
 
-    sf::Text drawTextObj(m_font, "", 10); // Primitive type for character size
-    float currentMajorColX_DU = popupX_DU + POPUP_PADDING_BASE;
+    const float contentStartX_DU = popupX_DU + (finalPopupWidthDU - finalActualContentWidthDU) * 0.5f;
+    const float headerY_DU = popupY_DU + POPUP_PADDING_BASE;
 
+    sf::Text drawTextObj(m_font, "", 10);
+    float currentMajorColX_DU = contentStartX_DU;
+
+    // Draw headers only (fixed above red line)
     for (const auto& group : majorGroupsData) {
-        if (currentMajorColX_DU + group.totalWidth > popupX_DU + finalPopupWidthDU - POPUP_PADDING_BASE + S(this, 1.f)) break; // Added S() for robust comparison
-        float currentDrawY_DU = popupY_DU + POPUP_PADDING_BASE;
-
+        if (currentMajorColX_DU + group.totalWidth > popupX_DU + finalPopupWidthDU - POPUP_PADDING_BASE + S(this, 1.f)) break;
         drawTextObj.setString(group.title);
         drawTextObj.setCharacterSize(finalTitleFontSizeDU);
         drawTextObj.setFillColor(m_currentTheme.menuTitleText);
         sf::FloatRect titleB_Draw_DU = drawTextObj.getLocalBounds();
-        drawTextObj.setOrigin({ titleB_Draw_DU.position.x, titleB_Draw_DU.position.y });
-        drawTextObj.setPosition({ currentMajorColX_DU, currentDrawY_DU });
+        const float titleCenterX = currentMajorColX_DU + group.totalWidth * 0.5f;
+        drawTextObj.setOrigin({ titleB_Draw_DU.position.x + titleB_Draw_DU.size.x * 0.5f, titleB_Draw_DU.position.y });
+        drawTextObj.setPosition({ titleCenterX, headerY_DU });
         target.draw(drawTextObj);
-        currentDrawY_DU += group.titleSize.y + actualTitleBottomMarginDU;
+        currentMajorColX_DU += group.totalWidth + actualMajorColSpacingDU;
+    }
+
+    // Scroll viewport (red square): clip so word list never draws above red line or below bottom buffer
+    const float scrollVpY = popupY_DU + topBufferDU;
+    sf::View scrollView(sf::FloatRect({ popupX_DU, scrollVpY }, { finalPopupWidthDU, scrollViewportHeightDU }));
+    const float scrollVpNormTop = vp.position.y + (scrollVpY / static_cast<float>(REF_H)) * vp.size.y;
+    const float scrollVpNormH = (scrollViewportHeightDU / static_cast<float>(REF_H)) * vp.size.y;
+    scrollView.setViewport(sf::FloatRect({ vpLeft, scrollVpNormTop }, { vpW, scrollVpNormH }));
+    target.setView(scrollView);
+
+    currentMajorColX_DU = contentStartX_DU;
+    for (const auto& group : majorGroupsData) {
+        if (currentMajorColX_DU + group.totalWidth > popupX_DU + finalPopupWidthDU - POPUP_PADDING_BASE + S(this, 1.f)) break;
+        float currentDrawY_DU = scrollY_DU; // word list starts at top of scroll viewport (all groups side by side)
 
         float currentMinorColX_DU = currentMajorColX_DU;
-        float maxWordWThisGroupForLayoutDU = 0.f; // Recalculate or use stored maxWordTextWidthThisGroupDU if it was accurate enough
-        // For drawing, it's better to use the actual max width of items in *this group*
+        float maxWordWThisGroupForLayoutDU = 0.f;
         for (const auto& minorC_loop : group.minorColumns) {
             for (const auto& item_loop : minorC_loop) {
-                measureText.setString(item_loop.textDisplay); // Measure again with final font size
+                measureText.setString(item_loop.textDisplay);
                 measureText.setCharacterSize(finalWordFontSizeDU);
                 sf::FloatRect b = measureText.getLocalBounds();
                 maxWordWThisGroupForLayoutDU = std::max(maxWordWThisGroupForLayoutDU, b.position.x + b.size.x);
             }
         }
-        if (group.minorColumns.empty()) maxWordWThisGroupForLayoutDU = group.totalWidth; // fallback if no minor cols somehow
+        if (group.minorColumns.empty()) maxWordWThisGroupForLayoutDU = group.totalWidth;
 
         for (const auto& minorCol_data : group.minorColumns) {
             float minorColDrawY_DU = currentDrawY_DU;
             if (currentMinorColX_DU + maxWordWThisGroupForLayoutDU > popupX_DU + finalPopupWidthDU - POPUP_PADDING_BASE + S(this, 1.f) && &minorCol_data != &group.minorColumns[0]) break;
 
             for (const auto& item_data : minorCol_data) {
-                if (minorColDrawY_DU + item_data.height > popupY_DU + finalPopupHeightDU - POPUP_PADDING_BASE + S(this, 1.f)) break;
+                if (minorColDrawY_DU + item_data.height > scrollVpY + scrollViewportHeightDU - S(this, 1.f)) break;
                 drawTextObj.setString(item_data.textDisplay);
                 drawTextObj.setCharacterSize(finalWordFontSizeDU);
                 drawTextObj.setFillColor(item_data.color);
                 sf::FloatRect itemTextB_DU = drawTextObj.getLocalBounds();
-                drawTextObj.setOrigin({ itemTextB_DU.position.x, itemTextB_DU.position.y });
-                drawTextObj.setPosition({ currentMinorColX_DU, minorColDrawY_DU });
+                const float wordCenterX = currentMinorColX_DU + maxWordWThisGroupForLayoutDU * 0.5f;
+                drawTextObj.setOrigin({ itemTextB_DU.position.x + itemTextB_DU.size.x * 0.5f, itemTextB_DU.position.y });
+                drawTextObj.setPosition({ wordCenterX, minorColDrawY_DU });
                 target.draw(drawTextObj);
                 minorColDrawY_DU += item_data.height + actualWordLineSpacingDU;
             }
@@ -4023,6 +4485,8 @@ void Game::m_renderBonusWordsPopup(sf::RenderTarget& target) {
         }
         currentMajorColX_DU += group.totalWidth + actualMajorColSpacingDU;
     }
+
+    target.setView(savedView);
 }
 
 void Game::centerTextOnShape(sf::Text& text, const sf::Shape& shape) {

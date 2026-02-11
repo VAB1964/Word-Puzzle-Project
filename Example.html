@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidebar Navigation Layout</title>
+    <style>
+        :root {
+            --primary-purple: #7C3AED; /* Main purple for active elements, buttons */
+            --light-purple-accent: #A78BFA; /* Lighter purple for hovers or secondary elements */
+            --very-light-purple-bg: #EDE9FE; /* Background for empty states */
+            --sidebar-bg: #5B21B6; /* Darker purple for sidebar */
+            --sidebar-button-hover-bg: #6D28D9;
+            --sidebar-button-active-bg: #8B5CF6; /* Lighter purple for active button in sidebar */
+            --sidebar-text-color: #F3E8FF; /* Light text for dark sidebar */
+            --icon-gray: #9CA3AF;
+            --text-dark: #1F2937;
+            --text-medium: #4B5563;
+            --text-light: #6B7280;
+            --border-color: #E5E7EB;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #f8f9fa; /* Page background */
+            margin: 0;
+            color: var(--text-dark);
+            display: flex; /* For full height layout */
+            min-height: 100vh;
+        }
+
+        .page-layout {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px; /* Width of the sidebar */
+            background-color: var(--sidebar-bg);
+            padding: 25px 0; /* Vertical padding, no horizontal for full-width buttons */
+            display: flex;
+            flex-direction: column;
+            color: var(--sidebar-text-color);
+            flex-shrink: 0; /* Prevent sidebar from shrinking */
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .sidebar-header svg {
+            width: 28px;
+            height: 28px;
+            margin-right: 10px;
+            color: var(--light-purple-accent); /* Make logo icon pop slightly */
+        }
+
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-button {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px; /* Adjust padding for vertical buttons */
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--sidebar-text-color);
+            text-align: left;
+            width: 100%;
+            border-left: 4px solid transparent; /* For active indicator */
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+        }
+
+        .sidebar-button svg {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+            stroke-width: 1.75;
+            flex-shrink: 0; /* Prevent icon from shrinking */
+        }
+
+        .sidebar-button:hover {
+            background-color: var(--sidebar-button-hover-bg);
+            color: #FFFFFF;
+        }
+
+        .sidebar-button.active {
+            background-color: var(--sidebar-button-active-bg);
+            border-left-color: #FFFFFF; /* White active border */
+            color: #FFFFFF; /* Brighter text for active */
+            font-weight: 600;
+        }
+
+        .main-content-area {
+            flex-grow: 1; /* Takes remaining space */
+            padding: 30px 40px;
+            background-color: #ffffff; /* Content area background */
+            overflow-y: auto; /* Allow scrolling if content is long */
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            /* justify-content: center; */ /* Align left now */
+            font-size: 16px;
+            color: var(--text-light);
+            margin-bottom: 30px;
+            /* text-align: center; */
+        }
+
+        .page-header-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            color: var(--primary-purple);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 50px 20px;
+            min-height: 350px;
+            background-color: var(--very-light-purple-bg);
+            border: 1px dashed #D1D5DB;
+            border-radius: 8px;
+        }
+
+        .empty-state-icon {
+            margin-bottom: 25px;
+            color: var(--icon-gray);
+        }
+
+        .empty-state-icon svg {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .empty-state h2 {
+            font-size: 22px;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            color: var(--text-medium);
+            margin-bottom: 30px;
+            max-width: 450px;
+            line-height: 1.6;
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 28px;
+            background-color: var(--primary-purple);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+        .cta-button svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            stroke-width: 2;
+        }
+
+        .cta-button:hover {
+            background-color: var(--light-purple-accent);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="page-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <!-- Example Logo/Brand Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L1.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09l2.846.813-.813 2.846a4.5 4.5 0 00-3.09 3.09zM18.25 12L15.404 12 .25A4.5 4.5 0 0112.596 15.404L15.404 12.596A4.5 4.5 0 0118.25 12z" />
+                </svg>
+                My App
+            </div>
+            <nav class="sidebar-nav">
+                <button class="sidebar-button active" data-tab="clients">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Clients
+                </button>
+                <button class="sidebar-button" data-tab="forms">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Forms
+                </button>
+                <!-- Add more sidebar buttons here if needed -->
+            </nav>
+        </aside>
+
+        <main class="main-content-area">
+            <p class="page-header">
+                <svg class="page-header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M12.586 2.586a2 2 0 00-2.828 0L8.172 4.172a2 2 0 000 2.828l1.414 1.414a2 2 0 002.828 0l1.586-1.586a2 2 0 000-2.828L12.586 2.586zM6 6a2 2 0 012-2h4a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd" d="M2.586 12.586a2 2 0 002.828 0L7 11l-4-4-1.414 1.414a2 2 0 000 2.828l1 1zM11 7l4 4 1.414-1.414a2 2 0 000-2.828l-1-1a2 2 0 00-2.828 0L11 7zM2 14a1 1 0 011-1h1v-1a1 1 0 112 0v1h1a1 1 0 110 2H5v1a1 1 0 11-2 0v-1H2a1 1 0 01-1-1zm14 0a1 1 0 011-1h1v-1a1 1 0 112 0v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 01-1-1z" clip-rule="evenodd" />
+                </svg>
+                Get started by adding some clients and forms.
+            </p>
+
+            <div id="clients" class="tab-content active">
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="50" cy="30" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path d="M35 55C35 46.7157 41.7157 40 50 40C58.2843 40 65 46.7157 65 55V65H35V55Z" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="25" cy="45" r="7" stroke="currentColor" stroke-width="3" opacity="0.7"/>
+                            <path d="M15 68C15 61.3726 20.3726 56 27 56C33.6274 56 39 61.3726 39 68V75H15V68Z" stroke="currentColor" stroke-width="3" opacity="0.7" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="75" cy="45" r="7" stroke="currentColor" stroke-width="3" opacity="0.7"/>
+                            <path d="M61 68C61 61.3726 66.3726 56 73 56C79.6274 56 85 61.3726 85 68V75H61V68Z" stroke="currentColor" stroke-width="3" opacity="0.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h2>No Clients Yet</h2>
+                    <p>It looks like your client list is empty. Add your first client to manage their information and track interactions.</p>
+                    <button class="cta-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Add New Client
+                    </button>
+                </div>
+            </div>
+
+            <div id="forms" class="tab-content">
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M28 15H72C75.3137 15 78 17.6863 78 21V79C78 82.3137 75.3137 85 72 85H28C24.6863 85 22 82.3137 22 79V21C22 17.6863 24.6863 15 28 15Z" stroke="currentColor" stroke-width="4"/>
+                            <path d="M40 12H60V22H40V12Z" stroke="currentColor" stroke-width="3" fill="var(--sidebar-bg)" rx="2" opacity="0.7"/>
+                            <rect x="32" y="35" width="10" height="10" rx="2.5" fill="currentColor" opacity="0.5"/>
+                            <line x1="48" y1="40" x2="68" y2="40" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+                            <rect x="32" y="55" width="10" height="10" rx="2.5" fill="currentColor" opacity="0.5"/>
+                            <line x1="48" y1="60" x2="68" y2="60" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+                        </svg>
+                    </div>
+                    <h2>No Forms Created</h2>
+                    <p>Create custom forms to collect important information from your clients seamlessly. Get started by building your first form.</p>
+                    <button class="cta-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Create New Form
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Changed class names from .tab-button to .sidebar-button
+            const sidebarButtons = document.querySelectorAll('.sidebar-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            sidebarButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    sidebarButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+
+                    button.classList.add('active');
+                    const tabId = button.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+
+            const initialActiveTabButton = document.querySelector('.sidebar-button.active');
+            if (initialActiveTabButton) {
+                const initialTabId = initialActiveTabButton.getAttribute('data-tab');
+                document.getElementById(initialTabId).classList.add('active');
+            }
+        });
+    </script>
+
+</body>
+</html>

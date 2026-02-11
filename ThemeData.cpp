@@ -16,7 +16,7 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(155, 211, 255),    // decorAccent2
         sf::Color(100, 110, 120, 180),// gridEmptyTile (Adjusted example slightly for clarity)
         sf::Color(155, 211, 255),      // gridFilledTile
-        sf::Color::Black,            // gridLetter
+        sf::Color(255, 190, 70),    // gridLetter (orange glowing)
         sf::Color(45, 52, 67, 150),  // wheelBg (Adjusted example slightly for clarity)
         sf::Color(155, 211, 255),    // wheelOutline (Adjusted example slightly for clarity)
         sf::Color(240, 240, 240, 220),// letterCircleNormal
@@ -30,8 +30,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(155, 211, 255),    // hudTextSolved
         sf::Color(40, 50, 70, 210),  // solvedOverlayBg
         sf::Color(45, 52, 67, 230),  // scoreBarBg
-        sf::Color(200, 200, 200),    // scoreTextLabel
-        sf::Color::White,            // scoreTextValue
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(40, 50, 70, 210),  // menuBg
         sf::Color(208, 232, 242),    // menuTitleText
         sf::Color(80, 90, 110),      // menuButtonNormal (Adjusted example slightly for clarity)
@@ -62,8 +62,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(247, 156, 41),     // hudTextSolved
         sf::Color(69, 48, 78, 220),  // solvedOverlayBg
         sf::Color(69, 48, 78, 230),  // scoreBarBg
-        sf::Color(236, 150, 127),    // scoreTextLabel
-        sf::Color::White,            // scoreTextValue
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(69, 48, 78, 210),  // menuBg
         sf::Color(236, 150, 127),    // menuTitleText
         sf::Color(100, 80, 90),      // menuButtonNormal
@@ -94,8 +94,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(245, 235, 220),    // hudTextSolved (Maybe change this one?)
         sf::Color(94, 68, 54, 210),  // solvedOverlayBg
         sf::Color(94, 68, 54, 230),  // scoreBarBg
-        sf::Color(245, 235, 220),    // scoreTextLabel
-        sf::Color::White,            // scoreTextValue
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(94, 68, 54, 210),  // menuBg
         sf::Color(245, 235, 220),    // menuTitleText (Adjusted example slightly for clarity)
         sf::Color(138, 104, 73),     // menuButtonNormal (Adjusted example slightly for clarity)
@@ -126,8 +126,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color::Yellow,           // hudTextSolved
         sf::Color(40, 35, 50, 220),  // solvedOverlayBg
         sf::Color(40, 35, 50, 230),  // scoreBarBg
-        sf::Color(0, 255, 255),      // scoreTextLabel (Cyan)
-        sf::Color::Yellow,           // scoreTextValue
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(40, 35, 50, 210),  // menuBg
         sf::Color(0, 255, 255),      // menuTitleText (Cyan)
         sf::Color(70, 60, 80),       // menuButtonNormal
@@ -158,8 +158,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(100, 150, 200),    // hudTextSolved (Blueish)
         sf::Color(70, 70, 70, 210),  // solvedOverlayBg
         sf::Color(70, 70, 70, 230),  // scoreBarBg
-        sf::Color(220, 220, 220),    // scoreTextLabel
-        sf::Color::White,            // scoreTextValue
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(70, 70, 70, 210),  // menuBg
         sf::Color(220, 220, 220),    // menuTitleText
         sf::Color(100, 100, 100),    // menuButtonNormal
@@ -190,8 +190,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(0, 180, 0),          // hudTextSolved (Bright green)
         sf::Color(180, 220, 190, 210), // solvedOverlayBg (Light green overlay)
         sf::Color(170, 210, 180, 230), // scoreBarBg (Soft green)
-        sf::Color(70, 110, 75),        // scoreTextLabel (Medium dark green)
-        sf::Color(40, 70, 45),         // scoreTextValue (Dark forest green)
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(180, 220, 190, 220), // menuBg
         sf::Color(40, 70, 45),         // menuTitleText
         sf::Color(140, 190, 150),      // menuButtonNormal
@@ -222,8 +222,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(50, 220, 210),       // hudTextSolved (Bright Aqua)
         sf::Color(25, 40, 65, 210),    // solvedOverlayBg (Dark blue overlay)
         sf::Color(35, 55, 85, 230),    // scoreBarBg (Medium dark blue)
-        sf::Color(150, 190, 220),      // scoreTextLabel (Light dusty blue)
-        sf::Color(210, 245, 255),      // scoreTextValue (Light cyan/white)
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(25, 40, 65, 220),    // menuBg
         sf::Color(210, 245, 255),      // menuTitleText
         sf::Color(50, 80, 120),        // menuButtonNormal
@@ -254,8 +254,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(0, 100, 0),          // hudTextSolved (Dark green for contrast)
         sf::Color(215, 215, 205, 210), // solvedOverlayBg (Light gray overlay)
         sf::Color(205, 205, 195, 230), // scoreBarBg (Slightly darker gray)
-        sf::Color(80, 80, 80),         // scoreTextLabel (Dark gray)
-        sf::Color(20, 20, 20),         // scoreTextValue (Near black)
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(215, 215, 205, 220), // menuBg
         sf::Color(20, 20, 20),         // menuTitleText
         sf::Color(170, 170, 160),      // menuButtonNormal
@@ -286,8 +286,8 @@ std::vector<ColorTheme> loadThemes()
         sf::Color(255, 150, 0),        // hudTextSolved (Bright orange)
         sf::Color(85, 50, 25, 210),    // solvedOverlayBg (Medium brown overlay)
         sf::Color(85, 50, 25, 230),    // scoreBarBg (Medium brown)
-        sf::Color(200, 180, 150),      // scoreTextLabel (Light brown/beige)
-        sf::Color(255, 245, 210),      // scoreTextValue (Pale yellow/cream)
+        sf::Color(255, 190, 70),    // scoreTextLabel (orange glowing)
+        sf::Color(255, 190, 70),    // scoreTextValue (orange glowing)
         sf::Color(85, 50, 25, 220),    // menuBg
         sf::Color(255, 245, 210),      // menuTitleText
         sf::Color(125, 70, 35),        // menuButtonNormal

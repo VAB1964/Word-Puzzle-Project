@@ -9,11 +9,82 @@
 #include <vector>       // For std::vector
 #include <stdexcept>    // For std::invalid_argument, std::out_of_range
 #include <algorithm>    // For std::sort, std::all_of
+#include <cctype>       // For std::tolower
 #include <map>  
 // ***********************************
 
 
 namespace Words {
+
+    namespace {
+        std::string trimString(const std::string& input) {
+            size_t first = input.find_first_not_of(" \t\n\r\f\v");
+            if (first == std::string::npos) {
+                return "";
+            }
+            size_t last = input.find_last_not_of(" \t\n\r\f\v");
+            return input.substr(first, (last - first + 1));
+        }
+
+        std::vector<std::string> parseCsvLine(const std::string& line) {
+            std::vector<std::string> fields;
+            std::string field;
+            bool inQuotes = false;
+
+            for (size_t i = 0; i < line.size(); ++i) {
+                char c = line[i];
+                if (c == '"') {
+                    if (inQuotes && i + 1 < line.size() && line[i + 1] == '"') {
+                        field.push_back('"');
+                        ++i;
+                    }
+                    else {
+                        inQuotes = !inQuotes;
+                    }
+                }
+                else if (c == ',' && !inQuotes) {
+                    fields.push_back(field);
+                    field.clear();
+                }
+                else {
+                    field.push_back(c);
+                }
+            }
+            fields.push_back(field);
+            return fields;
+        }
+
+        bool readCsvRecord(std::istream& in, std::string& out, int& lineNum) {
+            out.clear();
+            std::string line;
+            bool inQuotes = false;
+            bool anyRead = false;
+
+            while (std::getline(in, line)) {
+                lineNum++;
+                if (!out.empty()) out += "\n";
+                out += line;
+                anyRead = true;
+
+                for (size_t i = 0; i < line.size(); ++i) {
+                    if (line[i] == '"') {
+                        if (inQuotes && i + 1 < line.size() && line[i + 1] == '"') {
+                            ++i;
+                        }
+                        else {
+                            inQuotes = !inQuotes;
+                        }
+                    }
+                }
+
+                if (!inQuotes) {
+                    return true;
+                }
+            }
+
+            return anyRead && !out.empty();
+        }
+    }
 
     // Function to load the pre-processed word list
     std::vector<WordInfo> loadProcessedWordList(const std::string& filename) {
@@ -26,45 +97,26 @@ namespace Words {
             return wordList; // Return empty list on failure
         }
 
+        int lineNum = 0; // For error reporting (physical lines)
         // Optional: Skip header row if your CSV has one
-        std::getline(file, line);
+        readCsvRecord(file, line, lineNum);
 
-        int lineNum = 1; // For error reporting
-        while (std::getline(file, line)) {
-            lineNum++;
-            std::stringstream ss(line);
-            std::string field;
+        while (readCsvRecord(file, line, lineNum)) {
             WordInfo info;
-            int fieldIndex = 0;
 
             try {
-                // Expecting 9 fields based on Python script output order
-                while (std::getline(ss, field, ',')) {
-                    // Trim whitespace
-                    size_t first = field.find_first_not_of(" \t\n\r\f\v");
-                    if (std::string::npos == first) {
-                        field = "";
-                    }
-                    else {
-                        size_t last = field.find_last_not_of(" \t\n\r\f\v");
-                        field = field.substr(first, (last - first + 1));
-                    }
+                std::vector<std::string> fields = parseCsvLine(line);
+                int fieldIndex = static_cast<int>(fields.size());
 
-                    // Process the field
-                    switch (fieldIndex) {
-                    case 0: info.text = field; break; // Store original case from CSV
-                    case 1: info.rarity = field.empty() ? 0 : std::stoi(field); break;
-                    case 2: info.avgSubLen = field.empty() ? 0.0f : std::stof(field); break;
-                    case 3: info.countGE3 = field.empty() ? 0 : std::stoi(field); break;
-                    case 4: info.countGE4 = field.empty() ? 0 : std::stoi(field); break;
-                    case 5: info.countGE5 = field.empty() ? 0 : std::stoi(field); break;
-                    case 6: info.easyValidCount = field.empty() ? 0 : std::stoi(field); break;
-                    case 7: info.mediumValidCount = field.empty() ? 0 : std::stoi(field); break;
-                    case 8: info.hardValidCount = field.empty() ? 0 : std::stoi(field); break;
-                    default: /* Ignore extra fields */ break;
-                    }
-                    fieldIndex++;
+                if (fieldIndex > 0) {
+                    info.text = trimString(fields[0]);
+                    std::transform(info.text.begin(), info.text.end(), info.text.begin(),
+                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                 }
+                if (fieldIndex > 1) info.rarity = trimString(fields[1]).empty() ? 0 : std::stoi(trimString(fields[1]));
+                if (fieldIndex > 2) info.pos = trimString(fields[2]);
+                if (fieldIndex > 3) info.definition = trimString(fields[3]);
+                if (fieldIndex > 4) info.sentence = trimString(fields[4]);
 
                 // Basic validation
                 if (fieldIndex >= 2 && !info.text.empty()) {
@@ -76,10 +128,10 @@ namespace Words {
 
             }
             catch (const std::invalid_argument& ia) {
-                std::cerr << "Warning: Invalid number format on line " << lineNum << " in " << filename << ". Field content: [" << field << "]. Skipping line. Error: " << ia.what() << std::endl;
+                std::cerr << "Warning: Invalid number format on line " << lineNum << " in " << filename << ". Line content: [" << line << "]. Skipping line. Error: " << ia.what() << std::endl;
             }
             catch (const std::out_of_range& oor) {
-                std::cerr << "Warning: Number out of range on line " << lineNum << " in " << filename << ". Field content: [" << field << "]. Skipping line. Error: " << oor.what() << std::endl;
+                std::cerr << "Warning: Number out of range on line " << lineNum << " in " << filename << ". Line content: [" << line << "]. Skipping line. Error: " << oor.what() << std::endl;
             }
             catch (const std::exception& e) {
                 std::cerr << "Warning: Unexpected error parsing line " << lineNum << " in " << filename << ". Skipping line. Error: " << e.what() << std::endl;

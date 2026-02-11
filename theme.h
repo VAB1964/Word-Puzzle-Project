@@ -30,7 +30,7 @@ struct ColorTheme {
     // Grid
     sf::Color gridEmptyTile = sf::Color(200, 200, 200);
     sf::Color gridFilledTile = sf::Color(0, 100, 0);
-    sf::Color gridLetter = sf::Color::White;
+    sf::Color gridLetter = sf::Color(255, 190, 70);  // Orange glowing
     // Wheel
     sf::Color wheelBg = sf::Color(180, 180, 180);
     sf::Color wheelOutline = sf::Color(80, 80, 80);
@@ -47,8 +47,8 @@ struct ColorTheme {
     sf::Color hudTextSolved = sf::Color(0, 200, 0);    // Color for "Puzzle Solved!"
     sf::Color solvedOverlayBg = sf::Color(50, 50, 70, 220); // Default overlay
     sf::Color scoreBarBg = sf::Color(50, 50, 50, 220);      // Default score bar BG
-    sf::Color scoreTextLabel = sf::Color(200, 200, 200);    // Default score label
-    sf::Color scoreTextValue = sf::Color::White;            // Default score value
+    sf::Color scoreTextLabel = sf::Color(255, 190, 70);    // Orange glowing (matches grid letter)
+    sf::Color scoreTextValue = sf::Color(255, 190, 70);    // Orange glowing
     // Menu Colors
     sf::Color menuBg = sf::Color(40, 40, 60, 230);
     sf::Color menuTitleText = sf::Color::White;

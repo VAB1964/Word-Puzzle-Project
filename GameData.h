@@ -49,6 +49,9 @@ struct Balloon {
 struct WordInfo {
     std::string text = "";
     int rarity = 0;
+    std::string pos = "";
+    std::string definition = "";
+    std::string sentence = "";
 
     // --- NEW Pre-calculated Metrics ---
     float avgSubLen = 0.0f;         // Average length of sub-words (>= MIN_SUB_WORD_LEN)
@@ -63,8 +66,10 @@ struct WordInfo {
     WordInfo() = default; // Keep default constructor
 
     // Example constructor if you want to set everything at once
-    WordInfo(std::string t, int r, float avgSL = 0.0f, int c3 = 0, int c4 = 0, int c5 = 0, int ec = 0, int mc = 0, int hc = 0)
-        : text(std::move(t)), rarity(r), avgSubLen(avgSL), countGE3(c3), countGE4(c4),
+    WordInfo(std::string t, int r, std::string p = "", std::string def = "", std::string sent = "",
+        float avgSL = 0.0f, int c3 = 0, int c4 = 0, int c5 = 0, int ec = 0, int mc = 0, int hc = 0)
+        : text(std::move(t)), rarity(r), pos(std::move(p)), definition(std::move(def)),
+        sentence(std::move(sent)), avgSubLen(avgSL), countGE3(c3), countGE4(c4),
         countGE5(c5), easyValidCount(ec), mediumValidCount(mc), hardValidCount(hc) {
     }
 

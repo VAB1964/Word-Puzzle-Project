@@ -7,14 +7,19 @@
 // Gameplay constants
 constexpr unsigned int REF_W = 1000;
 constexpr unsigned int REF_H = 800;
-constexpr float GUESS_DISPLAY_GAP = 20.0f;
+constexpr float GUESS_DISPLAY_GAP = 40.0f;
+constexpr float GUESS_DISPLAY_OFFSET_Y = 20.f;   // Extra pixels to move guess row up (increase to move up)
+constexpr float GUESS_TILE_SCALE = 1.25f;       // Guess tile size multiplier (larger = bigger boxes, less cramped)
+constexpr float GUESS_LETTER_FONT_SCALE = 0.65f; // Letter height as fraction of guess tile size (adjust if cramped)
 constexpr float HINT_BTN_OFFSET_X = 10; // Keep as is
 constexpr float HINT_BTN_OFFSET_Y = 5;  // Keep as is
-constexpr float TILE_SIZE = 32.f;
+constexpr float TILE_SIZE = 40.f;
 constexpr float TILE_PAD = 5.f;
 constexpr float GRID_TOP_MARGIN = 15.f;
 constexpr float GRID_WHEEL_GAP = 75.f;       // Keep reduced
 constexpr float COL_PAD = 10.f;              // Keep reduced
+constexpr float GRID_COLUMN_DIVIDER_WIDTH = 4.f;  // Width of vertical divider between columns (0 = off)
+constexpr int GRID_COLUMN_DIVIDER_ROWS = 5;       // Divider extends to this many rows (so full length on Easy/Medium)
 constexpr float WHEEL_BOTTOM_MARGIN = 70.f;  // Keep reduced
 
 // *** Adjust these HUD values ***
@@ -45,10 +50,10 @@ const int MEDIUM_MAX_SOLUTIONS = 12;
 const int HARD_MAX_SOLUTIONS = 15;
 const int MIN_DESIRED_GRID_WORDS = 5;
 
-const int HINT_COST_REVEAL_FIRST = 3; 
-const int HINT_COST_REVEAL_RANDOM = 5; 
-const int HINT_COST_REVEAL_LAST = 7;
-const int HINT_COST_REVEAL_FIRST_OF_EACH = 10;
+const int HINT_COST_REVEAL_FIRST = 2; 
+const int HINT_COST_REVEAL_RANDOM = 3; 
+const int HINT_COST_REVEAL_LAST = 5;
+const int HINT_COST_REVEAL_FIRST_OF_EACH = 7;
 
 constexpr unsigned int WORDS_PER_HINT = 5;
 
@@ -71,6 +76,15 @@ const float RETURN_BTN_HEIGHT_DESIGN = 35.f; // Adjusted for typical button heig
 const float TOP_BAR_PADDING_X_DESIGN = 20.f;    // Example padding from left edge of top bar
 const unsigned int RETURN_BTN_FONT_SIZE_DESIGN = 16; // Example font size
 
+// Menu line-item buttons (Casual, Competitive, Quit, Easy, Medium, Hard, Return) — tweak button size only
+const float MENU_BUTTON_WIDTH_DESIGN = 250.f;   // Width of each menu button (design units)
+const float MENU_BUTTON_HEIGHT_DESIGN = 75.f;   // Height of each menu button (design units)
+
+// Menu background panel (wooden framed plaque) — tweak panel size/layout separately from buttons
+const float MENU_PANEL_PADDING_DESIGN = 70.f;   // Padding inside panel around title and buttons (design units)
+const float MENU_BUTTON_SPACING_DESIGN = 10.f;  // Vertical gap between menu buttons (design units)
+const float MENU_PANEL_EXTRA_WIDTH_DESIGN = 0.f;   // Extra width added to panel (0 = fit content; increase for wider frame)
+const float MENU_PANEL_EXTRA_HEIGHT_DESIGN = 0.f;  // Extra height added to panel (0 = fit content; increase for taller frame)
 
 // Difficulty Session Size
 const int EASY_PUZZLE_COUNT = 5;
@@ -88,20 +102,40 @@ const float HINT_POINT_ANIM_FONT_SIZE_DESIGN = 20.f;
 const float HINT_POINT_TEXT_FLOURISH_DURATION = 0.5f; // Duration for "Points:" text flourish
 const float HINT_POINT_ANIM_SPEED = 1.0f;
 
-const float POPUP_PADDING_BASE = 12.f;
+// Hint description pop-up (hovering a hint — "Available Points", "Cost", description)
+const float HINT_POPUP_WIDTH_DESIGN = 300.f;
+const float HINT_POPUP_HEIGHT_DESIGN = 180.f;
+const float HINT_POPUP_PADDING_DESIGN = 40.f;
+const float HINT_POPUP_LINE_SPACING_DESIGN = 7.f;
+
+// Word info / definition pop-up (hovering a solved word — word, POS, definition, sentence)
+const float WORD_INFO_POPUP_MAX_WIDTH_DESIGN = 420.f;
+const float WORD_INFO_POPUP_PADDING_DESIGN = 50.f;
+const float WORD_INFO_POPUP_LINE_SPACING_DESIGN = 6.f;
+const float WORD_INFO_POPUP_OFFSET_FROM_MOUSE_DESIGN = 12.f;  // offset from cursor
+
+// All popups: keep this far from window edge when clamping position
+const float POPUP_SCREEN_MARGIN_DESIGN = 5.f;
+
+// Bonus words list pop-up (hovering "Bonus Words: X/Y" — list of bonus words by length)
+const float POPUP_PADDING_BASE = 50.f;    // inset from frame so text sits inside the panel, not on the border
 const float MAJOR_COL_SPACING_BASE = 10.f;
 const float MINOR_COL_SPACING_BASE = 8.f;
 const float TITLE_BOTTOM_MARGIN_BASE = 6.f; 
 const float WORD_LINE_SPACING_BASE = 5.f;   
-const unsigned int POPUP_WORD_FONT_SIZE_BASE = 14; 
-const unsigned int POPUP_TITLE_FONT_SIZE_BASE = 16; 
+const unsigned int POPUP_WORD_FONT_SIZE_BASE = 22;   // larger base so text is readable in the large panel
+const unsigned int POPUP_TITLE_FONT_SIZE_BASE = 26; 
 
-const float POPUP_MIN_TEXT_SCALE = 0.50f;       
+const float POPUP_MIN_TEXT_SCALE = 0.70f;  // minimum text scale when there are many words
+const float POPUP_MAX_TEXT_SCALE = 1.35f;  // allow scaling up when few words so text fills the panel       
 const float POPUP_CORNER_RADIUS_BASE = 10.f;
 const int MAX_MINOR_COLS_PER_GROUP = 3;
 
-const float POPUP_MAX_WIDTH_DESIGN_RATIO = 0.8f; // Or your desired ratio
-const float POPUP_MAX_HEIGHT_DESIGN_RATIO = 0.8f;
+const float POPUP_MAX_WIDTH_DESIGN_RATIO = 0.95f;  // use most of grid zone width for bonus words popup
+const float POPUP_MAX_HEIGHT_DESIGN_RATIO = 0.95f; // use most of grid zone height for bonus words popup
+const float BONUS_POPUP_SCROLL_SPEED = 35.f;       // design units per mouse wheel tick (scrollable list)
+const float POPUP_SCROLL_TOP_BUFFER = 0.f;         // extra design units above scroll area (0 = use header row height)
+const float POPUP_SCROLL_BOTTOM_BUFFER = 20.f;    // design units below scroll area so text never touches bottom frame
 
 
 // DEBUG: ---- Assuming REF_W = 1000, REF_H = 800 for these example values:
@@ -143,8 +177,8 @@ const unsigned int SCORE_ZONE_BONUS_FONT_SIZE = 10;
 
 // New Color (Bluish-Green from tubes - you'll need to fine-tune this RGB)
 // Example: A bright cyan/turquoise. Adjust R,G,B to match your tube art.
-const sf::Color GLOWING_TUBE_TEXT_COLOR = sf::Color(60, 220, 200); // Brighter variant
-// const sf::Color GLOWING_TUBE_TEXT_COLOR = sf::Color(40, 180, 160); // Darker variant
+const sf::Color GLOWING_TUBE_TEXT_COLOR = sf::Color(255, 190, 70); // Orange glowing (matches grid letter)
+// const sf::Color GLOWING_TUBE_TEXT_COLOR = sf::Color(60, 220, 200); // Brighter variant
 
 
 

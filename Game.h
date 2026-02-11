@@ -65,11 +65,21 @@ private:
     std::unique_ptr<sf::Text> m_bonusWordsInHintZoneText;
 
     // --- NEW: Hint Hover Pop-up Elements ---
-    int m_hoveredHintIndex; 
+    int m_hoveredHintIndex;
+    std::unique_ptr<sf::Sprite> m_hintPopupBgSpr;   // menu background art for hint description popup
     RoundedRectangleShape m_hintPopupBackground;
     std::unique_ptr<sf::Text> m_popupAvailablePointsText;
     std::unique_ptr<sf::Text> m_popupHintCostText;
     std::unique_ptr<sf::Text> m_popupHintDescriptionText;
+
+    // --- Solved Word Info Pop-up Elements ---
+    int m_hoveredSolvedWordIndex;
+    std::unique_ptr<sf::Sprite> m_genericPopupBgSpr;  // menu background art for definition & bonus-words popups (dynamic size)
+    RoundedRectangleShape m_wordInfoPopupBackground;
+    std::unique_ptr<sf::Text> m_popupWordText;
+    std::unique_ptr<sf::Text> m_popupPosText;
+    std::unique_ptr<sf::Text> m_popupDefinitionText;
+    std::unique_ptr<sf::Text> m_popupSentenceText;
 
     // --- Hint UI New Assets ---
     sf::Texture m_hintFrameTexture; // Texture for the individual hint frame art
@@ -185,6 +195,7 @@ private:
     sf::Texture m_sapphireTex;
     sf::Texture m_rubyTex;
     sf::Texture m_diamondTex;
+    sf::Texture m_buttonTex;
 
     sf::SoundBuffer m_selectBuffer;
     sf::SoundBuffer m_placeBuffer;
@@ -207,6 +218,7 @@ private:
     std::unique_ptr<sf::Sprite> m_sapphireSpr;
     std::unique_ptr<sf::Sprite> m_rubySpr;
     std::unique_ptr<sf::Sprite> m_diamondSpr;
+    std::unique_ptr<sf::Sprite> m_buttonSpr;
 
     RoundedRectangleShape m_contBtn;
     RoundedRectangleShape m_solvedOverlay;
@@ -218,6 +230,20 @@ private:
     sf::CircleShape m_wheelBg;
     std::unique_ptr<sf::Text> m_guessDisplay_Text;
     RoundedRectangleShape     m_guessDisplay_Bg;
+
+    sf::Texture m_menuBgTexture;
+    std::unique_ptr<sf::Sprite> m_mainMenuBgSpr;
+    std::unique_ptr<sf::Sprite> m_casualMenuBgSpr;
+
+    sf::Texture m_menuButtonTexture;
+    std::unique_ptr<sf::Sprite> m_casualButtonSpr;
+    std::unique_ptr<sf::Sprite> m_competitiveButtonSpr;
+    std::unique_ptr<sf::Sprite> m_quitButtonSpr;
+    std::unique_ptr<sf::Sprite> m_easyButtonSpr;
+    std::unique_ptr<sf::Sprite> m_mediumButtonSpr;
+    std::unique_ptr<sf::Sprite> m_hardButtonSpr;
+    std::unique_ptr<sf::Sprite> m_returnButtonSpr;
+    std::unique_ptr<sf::Sprite> m_returnToMenuButtonSpr;
 
     RoundedRectangleShape m_mainMenuBg;
     RoundedRectangleShape m_casualButtonShape;
@@ -281,6 +307,8 @@ private:
     bool m_isHoveringHintPointsText;
     std::vector<WordInfo> m_cachedBonusWords;
     bool m_bonusWordsCacheIsValid;
+    float m_bonusWordsPopupScrollOffset;   // current scroll position (design units) for bonus words popup
+    float m_bonusWordsPopupMaxScrollOffset; // max scroll (set during render when content is taller than popup)
 
     // --- Bonus List Complete Effect ---
     bool m_bonusListCompleteEffectActive;
