@@ -161,7 +161,9 @@ constexpr float LETTER_R = 15.f;
 const float LETTER_R_BASE_DESIGN = 18.f;
 const float MIN_LETTER_RADIUS_FACTOR = 0.08f;
 const float MAX_LETTER_RADIUS_FACTOR = 0.20f;
-const float WHEEL_LETTER_FONT_SIZE_BASE_DESIGN = 24.f;
+const float WHEEL_LETTER_FONT_SIZE_BASE_DESIGN = 16.f;
+/** Scale factor for wheel letter frames and text. Increase (e.g. 1.3f, 1.5f) to make them bigger. */
+const float WHEEL_LETTER_VISUAL_SCALE = 1.8f;
 constexpr float WHEEL_R = 68.f;
 
 // --- Score Zone Constants ---
@@ -169,6 +171,9 @@ const float SCORE_ZONE_PADDING_X_DESIGN = 15.f;
 const float SCORE_ZONE_PADDING_Y_DESIGN = 26.f;       
 const float SCORE_LABEL_VALUE_GAP_DESIGN = 25.f;       
 const float SCORE_VALUE_BONUS_GAP_DESIGN = 10.f; 
+
+// Font size for "Puzzle Solved!" pop-up title (design units, scaled by S()). Reduce to fit frame.
+const float PUZZLE_SOLVED_TITLE_FONT_SIZE_DESIGN = 18.f;
 
 // Font Sizes for Score Zone (in design units, will be scaled by S())
 const unsigned int SCORE_ZONE_LABEL_FONT_SIZE = 18;   

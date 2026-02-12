@@ -196,6 +196,7 @@ private:
     sf::Texture m_rubyTex;
     sf::Texture m_diamondTex;
     sf::Texture m_buttonTex;
+    sf::Texture m_circularLetterFrameTex;
 
     sf::SoundBuffer m_selectBuffer;
     sf::SoundBuffer m_placeBuffer;
@@ -244,6 +245,7 @@ private:
     std::unique_ptr<sf::Sprite> m_hardButtonSpr;
     std::unique_ptr<sf::Sprite> m_returnButtonSpr;
     std::unique_ptr<sf::Sprite> m_returnToMenuButtonSpr;
+    std::unique_ptr<sf::Sprite> m_continueButtonSpr;
 
     RoundedRectangleShape m_mainMenuBg;
     RoundedRectangleShape m_casualButtonShape;

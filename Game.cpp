@@ -594,6 +594,7 @@ void Game::m_loadResources() {
         m_hardButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
         m_returnButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
         m_returnToMenuButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
+        m_continueButtonSpr = std::make_unique<sf::Sprite>(m_menuButtonTexture);
     }
     else {
         std::cerr << "Note: Could not load menu button (assets/MenuButton.png); using theme color." << std::endl;
@@ -613,6 +614,14 @@ void Game::m_loadResources() {
     }
     else {
         m_buttonTex.setSmooth(true);
+    }
+
+    // Load circular letter frame for wheel letters
+    if (!m_circularLetterFrameTex.loadFromFile("assets/CircularLetterFrame.png")) {
+        std::cerr << "Note: Could not load wheel letter frame (assets/CircularLetterFrame.png); using circle fallback." << std::endl;
+    }
+    else {
+        m_circularLetterFrameTex.setSmooth(true);
     }
 
     // --- Create Text Objects FIRST (as some might be used by other resource setups) ---
@@ -2727,7 +2736,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
     const unsigned int scaledGridLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f) * m_currentGridLayoutScale));
     const unsigned int scaledFlyingLetterFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 20.f)));
     const unsigned int scaledGuessDisplayFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 30.f)));
-    const unsigned int scaledSolvedFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 26.f)));
+    const unsigned int scaledSolvedFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, PUZZLE_SOLVED_TITLE_FONT_SIZE_DESIGN)));
     const unsigned int scaledContinueFontSize = static_cast<unsigned int>(std::max(8.0f, S(this, 24.f)));
 
     // --- Return to Menu Button (Top Bar) ---
@@ -2879,7 +2888,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
     // --- Draw Path Lines ---
     if (m_dragging && !m_path.empty() && !m_wheelLetterRenderPos.empty()) {
         const float halfThickness = scaledPathThickness / 2.0f;
-        const sf::Color pathColor = m_currentTheme.dragLine;
+        const sf::Color pathColor = m_currentTheme.gridLetter;
 
         if (m_path.size() >= 2) {
             sf::VertexArray finalPathStrip(sf::PrimitiveType::TriangleStrip);
@@ -2920,11 +2929,13 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
     // --- Draw Wheel Letters ---
     if (!m_base.empty() && !m_wheelLetterRenderPos.empty()) {
+        const float visualRadius = m_currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE;
         float fontScaleRatio = 1.f;
         if (LETTER_R_BASE_DESIGN > 0.1f && m_currentLetterRenderRadius > 0.1f) {
             fontScaleRatio = m_currentLetterRenderRadius / LETTER_R_BASE_DESIGN;
         }
-        fontScaleRatio = std::clamp(fontScaleRatio, 0.5f, 1.5f);
+        fontScaleRatio *= WHEEL_LETTER_VISUAL_SCALE;
+        fontScaleRatio = std::clamp(fontScaleRatio, 0.5f, 2.0f);
         unsigned int actualScaledWheelLetterFontSize = static_cast<unsigned int>(
             std::max(8.0f, S(this, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN) * fontScaleRatio)
             );
@@ -2935,16 +2946,28 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
             bool isHilited = std::find(m_path.begin(), m_path.end(), static_cast<int>(i)) != m_path.end();
             sf::Vector2f renderPos_wheel = m_wheelLetterRenderPos[i];
 
-            sf::CircleShape letterCircle(m_currentLetterRenderRadius);
-            letterCircle.setOrigin(sf::Vector2f(m_currentLetterRenderRadius, m_currentLetterRenderRadius));
-            letterCircle.setPosition(renderPos_wheel);
-            letterCircle.setFillColor(isHilited ? m_currentTheme.wheelOutline : m_currentTheme.letterCircleNormal);
-            letterCircle.setOutlineColor(m_currentTheme.wheelOutline);
-            letterCircle.setOutlineThickness(scaledLetterCircleOutline);
-            m_window.draw(letterCircle);
+            if (m_circularLetterFrameTex.getSize().x > 0) {
+                sf::Sprite letterFrameSpr(m_circularLetterFrameTex);
+                sf::Vector2u texSize = m_circularLetterFrameTex.getSize();
+                float diameter = 2.f * visualRadius;
+                float scale = diameter / static_cast<float>(std::max(texSize.x, texSize.y));
+                letterFrameSpr.setScale(sf::Vector2f(scale, scale));
+                letterFrameSpr.setOrigin(sf::Vector2f(static_cast<float>(texSize.x) / 2.f, static_cast<float>(texSize.y) / 2.f));
+                letterFrameSpr.setPosition(renderPos_wheel);
+                m_window.draw(letterFrameSpr);
+            }
+            else {
+                sf::CircleShape letterCircle(visualRadius);
+                letterCircle.setOrigin(sf::Vector2f(visualRadius, visualRadius));
+                letterCircle.setPosition(renderPos_wheel);
+                letterCircle.setFillColor(isHilited ? m_currentTheme.wheelOutline : m_currentTheme.letterCircleNormal);
+                letterCircle.setOutlineColor(m_currentTheme.wheelOutline);
+                letterCircle.setOutlineThickness(scaledLetterCircleOutline);
+                m_window.draw(letterCircle);
+            }
 
             chTxt_wheel.setString(std::string(1, static_cast<char>(std::toupper(m_base[i]))));
-            chTxt_wheel.setFillColor(isHilited ? m_currentTheme.letterTextHighlight : m_currentTheme.letterTextNormal);
+            chTxt_wheel.setFillColor(m_currentTheme.gridLetter);
             sf::FloatRect txtBounds_ch_wheel = chTxt_wheel.getLocalBounds();
             chTxt_wheel.setOrigin(sf::Vector2f(txtBounds_ch_wheel.position.x + txtBounds_ch_wheel.size.x / 2.f, txtBounds_ch_wheel.position.y + txtBounds_ch_wheel.size.y / 2.f));
             chTxt_wheel.setPosition(renderPos_wheel);
@@ -3222,12 +3245,25 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         float overlayWidth = std::max(winTxtBounds.size.x, m_contBtn.getSize().x) + S(this, 50.f);
         float overlayHeight = winTxtBounds.size.y + m_contBtn.getSize().y + S(this, 70.f);
 
-        m_solvedOverlay.setSize(sf::Vector2f(overlayWidth, overlayHeight));
-        m_solvedOverlay.setRadius(S(this, 15.f));
-        m_solvedOverlay.setFillColor(m_currentTheme.solvedOverlayBg);
         sf::Vector2f screenCenter(static_cast<float>(REF_W) / 2.f, static_cast<float>(REF_H) / 2.f);
-        m_solvedOverlay.setOrigin(sf::Vector2f(overlayWidth / 2.f, overlayHeight / 2.f));
-        m_solvedOverlay.setPosition(screenCenter);
+        float overlayX = screenCenter.x - overlayWidth / 2.f;
+        float overlayY = screenCenter.y - overlayHeight / 2.f;
+
+        if (m_genericPopupBgSpr && m_menuBgTexture.getSize().x > 0) {
+            sf::Vector2u texSize = m_menuBgTexture.getSize();
+            m_genericPopupBgSpr->setOrigin(sf::Vector2f(0.f, 0.f));
+            m_genericPopupBgSpr->setPosition(sf::Vector2f(overlayX, overlayY));
+            m_genericPopupBgSpr->setScale(sf::Vector2f(overlayWidth / static_cast<float>(texSize.x), overlayHeight / static_cast<float>(texSize.y)));
+            m_window.draw(*m_genericPopupBgSpr);
+        }
+        else {
+            m_solvedOverlay.setSize(sf::Vector2f(overlayWidth, overlayHeight));
+            m_solvedOverlay.setRadius(S(this, 15.f));
+            m_solvedOverlay.setFillColor(m_currentTheme.solvedOverlayBg);
+            m_solvedOverlay.setOrigin(sf::Vector2f(overlayWidth / 2.f, overlayHeight / 2.f));
+            m_solvedOverlay.setPosition(screenCenter);
+            m_window.draw(m_solvedOverlay);
+        }
 
         winTxt.setOrigin(sf::Vector2f(winTxtBounds.position.x + winTxtBounds.size.x / 2.f, winTxtBounds.position.y + winTxtBounds.size.y / 2.f));
         winTxt.setPosition(sf::Vector2f(screenCenter.x, screenCenter.y - overlayHeight / 2.f + winTxtBounds.size.y / 2.f + S(this, 20.f)));
@@ -3236,15 +3272,25 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         m_contBtn.setPosition(sf::Vector2f(screenCenter.x, winTxt.getPosition().y + winTxt.getGlobalBounds().size.y / 2.f + S(this, 15.f)));
 
         bool contHover = m_contBtn.getGlobalBounds().contains(mousePos);
-        m_contBtn.setFillColor(contHover ? adjustColorBrightness(m_currentTheme.continueButton, 1.2f) : m_currentTheme.continueButton);
+        if (m_continueButtonSpr && m_menuButtonTexture.getSize().x > 0) {
+            sf::Vector2u mbt = m_menuButtonTexture.getSize();
+            sf::Vector2f contBtnSize = m_contBtn.getSize();
+            m_continueButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f));
+            m_continueButtonSpr->setPosition(m_contBtn.getPosition());
+            m_continueButtonSpr->setScale(sf::Vector2f(contBtnSize.x / static_cast<float>(mbt.x), contBtnSize.y / static_cast<float>(mbt.y)));
+            m_continueButtonSpr->setColor(contHover ? adjustColorBrightness(sf::Color::White, 1.2f) : sf::Color::White);
+            m_window.draw(*m_continueButtonSpr);
+        }
+        else {
+            m_contBtn.setFillColor(contHover ? adjustColorBrightness(m_currentTheme.continueButton, 1.2f) : m_currentTheme.continueButton);
+            m_window.draw(m_contBtn);
+        }
 
         m_contTxt->setCharacterSize(scaledContinueFontSize);
         centerTextOnShape_General(*m_contTxt, m_contBtn);
-        m_contTxt->setFillColor(m_currentTheme.letterTextNormal);
+        m_contTxt->setFillColor(m_currentTheme.menuButtonText);
 
-        m_window.draw(m_solvedOverlay);
         m_window.draw(winTxt);
-        m_window.draw(m_contBtn);
         m_window.draw(*m_contTxt);
     }
 }
@@ -3530,12 +3576,23 @@ void Game::m_renderSessionComplete(const sf::Vector2f& mousePos) {
 
     // Handle hover using the button's current global bounds
     bool contHover = m_contBtn.getGlobalBounds().contains(mousePos);
-    sf::Color continueHoverColor = adjustColorBrightness(m_currentTheme.continueButton, 1.3f); // Assuming func exists
-    m_contBtn.setFillColor(contHover ? continueHoverColor : m_currentTheme.continueButton);
-
-    // Draw the button and text
-    m_window.draw(m_contBtn);
-    if (m_contTxt) m_window.draw(*m_contTxt);
+    if (m_continueButtonSpr && m_menuButtonTexture.getSize().x > 0) {
+        sf::Vector2u mbt = m_menuButtonTexture.getSize();
+        m_continueButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, static_cast<float>(mbt.y) / 2.f));
+        m_continueButtonSpr->setPosition(m_contBtn.getPosition());
+        m_continueButtonSpr->setScale(sf::Vector2f(contBtnSize.x / static_cast<float>(mbt.x), contBtnSize.y / static_cast<float>(mbt.y)));
+        m_continueButtonSpr->setColor(contHover ? adjustColorBrightness(sf::Color::White, 1.2f) : sf::Color::White);
+        m_window.draw(*m_continueButtonSpr);
+    }
+    else {
+        sf::Color continueHoverColor = adjustColorBrightness(m_currentTheme.continueButton, 1.3f);
+        m_contBtn.setFillColor(contHover ? continueHoverColor : m_currentTheme.continueButton);
+        m_window.draw(m_contBtn);
+    }
+    if (m_contTxt) {
+        m_contTxt->setFillColor(m_currentTheme.menuButtonText);
+        m_window.draw(*m_contTxt);
+    }
 
 }
 
