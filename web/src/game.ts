@@ -155,6 +155,8 @@ const HINT_DESCRIPTIONS = [
   "This hint will reveal the last word that hasn't been revealed.",
   "This hint will reveal the first unrevealed letter for every word."
 ];
+const UI_ORANGE: Color = { r: 255, g: 190, b: 70, a: 255 };
+const UI_WHITE: Color = { r: 255, g: 255, b: 255, a: 255 };
 
 export class Game {
   private width = 0;
@@ -358,7 +360,7 @@ export class Game {
     ctx.fillRect(0, 0, REF_W, REF_H);
 
     this.drawBackground(ctx);
-    this.decor.draw(ctx);
+    // this.decor.draw(ctx); // Disabled - old background decor code (circles, triangles, lines)
 
     if (this.currentScreen === GameScreen.MainMenu) {
       this.renderMainMenu(ctx);
@@ -502,7 +504,15 @@ export class Game {
       return;
     }
     if (this.currentScreen === GameScreen.SessionComplete) {
-      this.currentScreen = GameScreen.MainMenu;
+      if (rectContains(this.continueButton, world)) {
+        this.playSound("click");
+        // Stop celebration effects & transition to main menu
+        this.confetti = [];
+        this.balloons = [];
+        this.currentScreen = GameScreen.MainMenu;
+        this.isInSession = false;
+        this.selectedDifficulty = DifficultyLevel.None;
+      }
       return;
     }
 
@@ -933,7 +943,7 @@ export class Game {
     }
 
     this.updateLayout();
-    this.startBackgroundMusic();
+    // this.startBackgroundMusic(); // Disabled - music gets repetitive
   }
 
   private updateLayout() {
@@ -1257,27 +1267,46 @@ export class Game {
   }
 
   private renderSessionComplete(ctx: CanvasRenderingContext2D) {
+    // Draw semi-transparent dark overlay (matching PC version)
     ctx.save();
-    ctx.fillStyle = colorToCss(this.currentTheme.menuBg);
+    ctx.fillStyle = colorToCss({ r: 0, g: 0, b: 0, a: 150 });
     ctx.fillRect(0, 0, REF_W, REF_H);
     ctx.restore();
 
+    // Draw Final Score Prominently (matching PC version)
+    const finalScoreText = `Final Score: ${this.currentScore}`;
     drawCenteredText(
       ctx,
-      "Session Complete!",
-      { x: REF_W / 2, y: REF_H / 2 - 40 },
-      this.currentTheme.menuTitleText,
-      this.font(36, true)
-    );
-    drawCenteredText(
-      ctx,
-      "Click anywhere to return to menu",
-      { x: REF_W / 2, y: REF_H / 2 + 20 },
-      this.currentTheme.menuButtonText,
-      this.font(18)
+      finalScoreText,
+      { x: REF_W / 2, y: REF_H * 0.3 },
+      { r: 255, g: 255, b: 0, a: 255 }, // Yellow color like PC version
+      this.font(48, true)
     );
 
+    // Draw Celebration Effects (on top of score/background)
     this.renderCelebrationEffects(ctx);
+
+    // Draw Continue Button (matching PC version positioning)
+    const buttonWidth = 200;
+    const buttonHeight = 50;
+    const buttonX = REF_W / 2 - buttonWidth / 2;
+    const buttonY = REF_H * 0.8 - buttonHeight / 2;
+    
+    this.continueButton = {
+      x: buttonX,
+      y: buttonY,
+      width: buttonWidth,
+      height: buttonHeight
+    };
+
+    const hover = rectContains(this.continueButton, this.mousePos);
+    this.drawButton(
+      ctx,
+      this.continueButton,
+      "Continue",
+      hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal,
+      UI_WHITE
+    );
   }
 
   private renderGameScreen(ctx: CanvasRenderingContext2D) {
@@ -1294,14 +1323,61 @@ export class Game {
     this.renderSolvedWordPopup(ctx);
 
     if (this.gameState === GState.Solved || this.currentScreen === GameScreen.GameOver) {
+      const title = "Puzzle Solved!";
+      const titleFont = this.font(24, true);
+      ctx.save();
+      ctx.font = titleFont;
+      const titleMetrics = ctx.measureText(title);
+      const titleHeight =
+        (titleMetrics.actualBoundingBoxAscent ?? 0) + (titleMetrics.actualBoundingBoxDescent ?? 0) || 24;
+      ctx.restore();
+
+      const buttonWidth = 260;
+      const buttonHeight = 75;
+      const popupWidth = Math.max(titleMetrics.width, buttonWidth) + 50;
+      const popupHeight = titleHeight + buttonHeight + 70;
+      const popupX = REF_W / 2 - popupWidth / 2;
+      const popupY = REF_H / 2 - popupHeight / 2;
+
+      if (this.images.menuBackground) {
+        ctx.drawImage(this.images.menuBackground, popupX, popupY, popupWidth, popupHeight);
+      } else {
+        drawRoundedRect(
+          ctx,
+          popupX,
+          popupY,
+          popupWidth,
+          popupHeight,
+          15,
+          this.currentTheme.solvedOverlayBg,
+          this.currentTheme.menuButtonHover,
+          1
+        );
+      }
+
       drawCenteredText(
         ctx,
-        "Puzzle Solved!",
-        { x: REF_W / 2, y: REF_H / 2 - 40 },
-        this.currentTheme.hudTextSolved,
-        this.font(24, true)
+        title,
+        { x: REF_W / 2, y: popupY + 24 + titleHeight / 2 },
+        UI_WHITE,
+        titleFont
       );
-      this.drawButton(ctx, this.continueButton, "Continue", this.currentTheme.menuButtonNormal);
+
+      this.continueButton = {
+        x: REF_W / 2 - buttonWidth / 2,
+        y: popupY + titleHeight + 35,
+        width: buttonWidth,
+        height: buttonHeight
+      };
+
+      const hover = rectContains(this.continueButton, this.mousePos);
+      this.drawButton(
+        ctx,
+        this.continueButton,
+        "Continue",
+        hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal,
+        UI_WHITE
+      );
     }
   }
 
@@ -1327,7 +1403,7 @@ export class Game {
       ctx,
       "SCORE:",
       labelPos,
-      this.currentTheme.scoreTextLabel,
+      UI_ORANGE,
       this.font(SCORE_ZONE_LABEL_FONT_SIZE, true)
     );
 
@@ -1342,7 +1418,7 @@ export class Game {
     ctx.save();
     ctx.translate(zone.x + zone.width / 2, valueY + SCORE_ZONE_VALUE_FONT_SIZE / 2);
     ctx.scale(scaleFactor, scaleFactor);
-    ctx.fillStyle = colorToCss(this.currentTheme.scoreTextValue);
+    ctx.fillStyle = colorToCss(UI_ORANGE);
     ctx.font = this.font(SCORE_ZONE_VALUE_FONT_SIZE, true);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -1359,14 +1435,14 @@ export class Game {
         this.puzzlesPerSession > 0 ? (this.currentPuzzleIndex + 1) / this.puzzlesPerSession : 0;
 
       drawRoundedRect(ctx, meterX, meterY, meterWidth, meterHeight, 4, { r: 50, g: 50, b: 50, a: 150 }, this.currentTheme.scoreTextLabel, 1);
-      ctx.fillStyle = colorToCss(this.currentTheme.scoreTextLabel);
+      ctx.fillStyle = colorToCss(UI_ORANGE);
       ctx.fillRect(meterX, meterY, meterWidth * progressRatio, meterHeight);
 
       drawCenteredText(
         ctx,
         `${this.currentPuzzleIndex + 1}/${this.puzzlesPerSession}`,
         { x: meterX + meterWidth / 2, y: meterY + meterHeight / 2 },
-        this.currentTheme.scoreTextLabel,
+        UI_ORANGE,
         this.font(12, true)
       );
     }
@@ -1415,7 +1491,7 @@ export class Game {
         ctx.save();
         ctx.translate(pos.x + tileSize / 2, pos.y + tileSize / 2);
         ctx.scale(scale, scale);
-        ctx.fillStyle = colorToCss(this.currentTheme.gridLetter);
+        ctx.fillStyle = colorToCss(UI_ORANGE);
         ctx.font = this.font(Math.max(8, 20 * this.currentGridLayoutScale), true);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -1438,7 +1514,7 @@ export class Game {
 
   private renderPath(ctx: CanvasRenderingContext2D) {
     if (!this.dragging || this.path.length === 0) return;
-    ctx.strokeStyle = colorToCss(this.currentTheme.gridLetter);
+    ctx.strokeStyle = colorToCss(UI_ORANGE);
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.beginPath();
@@ -1480,7 +1556,7 @@ export class Game {
         ctx.stroke();
       }
 
-      ctx.fillStyle = colorToCss(this.currentTheme.gridLetter);
+      ctx.fillStyle = colorToCss(UI_ORANGE);
       ctx.font = this.font(fontSize, true);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -1555,7 +1631,7 @@ export class Game {
       } else {
         drawRoundedRect(ctx, x, guessRowTop, guessTileSize, guessTileSize, 4, this.currentTheme.gridEmptyTile);
       }
-      ctx.fillStyle = colorToCss(this.currentTheme.gridLetter);
+      ctx.fillStyle = colorToCss(UI_ORANGE);
       ctx.font = this.font(Math.max(8, guessTileSize * 0.65), true);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -1568,7 +1644,7 @@ export class Game {
     const totalBonus = this.calculateTotalPossibleBonusWords();
     const bonusText = `Bonus Words: ${this.foundBonusWords.size}/${totalBonus}`;
     ctx.font = this.font(HINT_ZONE_BONUS_TEXT_SIZE, true);
-    ctx.fillStyle = colorToCss(this.currentTheme.scoreTextLabel);
+    ctx.fillStyle = colorToCss(UI_ORANGE);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     const textWidth = ctx.measureText(bonusText).width;
@@ -1603,7 +1679,7 @@ export class Game {
       const label = HINT_LABELS[i];
       const cost = HINT_COSTS[i];
       const labelFontSize = Math.max(8, HINT_LABEL_FONT_BASE * panelScale);
-      ctx.fillStyle = colorToCss(this.currentTheme.scoreTextLabel);
+      ctx.fillStyle = colorToCss(UI_ORANGE);
       ctx.font = this.font(labelFontSize, true);
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
@@ -1695,7 +1771,7 @@ export class Game {
         layout.descLines = layout.descLines.slice(0, maxLines);
       }
 
-      ctx.fillStyle = colorToCss(this.currentTheme.menuButtonText);
+      ctx.fillStyle = colorToCss(UI_WHITE);
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
 
@@ -1859,7 +1935,7 @@ export class Game {
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.font = this.font(layout.titleFontSize, true);
-    ctx.fillStyle = colorToCss(this.currentTheme.menuTitleText);
+    ctx.fillStyle = colorToCss(UI_WHITE);
 
     let currentMajorX = contentStartX;
     for (const group of layout.layouts) {
@@ -1902,7 +1978,7 @@ export class Game {
       for (const column of group.columns) {
         let y = scrollY;
         for (let i = 0; i < column.length; i += 1) {
-          ctx.fillStyle = colorToCss(column[i].color);
+          ctx.fillStyle = colorToCss(UI_WHITE);
           const centerX = currentMinorX + group.wordColumnWidth / 2;
           ctx.fillText(column[i].text, centerX, y);
           y += layout.wordFontSize;
@@ -2012,7 +2088,7 @@ export class Game {
     for (let i = 0; i < measured.length; i += 1) {
       const block = measured[i];
       ctx.font = this.font(block.fontSize, block.bold);
-      ctx.fillStyle = colorToCss(block.color);
+      ctx.fillStyle = colorToCss(UI_WHITE);
       let lineY = textY;
       for (const line of block.lines) {
         ctx.fillText(line, textX, lineY);
@@ -2127,7 +2203,13 @@ export class Game {
     }
   }
 
-  private drawButton(ctx: CanvasRenderingContext2D, rect: Rect, label: string, color: Color) {
+  private drawButton(
+    ctx: CanvasRenderingContext2D,
+    rect: Rect,
+    label: string,
+    color: Color,
+    textColor: Color = this.currentTheme.menuButtonText
+  ) {
     if (this.images.menuButton) {
       ctx.drawImage(this.images.menuButton, rect.x, rect.y, rect.width, rect.height);
     } else {
@@ -2138,7 +2220,7 @@ export class Game {
       ctx,
       label,
       { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
-      this.currentTheme.menuButtonText,
+      textColor,
       this.font(18, true)
     );
   }
