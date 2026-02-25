@@ -87,6 +87,7 @@ import {
   WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN,
   WHEEL_LETTER_FONT_SIZE_BASE_DESIGN,
   WHEEL_LETTER_VISUAL_SCALE,
+  WHEEL_TOUCH_SCALE_FACTOR,
   WHEEL_R,
   WHEEL_ZONE_PADDING_DESIGN,
   WHEEL_ZONE_RECT_DESIGN
@@ -228,6 +229,7 @@ export class Game {
   private currentWheelRadius = 0;
   private currentLetterRenderRadius = 0;
   private wheelCenter: Vec2 = { x: 0, y: 0 };
+  private wheelTouchScaleActive = false;
 
   private gridStartX = 0;
   private gridStartY = 0;
@@ -452,20 +454,20 @@ export class Game {
       const world = this.eventToWorld(ev);
       this.mousePos = world;
       this.canvas.setPointerCapture(ev.pointerId);
-      this.handlePointerDown(world);
+      this.handlePointerDown(world, ev.pointerType);
     };
 
     const onPointerMove = (ev: PointerEvent) => {
       const world = this.eventToWorld(ev);
       this.mousePos = world;
-      this.handlePointerMove(world);
+      this.handlePointerMove(world, ev.pointerType);
     };
 
     const onPointerUp = (ev: PointerEvent) => {
       const world = this.eventToWorld(ev);
       this.mousePos = world;
       this.canvas.releasePointerCapture(ev.pointerId);
-      this.handlePointerUp(world);
+      this.handlePointerUp(world, ev.pointerType);
     };
 
     const onWheel = (ev: WheelEvent) => {
@@ -492,8 +494,9 @@ export class Game {
     return screenToWorld(this.view, { x, y });
   }
 
-  private handlePointerDown(world: Vec2) {
+  private handlePointerDown(world: Vec2, pointerType: string) {
     if (!this.ready) return;
+    this.updateWheelTouchScale(world, pointerType);
 
     if (this.currentScreen === GameScreen.MainMenu) {
       this.handleMainMenuInput(world);
@@ -565,7 +568,8 @@ export class Game {
     }
   }
 
-  private handlePointerMove(world: Vec2) {
+  private handlePointerMove(world: Vec2, pointerType: string) {
+    this.updateWheelTouchScale(world, pointerType);
     if (!this.dragging) return;
 
     for (let i = 0; i < this.base.length; i += 1) {
@@ -587,7 +591,8 @@ export class Game {
     }
   }
 
-  private handlePointerUp(_world: Vec2) {
+  private handlePointerUp(_world: Vec2, _pointerType: string) {
+    this.wheelTouchScaleActive = false;
     if (!this.dragging) return;
 
     const minGuessLength = 3;
@@ -678,6 +683,30 @@ export class Game {
     }
 
     this.clearDragState();
+  }
+
+  private getWheelTouchRadius(scale = 1) {
+    const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * scale;
+    return this.letterPositionRadius + visualRadius;
+  }
+
+  private updateWheelTouchScale(world: Vec2, pointerType: string) {
+    if (!this.ready || !this.base || this.base.length === 0) {
+      this.wheelTouchScaleActive = false;
+      return;
+    }
+    if (pointerType !== "touch") {
+      this.wheelTouchScaleActive = false;
+      return;
+    }
+    if (this.currentScreen !== GameScreen.Playing && this.currentScreen !== GameScreen.GameOver) {
+      this.wheelTouchScaleActive = false;
+      return;
+    }
+
+    const scale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    const radius = this.getWheelTouchRadius(scale);
+    this.wheelTouchScaleActive = distSq(world, this.wheelCenter) <= radius * radius;
   }
 
   private handleMainMenuInput(world: Vec2) {
@@ -1531,13 +1560,14 @@ export class Game {
   private renderWheel(ctx: CanvasRenderingContext2D) {
     if (!this.base) return;
     const frame = this.images.circularLetterFrame;
-    const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE;
+    const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * touchScale;
     const fontScaleRatio = clamp(
       (this.currentLetterRenderRadius / LETTER_R_BASE_DESIGN) * WHEEL_LETTER_VISUAL_SCALE,
       0.5,
       2
     );
-    const fontSize = Math.max(8, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN * fontScaleRatio);
+    const fontSize = Math.max(8, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN * fontScaleRatio * touchScale);
 
     for (let i = 0; i < this.base.length; i += 1) {
       const pos = this.wheelLetterRenderPos[i];
@@ -1552,7 +1582,7 @@ export class Game {
         ctx.fillStyle = colorToCss(this.currentTheme.letterCircleNormal);
         ctx.fill();
         ctx.strokeStyle = colorToCss(this.currentTheme.wheelOutline);
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * touchScale;
         ctx.stroke();
       }
 
@@ -2501,6 +2531,7 @@ export class Game {
     this.dragging = false;
     this.path = [];
     this.currentGuess = "";
+    this.wheelTouchScaleActive = false;
   }
 
   private getCriteriaForCurrentPuzzle() {
