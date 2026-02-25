@@ -731,11 +731,6 @@ export class Game {
       this.currentScreen = GameScreen.CasualMenu;
       return;
     }
-    if (rectContains(this.mainMenuButtons[1], world)) {
-      this.playSound("click");
-      this.currentScreen = GameScreen.CasualMenu;
-      return;
-    }
     if (rectContains(this.mainMenuButtons[2], world)) {
       this.playSound("click");
       this.currentScreen = GameScreen.MainMenu;
@@ -1291,7 +1286,7 @@ export class Game {
     const title = "Word Puzzle";
     const buttons = [
       { label: "Casual", rect: this.mainMenuButtons[0] },
-      { label: "Competitive", rect: this.mainMenuButtons[1] },
+      { label: "Competitive", rect: this.mainMenuButtons[1], disabled: true },
       { label: "Quit", rect: this.mainMenuButtons[2] }
     ];
 
@@ -2213,7 +2208,7 @@ export class Game {
   private drawMenuPanel(
     ctx: CanvasRenderingContext2D,
     title: string,
-    buttons: { label: string; rect: Rect }[]
+    buttons: { label: string; rect: Rect; disabled?: boolean }[]
   ) {
     if (buttons.length === 0) return;
     const panelX = buttons[0].rect.x - MENU_PANEL_PADDING_DESIGN;
@@ -2240,13 +2235,20 @@ export class Game {
     );
 
     for (const button of buttons) {
-      const hover = rectContains(button.rect, this.mousePos);
+      const hover = !button.disabled && rectContains(button.rect, this.mousePos);
+      if (button.disabled) {
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+      }
       this.drawButton(
         ctx,
         button.rect,
         button.label,
         hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal
       );
+      if (button.disabled) {
+        ctx.restore();
+      }
     }
   }
 
