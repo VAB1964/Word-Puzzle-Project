@@ -141,7 +141,7 @@ export const MIN_LETTER_RADIUS_FACTOR = 0.08;
 export const MAX_LETTER_RADIUS_FACTOR = 0.2;
 export const WHEEL_LETTER_FONT_SIZE_BASE_DESIGN = 16.0;
 export const WHEEL_LETTER_VISUAL_SCALE = 1.8;
-export const WHEEL_TOUCH_SCALE_FACTOR = 1.25;
+export const WHEEL_TOUCH_SCALE_FACTOR = 1.4;
 export const WHEEL_R = 68.0;
 
 export const SCORE_ZONE_PADDING_X_DESIGN = 15.0;

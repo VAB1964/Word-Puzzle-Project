@@ -556,9 +556,12 @@ export class Game {
       }
     }
 
+    const touchScale = pointerType === "touch" && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    const hitRadius = this.currentLetterRenderRadius * touchScale;
+    const hitRadiusSq = hitRadius * hitRadius;
     for (let i = 0; i < this.base.length; i += 1) {
-      const pos = this.wheelLetterRenderPos[i];
-      if (pos && distSq(world, pos) < this.currentLetterRenderRadius * this.currentLetterRenderRadius) {
+      const pos = this.getWheelLetterPosition(i);
+      if (pos && distSq(world, pos) < hitRadiusSq) {
         this.dragging = true;
         this.path = [i];
         this.currentGuess = this.base[i].toUpperCase();
@@ -572,10 +575,13 @@ export class Game {
     this.updateWheelTouchScale(world, pointerType);
     if (!this.dragging) return;
 
+    const touchScale = pointerType === "touch" && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    const hitRadius = this.currentLetterRenderRadius * touchScale;
+    const hitRadiusSq = hitRadius * hitRadius;
     for (let i = 0; i < this.base.length; i += 1) {
-      const pos = this.wheelLetterRenderPos[i];
+      const pos = this.getWheelLetterPosition(i, touchScale);
       if (!pos) continue;
-      if (distSq(world, pos) < this.currentLetterRenderRadius * this.currentLetterRenderRadius) {
+      if (distSq(world, pos) < hitRadiusSq) {
         const index = i;
         const existingIndex = this.path.indexOf(index);
         if (existingIndex === -1) {
@@ -685,9 +691,18 @@ export class Game {
     this.clearDragState();
   }
 
+  private getWheelLetterPosition(index: number, scale = 1) {
+    const basePos = this.wheelLetterRenderPos[index];
+    if (!basePos || scale === 1) return basePos;
+    const dx = basePos.x - this.wheelCenter.x;
+    const dy = basePos.y - this.wheelCenter.y;
+    return { x: this.wheelCenter.x + dx * scale, y: this.wheelCenter.y + dy * scale };
+  }
+
   private getWheelTouchRadius(scale = 1) {
+    const ringRadius = this.letterPositionRadius * scale;
     const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * scale;
-    return this.letterPositionRadius + visualRadius;
+    return ringRadius + visualRadius;
   }
 
   private updateWheelTouchScale(world: Vec2, pointerType: string) {
@@ -704,8 +719,7 @@ export class Game {
       return;
     }
 
-    const scale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    const radius = this.getWheelTouchRadius(scale);
+    const radius = this.getWheelTouchRadius(1);
     this.wheelTouchScaleActive = distSq(world, this.wheelCenter) <= radius * radius;
   }
 
@@ -1543,12 +1557,13 @@ export class Game {
 
   private renderPath(ctx: CanvasRenderingContext2D) {
     if (!this.dragging || this.path.length === 0) return;
+    const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
     ctx.strokeStyle = colorToCss(UI_ORANGE);
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 5 * touchScale;
     ctx.lineCap = "round";
     ctx.beginPath();
     for (let i = 0; i < this.path.length; i += 1) {
-      const pos = this.wheelLetterRenderPos[this.path[i]];
+      const pos = this.getWheelLetterPosition(this.path[i], touchScale);
       if (!pos) continue;
       if (i === 0) ctx.moveTo(pos.x, pos.y);
       else ctx.lineTo(pos.x, pos.y);
@@ -1570,7 +1585,7 @@ export class Game {
     const fontSize = Math.max(8, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN * fontScaleRatio * touchScale);
 
     for (let i = 0; i < this.base.length; i += 1) {
-      const pos = this.wheelLetterRenderPos[i];
+      const pos = this.getWheelLetterPosition(i, touchScale);
       if (!pos) continue;
 
       if (frame) {
@@ -1649,7 +1664,8 @@ export class Game {
     const guessTileSize = TILE_SIZE * this.currentGridLayoutScale * 1.25;
     const guessPad = TILE_PAD * this.currentGridLayoutScale;
     const totalWidth = n * guessTileSize + (n - 1) * guessPad;
-    const wheelTop = this.wheelCenter.y - this.visualBgRadius;
+    const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    const wheelTop = this.wheelCenter.y - this.visualBgRadius * touchScale;
     const guessRowTop = wheelTop - guessTileSize - GUESS_DISPLAY_GAP - GUESS_DISPLAY_OFFSET_Y;
     const startX = this.wheelCenter.x - totalWidth / 2;
     const buttonImage = this.images.gridButton;
