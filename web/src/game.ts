@@ -719,6 +719,7 @@ export class Game {
       return;
     }
 
+    if (this.wheelTouchScaleActive) return;
     const radius = this.getWheelTouchRadius(1);
     this.wheelTouchScaleActive = distSq(world, this.wheelCenter) <= radius * radius;
   }
