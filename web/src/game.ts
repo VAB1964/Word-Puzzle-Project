@@ -3,6 +3,7 @@ import {
   BONUS_POPUP_SCROLL_SPEED,
   COL_PAD,
   CONTINUE_BTN_OFFSET_Y,
+  DEBUG_DRAW_WHEEL_HIT_AREAS,
   EASY_MAX_SOLUTIONS,
   EASY_PUZZLE_COUNT,
   GUESS_DISPLAY_GAP,
@@ -84,6 +85,7 @@ import {
   WORD_INFO_POPUP_MAX_WIDTH_DESIGN,
   WORD_INFO_POPUP_OFFSET_FROM_MOUSE_DESIGN,
   WORD_INFO_POPUP_PADDING_DESIGN,
+  WHEEL_HIT_RADIUS_NON_SCALED_EXTRA,
   WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN,
   WHEEL_LETTER_FONT_SIZE_BASE_DESIGN,
   WHEEL_LETTER_VISUAL_SCALE,
@@ -557,10 +559,10 @@ export class Game {
     }
 
     const touchScale = pointerType === "touch" && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    const hitRadius = this.currentLetterRenderRadius * touchScale;
+    const hitRadius = this.getWheelLetterHitRadius(touchScale);
     const hitRadiusSq = hitRadius * hitRadius;
     for (let i = 0; i < this.base.length; i += 1) {
-      const pos = this.getWheelLetterPosition(i);
+      const pos = this.getWheelLetterPosition(i, touchScale);
       if (pos && distSq(world, pos) < hitRadiusSq) {
         this.dragging = true;
         this.path = [i];
@@ -576,7 +578,7 @@ export class Game {
     if (!this.dragging) return;
 
     const touchScale = pointerType === "touch" && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    const hitRadius = this.currentLetterRenderRadius * touchScale;
+    const hitRadius = this.getWheelLetterHitRadius(touchScale);
     const hitRadiusSq = hitRadius * hitRadius;
     for (let i = 0; i < this.base.length; i += 1) {
       const pos = this.getWheelLetterPosition(i, touchScale);
@@ -703,6 +705,12 @@ export class Game {
     const ringRadius = this.letterPositionRadius * scale;
     const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * scale;
     return ringRadius + visualRadius;
+  }
+
+  private getWheelLetterHitRadius(touchScale = 1) {
+    const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * touchScale;
+    const extraRadius = touchScale === 1 ? WHEEL_HIT_RADIUS_NON_SCALED_EXTRA : 0;
+    return visualRadius + extraRadius;
   }
 
   private updateWheelTouchScale(world: Vec2, pointerType: string) {
@@ -1602,6 +1610,14 @@ export class Game {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(this.base[i].toUpperCase(), pos.x, pos.y);
+
+      if (DEBUG_DRAW_WHEEL_HIT_AREAS) {
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, this.getWheelLetterHitRadius(touchScale), 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(0, 255, 0, 0.75)";
+        ctx.lineWidth = Math.max(1, 1.5 * touchScale);
+        ctx.stroke();
+      }
     }
 
     if (this.images.scrambleButton) {
