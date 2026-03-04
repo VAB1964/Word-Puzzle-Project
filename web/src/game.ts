@@ -93,6 +93,7 @@ import {
   WHEEL_LETTER_FONT_SIZE_BASE_DESIGN,
   WHEEL_LETTER_RING_OUTSET_DESIGN,
   WHEEL_LETTER_VISUAL_SCALE,
+  WHEEL_TOUCH_FIRST_LETTER_HIT_EXTRA,
   WHEEL_TOUCH_SCALE_FACTOR,
   WHEEL_R,
   WHEEL_ZONE_PADDING_DESIGN,
@@ -641,8 +642,10 @@ export class Game {
       }
     }
 
-    const touchScale = pointerType === "touch" && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    const hitRadius = this.getWheelLetterHitRadius(touchScale);
+    const isTouchPointer = pointerType === "touch";
+    const touchScale = isTouchPointer && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    const firstTouchLetterExtra = isTouchPointer ? WHEEL_TOUCH_FIRST_LETTER_HIT_EXTRA : 0;
+    const hitRadius = this.getWheelLetterHitRadius(touchScale, firstTouchLetterExtra);
     const hitRadiusSq = hitRadius * hitRadius;
     for (let i = 0; i < this.base.length; i += 1) {
       const pos = this.getWheelLetterPosition(i, touchScale);
@@ -809,10 +812,10 @@ export class Game {
     return ringRadius + visualRadius;
   }
 
-  private getWheelLetterHitRadius(touchScale = 1) {
+  private getWheelLetterHitRadius(touchScale = 1, additionalRadius = 0) {
     const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * touchScale;
-    const extraRadius = touchScale === 1 ? WHEEL_HIT_RADIUS_NON_SCALED_EXTRA : 0;
-    return visualRadius + extraRadius;
+    const nonScaledExtra = touchScale === 1 ? WHEEL_HIT_RADIUS_NON_SCALED_EXTRA : 0;
+    return visualRadius + nonScaledExtra + additionalRadius;
   }
 
   private updateWheelTouchScale(world: Vec2, pointerType: string) {
