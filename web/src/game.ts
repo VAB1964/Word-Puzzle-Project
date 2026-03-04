@@ -94,6 +94,7 @@ import {
   WHEEL_LETTER_RING_OUTSET_DESIGN,
   WHEEL_LETTER_VISUAL_SCALE,
   WHEEL_TOUCH_FIRST_LETTER_HIT_EXTRA,
+  WHEEL_TOUCH_FIRST_LETTER_INNER_SIDE_EXTRA,
   WHEEL_TOUCH_SCALE_FACTOR,
   WHEEL_R,
   WHEEL_ZONE_PADDING_DESIGN,
@@ -646,10 +647,22 @@ export class Game {
     const touchScale = isTouchPointer && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
     const firstTouchLetterExtra = isTouchPointer ? WHEEL_TOUCH_FIRST_LETTER_HIT_EXTRA : 0;
     const hitRadius = this.getWheelLetterHitRadius(touchScale, firstTouchLetterExtra);
-    const hitRadiusSq = hitRadius * hitRadius;
     for (let i = 0; i < this.base.length; i += 1) {
       const pos = this.getWheelLetterPosition(i, touchScale);
-      if (pos && distSq(world, pos) < hitRadiusSq) {
+      if (!pos) continue;
+      let effectiveHitRadius = hitRadius;
+      if (isTouchPointer) {
+        const outwardX = pos.x - this.wheelCenter.x;
+        const outwardY = pos.y - this.wheelCenter.y;
+        const outwardLength = Math.hypot(outwardX, outwardY) || 1;
+        const worldDx = world.x - pos.x;
+        const worldDy = world.y - pos.y;
+        const radialDot = (worldDx * outwardX + worldDy * outwardY) / outwardLength;
+        if (radialDot < 0) {
+          effectiveHitRadius += WHEEL_TOUCH_FIRST_LETTER_INNER_SIDE_EXTRA;
+        }
+      }
+      if (distSq(world, pos) < effectiveHitRadius * effectiveHitRadius) {
         this.dragging = true;
         this.path = [i];
         this.currentGuess = this.base[i].toUpperCase();
