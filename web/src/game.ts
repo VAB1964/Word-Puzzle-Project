@@ -1,6 +1,11 @@
 import { Assets } from "./assets";
 import {
   BONUS_POPUP_SCROLL_SPEED,
+  BONUS_POPUP_TOUCH_BUTTON_GAP,
+  BONUS_POPUP_TOUCH_BUTTON_HEIGHT,
+  BONUS_POPUP_TOUCH_BUTTON_SCROLL_STEP,
+  BONUS_POPUP_TOUCH_BUTTON_TOP_MARGIN,
+  BONUS_POPUP_TOUCH_BUTTON_WIDTH,
   COL_PAD,
   CONTINUE_BTN_OFFSET_Y,
   DEBUG_DRAW_WHEEL_HIT_AREAS,
@@ -159,6 +164,11 @@ const HINT_DESCRIPTIONS = [
   "This hint will reveal the last word that hasn't been revealed.",
   "This hint will reveal the first unrevealed letter for every word."
 ];
+const GEM_HINT_POINTS_BY_RARITY: Record<number, number> = {
+  2: 2, // Emerald
+  3: 4, // Ruby
+  4: 6 // Diamond
+};
 const UI_ORANGE: Color = { r: 255, g: 190, b: 70, a: 255 };
 const UI_WHITE: Color = { r: 255, g: 255, b: 255, a: 255 };
 
@@ -263,6 +273,8 @@ export class Game {
   private continueButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private scrambleButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private bonusWordsTextRect: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private touchInputActive = false;
+  private isBonusWordsPopupTouchOpen = false;
   private exitConfirmPanel: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private exitConfirmYesButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private exitConfirmNoButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -324,7 +336,9 @@ export class Game {
           break;
         }
       }
-      this.isHoveringHintPointsText = rectContains(this.bonusWordsTextRect, this.mousePos);
+      const hoveringBonusText = rectContains(this.bonusWordsTextRect, this.mousePos);
+      this.isHoveringHintPointsText =
+        hoveringBonusText || (this.touchInputActive && this.isBonusWordsPopupTouchOpen);
       this.hoveredSolvedWordIndex = -1;
       if (this.sorted.length > 0 && this.grid.length > 0 && this.found.size > 0) {
         const tileSize = TILE_SIZE * this.currentGridLayoutScale;
@@ -344,6 +358,7 @@ export class Game {
     } else {
       this.hoveredHintIndex = -1;
       this.isHoveringHintPointsText = false;
+      this.isBonusWordsPopupTouchOpen = false;
       this.bonusWordsPopupScrollOffset = 0;
       this.hoveredSolvedWordIndex = -1;
     }
@@ -516,6 +531,12 @@ export class Game {
 
   private handlePointerDown(world: Vec2, pointerType: string) {
     if (!this.ready) return;
+    if (pointerType === "touch") {
+      this.touchInputActive = true;
+    } else {
+      this.touchInputActive = false;
+      this.isBonusWordsPopupTouchOpen = false;
+    }
     this.updateWheelTouchScale(world, pointerType);
     if (this.showExitConfirmDialog) {
       this.handleExitConfirmInput(world);
@@ -553,6 +574,31 @@ export class Game {
         this.handleContinue();
       }
       return;
+    }
+
+    if (this.touchInputActive && this.currentScreen === GameScreen.Playing) {
+      if (rectContains(this.bonusWordsTextRect, world)) {
+        this.isBonusWordsPopupTouchOpen = true;
+        return;
+      }
+
+      if (this.isHoveringHintPointsText) {
+        const touchPopupLayout = this.getBonusWordsPopupTouchLayout();
+        if (touchPopupLayout && rectContains(touchPopupLayout.popupRect, world)) {
+          if (rectContains(touchPopupLayout.scrollUpButtonRect, world)) {
+            this.scrollBonusWordsPopup(-BONUS_POPUP_TOUCH_BUTTON_SCROLL_STEP);
+            this.playSound("click");
+          } else if (rectContains(touchPopupLayout.scrollDownButtonRect, world)) {
+            this.scrollBonusWordsPopup(BONUS_POPUP_TOUCH_BUTTON_SCROLL_STEP);
+            this.playSound("click");
+          }
+          return;
+        }
+      }
+
+      if (this.isBonusWordsPopupTouchOpen) {
+        this.isBonusWordsPopupTouchOpen = false;
+      }
     }
 
     if (rectContains(this.returnToMenuButton, world)) {
@@ -602,6 +648,9 @@ export class Game {
   }
 
   private handlePointerMove(world: Vec2, pointerType: string) {
+    if (pointerType === "touch") {
+      this.touchInputActive = true;
+    }
     this.updateWheelTouchScale(world, pointerType);
     if (!this.dragging) return;
 
@@ -627,7 +676,11 @@ export class Game {
     }
   }
 
-  private handlePointerUp(_world: Vec2, _pointerType: string) {
+  private handlePointerUp(_world: Vec2, pointerType: string) {
+    if (pointerType !== "touch") {
+      this.touchInputActive = false;
+      this.isBonusWordsPopupTouchOpen = false;
+    }
     this.wheelTouchScaleActive = false;
     if (!this.dragging) return;
 
@@ -658,6 +711,11 @@ export class Game {
           this.currentScore += wordScore;
           this.spawnScoreFlourish(wordScore, w);
           this.scoreFlourishTimer = SCORE_FLOURISH_DURATION;
+          const gemHintAward = this.getGemHintPointAward(this.sorted[w].rarity);
+          if (gemHintAward > 0) {
+            this.hintPoints += gemHintAward;
+            this.spawnHintPointAnimation(this.bonusWordsTextRect, gemHintAward);
+          }
 
           for (let c = 0; c < this.currentGuess.length; c += 1) {
             if (c < this.path.length) {
@@ -1520,10 +1578,15 @@ export class Game {
     const rulesBullets = [
       "Drag across letters to spell words in the Letter Wheel.",
       "Spelling words gives the player points to spend on Hints.",
-      "The gems represent the difficulty of the word and reward more points based on difficulty. No Gems: easiest word, Ruby: harder, Emerald: even harder, Diamond: hardest.",
       "Click on spelled words to see their definitions.",
       "Finding bonus words also rewards points to use on hints.",
       "Hint points are carried over from game to game. For example, if you play on easy and have points leftover, and then play a medium difficulty game, you keep the points you earned on easy and so on."
+    ];
+    const gemRows = [
+      { label: "No Gem", rarity: 0, icon: null as HTMLImageElement | null },
+      { label: "Emerald", rarity: 2, icon: this.images.sapphire ?? null },
+      { label: "Ruby", rarity: 3, icon: this.images.ruby ?? null },
+      { label: "Diamond", rarity: 4, icon: this.images.diamond ?? null }
     ];
     const textPaddingX = 60;
     const textTop = panel.y + 95;
@@ -1535,7 +1598,8 @@ export class Game {
     let y = textTop;
     const bulletPrefix = "- ";
     const bulletIndent = 22;
-    for (const bullet of rulesBullets) {
+    for (let bulletIdx = 0; bulletIdx < rulesBullets.length; bulletIdx += 1) {
+      const bullet = rulesBullets[bulletIdx];
       const wrapped = wrapTextForWidth(ctx, bullet, textMaxWidth - bulletIndent).split("\n");
       if (wrapped.length === 0) continue;
       ctx.fillText(`${bulletPrefix}${wrapped[0]}`, panel.x + textPaddingX, y);
@@ -1545,6 +1609,32 @@ export class Game {
         y += 26;
       }
       y += 6;
+
+      if (bulletIdx === 1) {
+        const gemTitle = "Gem rewards by difficulty:";
+        ctx.fillText(`${bulletPrefix}${gemTitle}`, panel.x + textPaddingX, y);
+        y += 26;
+
+        const rowX = panel.x + textPaddingX + bulletIndent;
+        const gemIconSize = 18;
+        const gemTextOffset = gemIconSize + 10;
+        for (const row of gemRows) {
+          const rowY = y + 2;
+          const textX = row.icon ? rowX + gemTextOffset : rowX;
+          const scoreBonus = row.rarity > 1 ? row.rarity * 25 : 0;
+          const hintReward = this.getGemHintPointAward(row.rarity);
+          if (row.icon) {
+            ctx.drawImage(row.icon, rowX, rowY, gemIconSize, gemIconSize);
+          }
+          ctx.fillText(
+            `${row.label}: Score Bonus +${scoreBonus}, Hint Points +${hintReward}`,
+            textX,
+            y
+          );
+          y += 24;
+        }
+        y += 8;
+      }
     }
 
     this.drawButton(
@@ -2161,11 +2251,11 @@ export class Game {
   }
 
   private renderBonusWordsPopup(ctx: CanvasRenderingContext2D) {
-    const zone = GRID_ZONE_RECT_DESIGN;
-    const popupWidth = zone.width * POPUP_MAX_WIDTH_DESIGN_RATIO;
-    const popupHeight = zone.height * POPUP_MAX_HEIGHT_DESIGN_RATIO;
-    const popupX = zone.x + (zone.width - popupWidth) / 2;
-    const popupY = zone.y + (zone.height - popupHeight) / 2;
+    const popupRect = this.getBonusWordsPopupRect();
+    const popupX = popupRect.x;
+    const popupY = popupRect.y;
+    const popupWidth = popupRect.width;
+    const popupHeight = popupRect.height;
 
     if (this.images.menuBackground) {
       ctx.drawImage(this.images.menuBackground, popupX, popupY, popupWidth, popupHeight);
@@ -2292,7 +2382,10 @@ export class Game {
     }
 
     const contentStartX = popupX + (popupWidth - layout.totalWidth) / 2;
-    const headerY = popupY + POPUP_PADDING_BASE;
+    const touchPopupLayout = this.getBonusWordsPopupTouchLayout();
+    const headerY = touchPopupLayout
+      ? touchPopupLayout.scrollUpButtonRect.y + touchPopupLayout.scrollUpButtonRect.height + BONUS_POPUP_TOUCH_BUTTON_TOP_MARGIN
+      : popupY + POPUP_PADDING_BASE;
 
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
@@ -2307,7 +2400,7 @@ export class Game {
     }
 
     const headerRowHeight = layout.titleFontSize + layout.titleBottomMargin;
-    const topBuffer = POPUP_PADDING_BASE + headerRowHeight;
+    const topBuffer = headerY - popupY + headerRowHeight;
     const scrollViewportHeight = Math.max(
       1,
       popupHeight - topBuffer - POPUP_SCROLL_BOTTOM_BUFFER
@@ -2323,6 +2416,38 @@ export class Game {
       0,
       this.bonusWordsPopupMaxScrollOffset
     );
+
+    if (touchPopupLayout) {
+      const canScrollUp = this.bonusWordsPopupScrollOffset > 0;
+      const canScrollDown = this.bonusWordsPopupScrollOffset < this.bonusWordsPopupMaxScrollOffset;
+      if (!canScrollUp) {
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+      }
+      this.drawButton(
+        ctx,
+        touchPopupLayout.scrollUpButtonRect,
+        "Scroll Up",
+        this.currentTheme.menuButtonNormal
+      );
+      if (!canScrollUp) {
+        ctx.restore();
+      }
+
+      if (!canScrollDown) {
+        ctx.save();
+        ctx.globalAlpha = 0.45;
+      }
+      this.drawButton(
+        ctx,
+        touchPopupLayout.scrollDownButtonRect,
+        "Scroll Down",
+        this.currentTheme.menuButtonNormal
+      );
+      if (!canScrollDown) {
+        ctx.restore();
+      }
+    }
 
     const scrollY = popupY + topBuffer - this.bonusWordsPopupScrollOffset;
     ctx.save();
@@ -2354,6 +2479,43 @@ export class Game {
     }
 
     ctx.restore();
+  }
+
+  private getBonusWordsPopupRect(): Rect {
+    const zone = GRID_ZONE_RECT_DESIGN;
+    const popupWidth = zone.width * POPUP_MAX_WIDTH_DESIGN_RATIO;
+    const popupHeight = zone.height * POPUP_MAX_HEIGHT_DESIGN_RATIO;
+    const popupX = zone.x + (zone.width - popupWidth) / 2;
+    const popupY = zone.y + (zone.height - popupHeight) / 2;
+    return { x: popupX, y: popupY, width: popupWidth, height: popupHeight };
+  }
+
+  private getBonusWordsPopupTouchLayout() {
+    if (!this.touchInputActive) return null;
+    const popupRect = this.getBonusWordsPopupRect();
+    const buttonWidth = Math.min(BONUS_POPUP_TOUCH_BUTTON_WIDTH, popupRect.width * 0.42);
+    const buttonHeight = BONUS_POPUP_TOUCH_BUTTON_HEIGHT;
+    const totalWidth = buttonWidth * 2 + BONUS_POPUP_TOUCH_BUTTON_GAP;
+    const startX = popupRect.x + (popupRect.width - totalWidth) / 2;
+    const buttonY = popupRect.y + POPUP_PADDING_BASE + BONUS_POPUP_TOUCH_BUTTON_TOP_MARGIN;
+    return {
+      popupRect,
+      scrollUpButtonRect: { x: startX, y: buttonY, width: buttonWidth, height: buttonHeight },
+      scrollDownButtonRect: {
+        x: startX + buttonWidth + BONUS_POPUP_TOUCH_BUTTON_GAP,
+        y: buttonY,
+        width: buttonWidth,
+        height: buttonHeight
+      }
+    };
+  }
+
+  private scrollBonusWordsPopup(deltaY: number) {
+    this.bonusWordsPopupScrollOffset = clamp(
+      this.bonusWordsPopupScrollOffset + deltaY,
+      0,
+      this.bonusWordsPopupMaxScrollOffset
+    );
   }
 
   private renderSolvedWordPopup(ctx: CanvasRenderingContext2D) {
@@ -2795,6 +2957,11 @@ export class Game {
       this.currentScore += wordScore;
       this.spawnScoreFlourish(wordScore, wordIdx);
       this.scoreFlourishTimer = SCORE_FLOURISH_DURATION;
+      const gemHintAward = this.getGemHintPointAward(this.sorted[wordIdx].rarity);
+      if (gemHintAward > 0) {
+        this.hintPoints += gemHintAward;
+        this.spawnHintPointAnimation(this.bonusWordsTextRect, gemHintAward);
+      }
 
       if (this.found.size === this.solutions.length) {
         this.gameState = GState.Solved;
@@ -2812,6 +2979,10 @@ export class Game {
     const x = (this.colXOffset[col] ?? this.gridStartX) + charIdx * (tileSize + tilePad);
     const y = this.gridStartY + row * (tileSize + tilePad);
     return { x, y };
+  }
+
+  private getGemHintPointAward(rarity: number) {
+    return GEM_HINT_POINTS_BY_RARITY[rarity] ?? 0;
   }
 
   private calculateTotalPossibleBonusWords() {
