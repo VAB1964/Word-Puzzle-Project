@@ -1,11 +1,9 @@
 import { Assets } from "./assets";
 import {
   BONUS_POPUP_SCROLL_SPEED,
-  BONUS_POPUP_TOUCH_BUTTON_GAP,
-  BONUS_POPUP_TOUCH_BUTTON_HEIGHT,
-  BONUS_POPUP_TOUCH_BUTTON_SCROLL_STEP,
-  BONUS_POPUP_TOUCH_BUTTON_TOP_MARGIN,
-  BONUS_POPUP_TOUCH_BUTTON_WIDTH,
+  BONUS_POPUP_TOUCH_CLOSE_BUTTON_HEIGHT,
+  BONUS_POPUP_TOUCH_CLOSE_BUTTON_TOP_MARGIN,
+  BONUS_POPUP_TOUCH_CLOSE_BUTTON_WIDTH,
   COL_PAD,
   CONTINUE_BTN_OFFSET_Y,
   DEBUG_DRAW_WHEEL_HIT_AREAS,
@@ -275,6 +273,8 @@ export class Game {
   private bonusWordsTextRect: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private touchInputActive = false;
   private isBonusWordsPopupTouchOpen = false;
+  private isDraggingBonusWordsPopupTouchScroll = false;
+  private bonusWordsPopupTouchLastY = 0;
   private exitConfirmPanel: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private exitConfirmYesButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private exitConfirmNoButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -340,7 +340,7 @@ export class Game {
       this.isHoveringHintPointsText =
         hoveringBonusText || (this.touchInputActive && this.isBonusWordsPopupTouchOpen);
       this.hoveredSolvedWordIndex = -1;
-      if (this.sorted.length > 0 && this.grid.length > 0 && this.found.size > 0) {
+      if (!this.isHoveringHintPointsText && this.sorted.length > 0 && this.grid.length > 0 && this.found.size > 0) {
         const tileSize = TILE_SIZE * this.currentGridLayoutScale;
         for (let w = 0; w < this.sorted.length && w < this.grid.length; w += 1) {
           if (!this.found.has(this.sorted[w].text)) continue;
@@ -359,6 +359,7 @@ export class Game {
       this.hoveredHintIndex = -1;
       this.isHoveringHintPointsText = false;
       this.isBonusWordsPopupTouchOpen = false;
+      this.isDraggingBonusWordsPopupTouchScroll = false;
       this.bonusWordsPopupScrollOffset = 0;
       this.hoveredSolvedWordIndex = -1;
     }
@@ -531,6 +532,7 @@ export class Game {
 
   private handlePointerDown(world: Vec2, pointerType: string) {
     if (!this.ready) return;
+    this.isDraggingBonusWordsPopupTouchScroll = false;
     if (pointerType === "touch") {
       this.touchInputActive = true;
     } else {
@@ -585,12 +587,12 @@ export class Game {
       if (this.isHoveringHintPointsText) {
         const touchPopupLayout = this.getBonusWordsPopupTouchLayout();
         if (touchPopupLayout && rectContains(touchPopupLayout.popupRect, world)) {
-          if (rectContains(touchPopupLayout.scrollUpButtonRect, world)) {
-            this.scrollBonusWordsPopup(-BONUS_POPUP_TOUCH_BUTTON_SCROLL_STEP);
+          if (rectContains(touchPopupLayout.closeButtonRect, world)) {
+            this.isBonusWordsPopupTouchOpen = false;
             this.playSound("click");
-          } else if (rectContains(touchPopupLayout.scrollDownButtonRect, world)) {
-            this.scrollBonusWordsPopup(BONUS_POPUP_TOUCH_BUTTON_SCROLL_STEP);
-            this.playSound("click");
+          } else {
+            this.isDraggingBonusWordsPopupTouchScroll = true;
+            this.bonusWordsPopupTouchLastY = world.y;
           }
           return;
         }
@@ -598,6 +600,13 @@ export class Game {
 
       if (this.isBonusWordsPopupTouchOpen) {
         this.isBonusWordsPopupTouchOpen = false;
+      }
+    }
+
+    if (this.isHoveringHintPointsText) {
+      const popupRect = this.getBonusWordsPopupRect();
+      if (rectContains(popupRect, world)) {
+        return;
       }
     }
 
@@ -652,6 +661,12 @@ export class Game {
       this.touchInputActive = true;
     }
     this.updateWheelTouchScale(world, pointerType);
+    if (this.isDraggingBonusWordsPopupTouchScroll && this.isHoveringHintPointsText) {
+      const deltaY = this.bonusWordsPopupTouchLastY - world.y;
+      this.bonusWordsPopupTouchLastY = world.y;
+      this.scrollBonusWordsPopup(deltaY);
+      return;
+    }
     if (!this.dragging) return;
 
     const touchScale = pointerType === "touch" && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
@@ -677,6 +692,7 @@ export class Game {
   }
 
   private handlePointerUp(_world: Vec2, pointerType: string) {
+    this.isDraggingBonusWordsPopupTouchScroll = false;
     if (pointerType !== "touch") {
       this.touchInputActive = false;
       this.isBonusWordsPopupTouchOpen = false;
@@ -2384,7 +2400,7 @@ export class Game {
     const contentStartX = popupX + (popupWidth - layout.totalWidth) / 2;
     const touchPopupLayout = this.getBonusWordsPopupTouchLayout();
     const headerY = touchPopupLayout
-      ? touchPopupLayout.scrollUpButtonRect.y + touchPopupLayout.scrollUpButtonRect.height + BONUS_POPUP_TOUCH_BUTTON_TOP_MARGIN
+      ? touchPopupLayout.closeButtonRect.y + touchPopupLayout.closeButtonRect.height + BONUS_POPUP_TOUCH_CLOSE_BUTTON_TOP_MARGIN
       : popupY + POPUP_PADDING_BASE;
 
     ctx.textAlign = "center";
@@ -2418,35 +2434,12 @@ export class Game {
     );
 
     if (touchPopupLayout) {
-      const canScrollUp = this.bonusWordsPopupScrollOffset > 0;
-      const canScrollDown = this.bonusWordsPopupScrollOffset < this.bonusWordsPopupMaxScrollOffset;
-      if (!canScrollUp) {
-        ctx.save();
-        ctx.globalAlpha = 0.45;
-      }
       this.drawButton(
         ctx,
-        touchPopupLayout.scrollUpButtonRect,
-        "Scroll Up",
+        touchPopupLayout.closeButtonRect,
+        "Close",
         this.currentTheme.menuButtonNormal
       );
-      if (!canScrollUp) {
-        ctx.restore();
-      }
-
-      if (!canScrollDown) {
-        ctx.save();
-        ctx.globalAlpha = 0.45;
-      }
-      this.drawButton(
-        ctx,
-        touchPopupLayout.scrollDownButtonRect,
-        "Scroll Down",
-        this.currentTheme.menuButtonNormal
-      );
-      if (!canScrollDown) {
-        ctx.restore();
-      }
     }
 
     const scrollY = popupY + topBuffer - this.bonusWordsPopupScrollOffset;
@@ -2493,20 +2486,13 @@ export class Game {
   private getBonusWordsPopupTouchLayout() {
     if (!this.touchInputActive) return null;
     const popupRect = this.getBonusWordsPopupRect();
-    const buttonWidth = Math.min(BONUS_POPUP_TOUCH_BUTTON_WIDTH, popupRect.width * 0.42);
-    const buttonHeight = BONUS_POPUP_TOUCH_BUTTON_HEIGHT;
-    const totalWidth = buttonWidth * 2 + BONUS_POPUP_TOUCH_BUTTON_GAP;
-    const startX = popupRect.x + (popupRect.width - totalWidth) / 2;
-    const buttonY = popupRect.y + POPUP_PADDING_BASE + BONUS_POPUP_TOUCH_BUTTON_TOP_MARGIN;
+    const buttonWidth = Math.min(BONUS_POPUP_TOUCH_CLOSE_BUTTON_WIDTH, popupRect.width * 0.45);
+    const buttonHeight = BONUS_POPUP_TOUCH_CLOSE_BUTTON_HEIGHT;
+    const startX = popupRect.x + (popupRect.width - buttonWidth) / 2;
+    const buttonY = popupRect.y + POPUP_PADDING_BASE + BONUS_POPUP_TOUCH_CLOSE_BUTTON_TOP_MARGIN;
     return {
       popupRect,
-      scrollUpButtonRect: { x: startX, y: buttonY, width: buttonWidth, height: buttonHeight },
-      scrollDownButtonRect: {
-        x: startX + buttonWidth + BONUS_POPUP_TOUCH_BUTTON_GAP,
-        y: buttonY,
-        width: buttonWidth,
-        height: buttonHeight
-      }
+      closeButtonRect: { x: startX, y: buttonY, width: buttonWidth, height: buttonHeight }
     };
   }
 
