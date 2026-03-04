@@ -64,7 +64,7 @@ import {
   SCORE_FLOURISH_VEL_X_RANGE_DESIGN,
   SCORE_FLOURISH_VEL_Y_MAX_DESIGN,
   SCORE_FLOURISH_VEL_Y_MIN_DESIGN,
-  SCORE_LABEL_VALUE_GAP_DESIGN,
+  SCORE_ZONE_BONUS_FONT_SIZE,
   SCORE_ZONE_LABEL_FONT_SIZE,
   SCORE_ZONE_PADDING_Y_DESIGN,
   SCORE_ZONE_RECT_DESIGN,
@@ -88,6 +88,7 @@ import {
   WHEEL_HIT_RADIUS_NON_SCALED_EXTRA,
   WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN,
   WHEEL_LETTER_FONT_SIZE_BASE_DESIGN,
+  WHEEL_LETTER_RING_OUTSET_DESIGN,
   WHEEL_LETTER_VISUAL_SCALE,
   WHEEL_TOUCH_SCALE_FACTOR,
   WHEEL_R,
@@ -188,6 +189,7 @@ export class Game {
   private resumeScreenFromMainMenu: GameScreen = GameScreen.Playing;
   private showExitConfirmDialog = false;
   private pendingExitAction: "closeWindow" | "exitToMainMenu" | null = null;
+  private showRulesDialog = false;
 
   private mousePos: Vec2 = { x: 0, y: 0 };
 
@@ -264,6 +266,8 @@ export class Game {
   private exitConfirmPanel: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private exitConfirmYesButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private exitConfirmNoButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private rulesPanel: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private rulesCloseButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -385,6 +389,9 @@ export class Game {
 
     if (this.showExitConfirmDialog) {
       this.renderExitConfirmDialog(ctx);
+    }
+    if (this.showRulesDialog) {
+      this.renderRulesDialog(ctx);
     }
 
     if (this.isHoveringHintPointsText && (this.currentScreen === GameScreen.Playing || this.currentScreen === GameScreen.GameOver)) {
@@ -512,6 +519,10 @@ export class Game {
     this.updateWheelTouchScale(world, pointerType);
     if (this.showExitConfirmDialog) {
       this.handleExitConfirmInput(world);
+      return;
+    }
+    if (this.showRulesDialog) {
+      this.handleRulesDialogInput(world);
       return;
     }
 
@@ -751,11 +762,12 @@ export class Game {
 
   private handleMainMenuInput(world: Vec2) {
     const hasReturn = this.canResumeGameFromMainMenu;
-    if (hasReturn && this.mainMenuButtons.length < 2) return;
+    if (hasReturn && this.mainMenuButtons.length < 3) return;
     if (!hasReturn && this.mainMenuButtons.length < 3) return;
     const returnIdx = hasReturn ? 0 : -1;
-    const casualIdx = 0;
-    const quitIdx = hasReturn ? 1 : 2;
+    const casualIdx = hasReturn ? -1 : 0;
+    const rulesIdx = hasReturn ? 1 : -1;
+    const quitIdx = hasReturn ? 2 : 2;
 
     if (returnIdx >= 0 && rectContains(this.mainMenuButtons[returnIdx], world)) {
       this.playSound("click");
@@ -764,9 +776,14 @@ export class Game {
       this.updateMenuLayout();
       return;
     }
-    if (!hasReturn && rectContains(this.mainMenuButtons[casualIdx], world)) {
+    if (casualIdx >= 0 && rectContains(this.mainMenuButtons[casualIdx], world)) {
       this.playSound("click");
       this.currentScreen = GameScreen.CasualMenu;
+      return;
+    }
+    if (rulesIdx >= 0 && rectContains(this.mainMenuButtons[rulesIdx], world)) {
+      this.playSound("click");
+      this.showRulesDialog = true;
       return;
     }
     if (rectContains(this.mainMenuButtons[quitIdx], world)) {
@@ -797,6 +814,7 @@ export class Game {
   }
 
   private requestExitConfirmation(action: "closeWindow" | "exitToMainMenu") {
+    this.showRulesDialog = false;
     this.pendingExitAction = action;
     this.showExitConfirmDialog = true;
   }
@@ -821,6 +839,13 @@ export class Game {
       } else if (action === "exitToMainMenu") {
         this.exitToMainMenu();
       }
+    }
+  }
+
+  private handleRulesDialogInput(world: Vec2) {
+    if (rectContains(this.rulesCloseButton, world)) {
+      this.playSound("click");
+      this.showRulesDialog = false;
     }
   }
 
@@ -1081,13 +1106,14 @@ export class Game {
     this.updateHintLayout();
     this.updateTopBarLayout();
     this.updateExitConfirmLayout();
+    this.updateRulesLayout();
   }
 
   private updateMenuLayout() {
     const titleSize = this.scale(36);
     const titleHeight = titleSize + 10;
     const panelWidth = MENU_BUTTON_WIDTH_DESIGN + MENU_PANEL_PADDING_DESIGN * 2 + MENU_PANEL_EXTRA_WIDTH_DESIGN;
-    const mainButtons = this.canResumeGameFromMainMenu ? 2 : 3;
+    const mainButtons = this.canResumeGameFromMainMenu ? 3 : 3;
     const panelHeight =
       MENU_PANEL_PADDING_DESIGN * 2 +
       titleHeight +
@@ -1247,12 +1273,12 @@ export class Game {
     this.wheelCenter = { x: innerX + innerW / 2, y: innerY + innerH / 2 };
     const maxRadiusForZone = Math.min(innerW / 2, innerH / 2);
     this.currentWheelRadius = Math.max(Math.min(maxRadiusForZone, WHEEL_R), LETTER_R * 1.5);
+    const wheelScaleFactor = WHEEL_R > 0 ? this.currentWheelRadius / WHEEL_R : 1;
 
     if (this.base.length > 0) {
       let radiusBasedOnCount = (Math.PI * this.currentWheelRadius) / this.base.length;
       radiusBasedOnCount *= 0.75;
-      const scaleFactor = WHEEL_R > 0 ? this.currentWheelRadius / WHEEL_R : 1;
-      const radiusBasedOnScale = LETTER_R_BASE_DESIGN * scaleFactor;
+      const radiusBasedOnScale = LETTER_R_BASE_DESIGN * wheelScaleFactor;
       let letterRadius = Math.min(radiusBasedOnCount, radiusBasedOnScale);
       const minAbs = this.currentWheelRadius * MIN_LETTER_RADIUS_FACTOR;
       const maxAbs = this.currentWheelRadius * MAX_LETTER_RADIUS_FACTOR;
@@ -1266,7 +1292,7 @@ export class Game {
       this.currentWheelRadius,
       this.currentLetterRenderRadius * 0.5,
       this.currentWheelRadius * 0.3
-    );
+    ) + WHEEL_LETTER_RING_OUTSET_DESIGN * wheelScaleFactor;
 
     const letterSizeRatio =
       LETTER_R_BASE_DESIGN > 0 ? this.currentLetterRenderRadius / LETTER_R_BASE_DESIGN : 1;
@@ -1398,12 +1424,27 @@ export class Game {
     };
   }
 
+  private updateRulesLayout() {
+    const panelWidth = 860;
+    const panelHeight = 570;
+    const panelX = (REF_W - panelWidth) / 2;
+    const panelY = (REF_H - panelHeight) / 2;
+    this.rulesPanel = { x: panelX, y: panelY, width: panelWidth, height: panelHeight };
+    this.rulesCloseButton = {
+      x: panelX + panelWidth / 2 - 90,
+      y: panelY + panelHeight - 65,
+      width: 180,
+      height: 45
+    };
+  }
+
   private renderMainMenu(ctx: CanvasRenderingContext2D) {
     const title = this.canResumeGameFromMainMenu ? "Pause Menu" : "Word Puzzle";
     const buttons = this.canResumeGameFromMainMenu
       ? [
           { label: "Return", rect: this.mainMenuButtons[0] },
-          { label: "Exit", rect: this.mainMenuButtons[1] }
+          { label: "Rules", rect: this.mainMenuButtons[1] },
+          { label: "Exit", rect: this.mainMenuButtons[2] }
         ]
       : [
           { label: "Casual", rect: this.mainMenuButtons[0] },
@@ -1449,6 +1490,68 @@ export class Game {
       this.exitConfirmNoButton,
       "No",
       rectContains(this.exitConfirmNoButton, this.mousePos)
+        ? this.currentTheme.menuButtonHover
+        : this.currentTheme.menuButtonNormal,
+      UI_WHITE
+    );
+  }
+
+  private renderRulesDialog(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.fillRect(0, 0, REF_W, REF_H);
+    ctx.restore();
+
+    const panel = this.rulesPanel;
+    if (this.images.menuBackground) {
+      ctx.drawImage(this.images.menuBackground, panel.x, panel.y, panel.width, panel.height);
+    } else {
+      drawRoundedRect(ctx, panel.x, panel.y, panel.width, panel.height, 12, this.currentTheme.menuBg);
+    }
+
+    drawCenteredText(
+      ctx,
+      "Rules",
+      { x: panel.x + panel.width / 2, y: panel.y + 50 },
+      UI_WHITE,
+      this.font(30, true)
+    );
+
+    const rulesBullets = [
+      "Drag across letters to spell words in the Letter Wheel.",
+      "Spelling words gives the player points to spend on Hints.",
+      "The gems represent the difficulty of the word and reward more points based on difficulty. No Gems: easiest word, Ruby: harder, Emerald: even harder, Diamond: hardest.",
+      "Click on spelled words to see their definitions.",
+      "Finding bonus words also rewards points to use on hints.",
+      "Hint points are carried over from game to game. For example, if you play on easy and have points leftover, and then play a medium difficulty game, you keep the points you earned on easy and so on."
+    ];
+    const textPaddingX = 60;
+    const textTop = panel.y + 95;
+    const textMaxWidth = panel.width - textPaddingX * 2;
+    ctx.fillStyle = colorToCss(UI_WHITE);
+    ctx.font = this.font(18, false);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    let y = textTop;
+    const bulletPrefix = "- ";
+    const bulletIndent = 22;
+    for (const bullet of rulesBullets) {
+      const wrapped = wrapTextForWidth(ctx, bullet, textMaxWidth - bulletIndent).split("\n");
+      if (wrapped.length === 0) continue;
+      ctx.fillText(`${bulletPrefix}${wrapped[0]}`, panel.x + textPaddingX, y);
+      y += 26;
+      for (let i = 1; i < wrapped.length; i += 1) {
+        ctx.fillText(wrapped[i], panel.x + textPaddingX + bulletIndent, y);
+        y += 26;
+      }
+      y += 6;
+    }
+
+    this.drawButton(
+      ctx,
+      this.rulesCloseButton,
+      "Close",
+      rectContains(this.rulesCloseButton, this.mousePos)
         ? this.currentTheme.menuButtonHover
         : this.currentTheme.menuButtonNormal,
       UI_WHITE
@@ -1598,26 +1701,55 @@ export class Game {
 
   private renderScoreZone(ctx: CanvasRenderingContext2D) {
     const zone = SCORE_ZONE_RECT_DESIGN;
-    const labelPos = { x: zone.x + zone.width / 2, y: zone.y + SCORE_ZONE_PADDING_Y_DESIGN };
-
-    drawCenteredText(
-      ctx,
-      "SCORE:",
-      labelPos,
-      UI_ORANGE,
-      this.font(SCORE_ZONE_LABEL_FONT_SIZE, true)
-    );
-
-    const valueY = labelPos.y + SCORE_LABEL_VALUE_GAP_DESIGN + SCORE_ZONE_LABEL_FONT_SIZE;
+    const centerX = zone.x + zone.width / 2;
+    const labelHeight = SCORE_ZONE_LABEL_FONT_SIZE;
+    const valueHeight = SCORE_ZONE_VALUE_FONT_SIZE;
+    const hintHeight = SCORE_ZONE_BONUS_FONT_SIZE * 1.6;
+    const labelToValueGap = 4;
+    const valueToMeterGap = 12;
+    const meterToHintGap = 12;
+    const scoreBlockLift = 6;
     const scaleFactor =
       this.scoreFlourishTimer > 0
         ? 1 +
           SCORE_FLOURISH_SCALE *
             Math.sin((SCORE_FLOURISH_DURATION - this.scoreFlourishTimer) / SCORE_FLOURISH_DURATION * Math.PI)
         : 1;
+    const padding = 45;
+    const meterWidth = zone.width - padding * 2;
+    const meterHeight = PROGRESS_METER_HEIGHT_DESIGN;
+    const meterX = zone.x + padding;
+
+    const totalStackHeight = this.isInSession
+      ? labelHeight + labelToValueGap + valueHeight + valueToMeterGap + meterHeight + meterToHintGap + hintHeight
+      : labelHeight + labelToValueGap + valueHeight + meterToHintGap + hintHeight;
+    let cursorY = zone.y + (zone.height - totalStackHeight) / 2;
+
+    const scoreLineY = cursorY + labelHeight / 2;
+    cursorY += labelHeight + labelToValueGap;
+    const scoreValueY = cursorY + valueHeight / 2;
+    cursorY += valueHeight;
+
+    let meterY = 0;
+    if (this.isInSession) {
+      cursorY += valueToMeterGap;
+      meterY = cursorY;
+      cursorY += meterHeight + meterToHintGap;
+    } else {
+      cursorY += meterToHintGap;
+    }
+    const hintY = cursorY + hintHeight / 2;
+
+    drawCenteredText(
+      ctx,
+      "Score:",
+      { x: centerX, y: scoreLineY - scoreBlockLift },
+      UI_ORANGE,
+      this.font(SCORE_ZONE_LABEL_FONT_SIZE, true)
+    );
 
     ctx.save();
-    ctx.translate(zone.x + zone.width / 2, valueY + SCORE_ZONE_VALUE_FONT_SIZE / 2);
+    ctx.translate(centerX, scoreValueY - scoreBlockLift);
     ctx.scale(scaleFactor, scaleFactor);
     ctx.fillStyle = colorToCss(UI_ORANGE);
     ctx.font = this.font(SCORE_ZONE_VALUE_FONT_SIZE, true);
@@ -1627,11 +1759,6 @@ export class Game {
     ctx.restore();
 
     if (this.isInSession) {
-      const padding = 45;
-      const meterWidth = zone.width - padding * 2;
-      const meterHeight = PROGRESS_METER_HEIGHT_DESIGN;
-      const meterX = zone.x + padding;
-      const meterY = zone.y + zone.height - meterHeight - 40;
       const progressRatio =
         this.puzzlesPerSession > 0 ? (this.currentPuzzleIndex + 1) / this.puzzlesPerSession : 0;
 
@@ -1639,12 +1766,35 @@ export class Game {
       ctx.fillStyle = colorToCss(UI_ORANGE);
       ctx.fillRect(meterX, meterY, meterWidth * progressRatio, meterHeight);
 
+      const meterText = `${this.currentPuzzleIndex + 1}/${this.puzzlesPerSession}`;
+      const meterTextX = meterX + meterWidth / 2;
+      const meterTextY = meterY - 8;
+      ctx.save();
+      ctx.font = this.font(12, true);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(0,0,0,0.9)";
+      ctx.shadowBlur = 2;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+      ctx.fillStyle = colorToCss(UI_ORANGE);
+      ctx.fillText(meterText, meterTextX, meterTextY);
+      ctx.restore();
+
       drawCenteredText(
         ctx,
-        `${this.currentPuzzleIndex + 1}/${this.puzzlesPerSession}`,
-        { x: meterX + meterWidth / 2, y: meterY + meterHeight / 2 },
+        `Hint Points: ${this.hintPoints}`,
+        { x: centerX, y: hintY },
         UI_ORANGE,
-        this.font(12, true)
+        this.font(SCORE_ZONE_BONUS_FONT_SIZE * 1.6, true)
+      );
+    } else {
+      drawCenteredText(
+        ctx,
+        `Hint Points: ${this.hintPoints}`,
+        { x: centerX, y: hintY },
+        UI_ORANGE,
+        this.font(SCORE_ZONE_BONUS_FONT_SIZE * 1.6, true)
       );
     }
   }
