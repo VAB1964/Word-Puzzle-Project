@@ -4,7 +4,7 @@ export const REF_W = 1000;
 export const REF_H = 800;
 
 export const GUESS_DISPLAY_GAP = 40.0;
-export const GUESS_DISPLAY_OFFSET_Y = 20.0;
+export const GUESS_DISPLAY_OFFSET_Y = 12.0;
 export const GUESS_TILE_SCALE = 1.25;
 export const GUESS_LETTER_FONT_SCALE = 0.65;
 export const HINT_BTN_OFFSET_X = 10;
