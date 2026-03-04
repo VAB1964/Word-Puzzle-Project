@@ -169,6 +169,8 @@ const GEM_HINT_POINTS_BY_RARITY: Record<number, number> = {
   3: 4, // Ruby
   4: 6 // Diamond
 };
+const KEYBOARD_LETTER_PULSE_DURATION_SEC = 0.16;
+const KEYBOARD_LETTER_PULSE_SCALE_MAX = 1.1;
 const UI_ORANGE: Color = { r: 255, g: 190, b: 70, a: 255 };
 const UI_WHITE: Color = { r: 255, g: 255, b: 255, a: 255 };
 
@@ -240,6 +242,7 @@ export class Game {
   private dragging = false;
   private path: number[] = [];
   private currentGuess = "";
+  private keyboardLetterPulseTimers: number[] = [];
 
   private letterPositionRadius = 0;
   private visualBgRadius = 0;
@@ -312,6 +315,11 @@ export class Game {
     }
     if (this.bonusTextFlourishTimer > 0) {
       this.bonusTextFlourishTimer = Math.max(0, this.bonusTextFlourishTimer - dt);
+    }
+    for (let i = 0; i < this.keyboardLetterPulseTimers.length; i += 1) {
+      if (this.keyboardLetterPulseTimers[i] > 0) {
+        this.keyboardLetterPulseTimers[i] = Math.max(0, this.keyboardLetterPulseTimers[i] - dt);
+      }
     }
 
     this.gridFlourishes = this.gridFlourishes.filter((f) => {
@@ -519,10 +527,15 @@ export class Game {
       }
     };
 
+    const onKeyDown = (ev: KeyboardEvent) => {
+      this.handleKeyboardInput(ev);
+    };
+
     this.canvas.addEventListener("pointerdown", onPointerDown);
     this.canvas.addEventListener("pointermove", onPointerMove);
     this.canvas.addEventListener("pointerup", onPointerUp);
     this.canvas.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("keydown", onKeyDown);
   }
 
   private eventToWorld(ev: PointerEvent) {
@@ -625,6 +638,7 @@ export class Game {
     if (rectContains(this.scrambleButton, world)) {
       this.playSound("click");
       this.base = shuffle(this.base.split("")).join("");
+      this.keyboardLetterPulseTimers = Array(this.base.length).fill(0);
       this.updateLayout();
       this.clearDragState();
       return;
@@ -716,8 +730,11 @@ export class Game {
     this.wheelTouchScaleActive = false;
     if (!this.dragging) return;
 
-    const minGuessLength = 3;
-    if (this.currentGuess.length < minGuessLength) {
+    this.submitCurrentGuess();
+  }
+
+  private submitCurrentGuess() {
+    if (this.currentGuess.length < MIN_WORD_LENGTH) {
       this.clearDragState();
       return;
     }
@@ -809,6 +826,76 @@ export class Game {
     }
 
     this.clearDragState();
+  }
+
+  private handleKeyboardInput(ev: KeyboardEvent) {
+    if (!this.ready) return;
+    if (this.currentScreen !== GameScreen.Playing) return;
+    if (this.showExitConfirmDialog || this.showRulesDialog) return;
+    if (this.dragging) return;
+
+    if (ev.key === "Enter") {
+      if (!this.currentGuess) return;
+      ev.preventDefault();
+      this.submitCurrentGuess();
+      return;
+    }
+
+    if (ev.key === "Backspace") {
+      if (!this.currentGuess) return;
+      ev.preventDefault();
+      this.currentGuess = this.currentGuess.slice(0, -1);
+      if (this.path.length > 0) {
+        const removedIndex = this.path.pop();
+        if (removedIndex !== undefined) {
+          this.triggerKeyboardLetterPulse(removedIndex);
+        }
+      }
+      this.wheelTouchScaleActive = false;
+      return;
+    }
+
+    if (ev.key === "Escape") {
+      if (!this.currentGuess) return;
+      ev.preventDefault();
+      this.clearDragState();
+      return;
+    }
+
+    if (ev.ctrlKey || ev.altKey || ev.metaKey || ev.key.length !== 1) return;
+    const letter = ev.key.toUpperCase();
+    if (letter < "A" || letter > "Z") return;
+
+    const index = this.findUnusedLetterIndex(letter);
+    if (index === -1) {
+      this.playSound("error");
+      ev.preventDefault();
+      return;
+    }
+
+    this.currentGuess += letter;
+    this.path.push(index);
+    this.triggerKeyboardLetterPulse(index);
+    this.wheelTouchScaleActive = false;
+    this.playSound("select");
+    ev.preventDefault();
+  }
+
+  private findUnusedLetterIndex(letter: string) {
+    for (let i = 0; i < this.base.length; i += 1) {
+      if (this.base[i].toUpperCase() !== letter) continue;
+      if (this.path.includes(i)) continue;
+      return i;
+    }
+    return -1;
+  }
+
+  private triggerKeyboardLetterPulse(index: number) {
+    if (index < 0 || index >= this.base.length) return;
+    if (this.keyboardLetterPulseTimers.length !== this.base.length) {
+      this.keyboardLetterPulseTimers = Array(this.base.length).fill(0);
+    }
+    this.keyboardLetterPulseTimers[index] = KEYBOARD_LETTER_PULSE_DURATION_SEC;
   }
 
   private getWheelLetterPosition(index: number, scale = 1) {
@@ -1084,6 +1171,7 @@ export class Game {
     if (this.base !== "ERROR") {
       this.base = shuffle(this.base.split("")).join("");
     }
+    this.keyboardLetterPulseTimers = Array(this.base.length).fill(0);
 
     let finalSolutions: WordInfo[] = [];
     if (this.base !== "ERROR") {
@@ -1608,7 +1696,7 @@ export class Game {
     );
 
     const rulesBullets = [
-      "Drag across letters to spell words in the Letter Wheel.",
+      "Drag across letters (or type with your keyboard) to spell words in the Letter Wheel.",
       "Spelling words gives the player points to spend on Hints.",
       "Click on spelled words to see their definitions.",
       "Finding bonus words also rewards points to use on hints.",
@@ -2017,13 +2105,23 @@ export class Game {
     for (let i = 0; i < this.base.length; i += 1) {
       const pos = this.getWheelLetterPosition(i, touchScale);
       if (!pos) continue;
+      let letterScale = 1;
+      const pulseTimer = this.keyboardLetterPulseTimers[i] ?? 0;
+      if (pulseTimer > 0) {
+        const progress = 1 - pulseTimer / KEYBOARD_LETTER_PULSE_DURATION_SEC;
+        letterScale = 1 + (KEYBOARD_LETTER_PULSE_SCALE_MAX - 1) * Math.sin(progress * Math.PI);
+      }
+
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.scale(letterScale, letterScale);
 
       if (frame) {
         const diameter = visualRadius * 2;
-        ctx.drawImage(frame, pos.x - diameter / 2, pos.y - diameter / 2, diameter, diameter);
+        ctx.drawImage(frame, -diameter / 2, -diameter / 2, diameter, diameter);
       } else {
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, visualRadius, 0, Math.PI * 2);
+        ctx.arc(0, 0, visualRadius, 0, Math.PI * 2);
         ctx.fillStyle = colorToCss(this.currentTheme.letterCircleNormal);
         ctx.fill();
         ctx.strokeStyle = colorToCss(this.currentTheme.wheelOutline);
@@ -2035,7 +2133,8 @@ export class Game {
       ctx.font = this.font(fontSize, true);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(this.base[i].toUpperCase(), pos.x, pos.y);
+      ctx.fillText(this.base[i].toUpperCase(), 0, 0);
+      ctx.restore();
 
       if (DEBUG_DRAW_WHEEL_HIT_AREAS) {
         ctx.beginPath();
