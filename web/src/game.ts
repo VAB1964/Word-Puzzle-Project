@@ -2,6 +2,7 @@ import { Assets } from "./assets";
 import {
   BONUS_POPUP_SCROLL_SPEED,
   BONUS_POPUP_TOUCH_CLOSE_BUTTON_HEIGHT,
+  BONUS_POPUP_TOUCH_CLOSE_BUTTON_TOP_INSET,
   BONUS_POPUP_TOUCH_CLOSE_BUTTON_TOP_MARGIN,
   BONUS_POPUP_TOUCH_CLOSE_BUTTON_WIDTH,
   COL_PAD,
@@ -2604,7 +2605,7 @@ export class Game {
     const buttonWidth = Math.min(BONUS_POPUP_TOUCH_CLOSE_BUTTON_WIDTH, popupRect.width * 0.45);
     const buttonHeight = BONUS_POPUP_TOUCH_CLOSE_BUTTON_HEIGHT;
     const startX = popupRect.x + (popupRect.width - buttonWidth) / 2;
-    const buttonY = popupRect.y + POPUP_PADDING_BASE + BONUS_POPUP_TOUCH_CLOSE_BUTTON_TOP_MARGIN;
+    const buttonY = popupRect.y + BONUS_POPUP_TOUCH_CLOSE_BUTTON_TOP_INSET;
     return {
       popupRect,
       closeButtonRect: { x: startX, y: buttonY, width: buttonWidth, height: buttonHeight }
