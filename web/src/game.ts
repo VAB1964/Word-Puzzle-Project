@@ -184,6 +184,10 @@ export class Game {
 
   private currentScreen: GameScreen = GameScreen.MainMenu;
   private gameState: GState = GState.Playing;
+  private canResumeGameFromMainMenu = false;
+  private resumeScreenFromMainMenu: GameScreen = GameScreen.Playing;
+  private showExitConfirmDialog = false;
+  private pendingExitAction: "closeWindow" | "exitToMainMenu" | null = null;
 
   private mousePos: Vec2 = { x: 0, y: 0 };
 
@@ -257,6 +261,9 @@ export class Game {
   private continueButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private scrambleButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private bonusWordsTextRect: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private exitConfirmPanel: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private exitConfirmYesButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private exitConfirmNoButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -374,6 +381,10 @@ export class Game {
       this.renderSessionComplete(ctx);
     } else {
       this.renderGameScreen(ctx);
+    }
+
+    if (this.showExitConfirmDialog) {
+      this.renderExitConfirmDialog(ctx);
     }
 
     if (this.isHoveringHintPointsText && (this.currentScreen === GameScreen.Playing || this.currentScreen === GameScreen.GameOver)) {
@@ -499,6 +510,10 @@ export class Game {
   private handlePointerDown(world: Vec2, pointerType: string) {
     if (!this.ready) return;
     this.updateWheelTouchScale(world, pointerType);
+    if (this.showExitConfirmDialog) {
+      this.handleExitConfirmInput(world);
+      return;
+    }
 
     if (this.currentScreen === GameScreen.MainMenu) {
       this.handleMainMenuInput(world);
@@ -515,6 +530,7 @@ export class Game {
         this.confetti = [];
         this.balloons = [];
         this.currentScreen = GameScreen.MainMenu;
+        this.canResumeGameFromMainMenu = false;
         this.isInSession = false;
         this.selectedDifficulty = DifficultyLevel.None;
       }
@@ -531,8 +547,9 @@ export class Game {
     if (rectContains(this.returnToMenuButton, world)) {
       this.playSound("click");
       this.currentScreen = GameScreen.MainMenu;
-      this.isInSession = false;
-      this.selectedDifficulty = DifficultyLevel.None;
+      this.canResumeGameFromMainMenu = true;
+      this.resumeScreenFromMainMenu = GameScreen.Playing;
+      this.updateMenuLayout();
       this.clearDragState();
       return;
     }
@@ -733,15 +750,77 @@ export class Game {
   }
 
   private handleMainMenuInput(world: Vec2) {
-    if (this.mainMenuButtons.length < 3) return;
-    if (rectContains(this.mainMenuButtons[0], world)) {
+    const hasReturn = this.canResumeGameFromMainMenu;
+    if (hasReturn && this.mainMenuButtons.length < 2) return;
+    if (!hasReturn && this.mainMenuButtons.length < 3) return;
+    const returnIdx = hasReturn ? 0 : -1;
+    const casualIdx = 0;
+    const quitIdx = hasReturn ? 1 : 2;
+
+    if (returnIdx >= 0 && rectContains(this.mainMenuButtons[returnIdx], world)) {
+      this.playSound("click");
+      this.currentScreen = this.resumeScreenFromMainMenu;
+      this.canResumeGameFromMainMenu = false;
+      this.updateMenuLayout();
+      return;
+    }
+    if (!hasReturn && rectContains(this.mainMenuButtons[casualIdx], world)) {
       this.playSound("click");
       this.currentScreen = GameScreen.CasualMenu;
       return;
     }
-    if (rectContains(this.mainMenuButtons[2], world)) {
+    if (rectContains(this.mainMenuButtons[quitIdx], world)) {
       this.playSound("click");
-      this.currentScreen = GameScreen.MainMenu;
+      if (hasReturn) {
+        this.requestExitConfirmation("exitToMainMenu");
+      } else {
+        this.requestExitConfirmation("closeWindow");
+      }
+    }
+  }
+
+  private requestBrowserClose() {
+    // Browsers usually allow `window.close()` only for script-opened tabs/windows.
+    window.close();
+    if (!window.closed) {
+      window.location.replace("about:blank");
+    }
+  }
+
+  private exitToMainMenu() {
+    this.canResumeGameFromMainMenu = false;
+    this.currentScreen = GameScreen.MainMenu;
+    this.isInSession = false;
+    this.selectedDifficulty = DifficultyLevel.None;
+    this.clearDragState();
+    this.updateMenuLayout();
+  }
+
+  private requestExitConfirmation(action: "closeWindow" | "exitToMainMenu") {
+    this.pendingExitAction = action;
+    this.showExitConfirmDialog = true;
+  }
+
+  private dismissExitConfirmation() {
+    this.showExitConfirmDialog = false;
+    this.pendingExitAction = null;
+  }
+
+  private handleExitConfirmInput(world: Vec2) {
+    if (rectContains(this.exitConfirmNoButton, world)) {
+      this.playSound("click");
+      this.dismissExitConfirmation();
+      return;
+    }
+    if (rectContains(this.exitConfirmYesButton, world)) {
+      this.playSound("click");
+      const action = this.pendingExitAction;
+      this.dismissExitConfirmation();
+      if (action === "closeWindow") {
+        this.requestBrowserClose();
+      } else if (action === "exitToMainMenu") {
+        this.exitToMainMenu();
+      }
     }
   }
 
@@ -770,6 +849,7 @@ export class Game {
 
     if (selected !== DifficultyLevel.None) {
       this.playSound("click");
+      this.canResumeGameFromMainMenu = false;
       this.selectedDifficulty = selected;
       this.puzzlesPerSession = puzzles;
       this.currentPuzzleIndex = 0;
@@ -793,6 +873,7 @@ export class Game {
       }
     } else {
       this.currentScreen = GameScreen.MainMenu;
+      this.canResumeGameFromMainMenu = false;
     }
   }
 
@@ -999,13 +1080,14 @@ export class Game {
     this.updateWheelLayout();
     this.updateHintLayout();
     this.updateTopBarLayout();
+    this.updateExitConfirmLayout();
   }
 
   private updateMenuLayout() {
     const titleSize = this.scale(36);
     const titleHeight = titleSize + 10;
     const panelWidth = MENU_BUTTON_WIDTH_DESIGN + MENU_PANEL_PADDING_DESIGN * 2 + MENU_PANEL_EXTRA_WIDTH_DESIGN;
-    const mainButtons = 3;
+    const mainButtons = this.canResumeGameFromMainMenu ? 2 : 3;
     const panelHeight =
       MENU_PANEL_PADDING_DESIGN * 2 +
       titleHeight +
@@ -1290,15 +1372,87 @@ export class Game {
     };
   }
 
+  private updateExitConfirmLayout() {
+    const panelWidth = 340;
+    const panelHeight = 180;
+    const panelX = (REF_W - panelWidth) / 2;
+    const panelY = (REF_H - panelHeight) / 2;
+    this.exitConfirmPanel = { x: panelX, y: panelY, width: panelWidth, height: panelHeight };
+
+    const buttonWidth = 120;
+    const buttonHeight = 45;
+    const buttonY = panelY + panelHeight - buttonHeight - 25;
+    const gap = 20;
+    const startX = panelX + (panelWidth - (buttonWidth * 2 + gap)) / 2;
+    this.exitConfirmYesButton = {
+      x: startX,
+      y: buttonY,
+      width: buttonWidth,
+      height: buttonHeight
+    };
+    this.exitConfirmNoButton = {
+      x: startX + buttonWidth + gap,
+      y: buttonY,
+      width: buttonWidth,
+      height: buttonHeight
+    };
+  }
+
   private renderMainMenu(ctx: CanvasRenderingContext2D) {
-    const title = "Word Puzzle";
-    const buttons = [
-      { label: "Casual", rect: this.mainMenuButtons[0] },
-      { label: "Competitive", rect: this.mainMenuButtons[1], disabled: true },
-      { label: "Quit", rect: this.mainMenuButtons[2] }
-    ];
+    const title = this.canResumeGameFromMainMenu ? "Pause Menu" : "Word Puzzle";
+    const buttons = this.canResumeGameFromMainMenu
+      ? [
+          { label: "Return", rect: this.mainMenuButtons[0] },
+          { label: "Exit", rect: this.mainMenuButtons[1] }
+        ]
+      : [
+          { label: "Casual", rect: this.mainMenuButtons[0] },
+          { label: "Competitive", rect: this.mainMenuButtons[1], disabled: true },
+          { label: "Quit", rect: this.mainMenuButtons[2] }
+        ];
 
     this.drawMenuPanel(ctx, title, buttons);
+  }
+
+  private renderExitConfirmDialog(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.fillRect(0, 0, REF_W, REF_H);
+    ctx.restore();
+
+    const panel = this.exitConfirmPanel;
+    if (this.images.menuBackground) {
+      ctx.drawImage(this.images.menuBackground, panel.x, panel.y, panel.width, panel.height);
+    } else {
+      drawRoundedRect(ctx, panel.x, panel.y, panel.width, panel.height, 12, this.currentTheme.menuBg);
+    }
+
+    drawCenteredText(
+      ctx,
+      "Are you sure?",
+      { x: panel.x + panel.width / 2, y: panel.y + 50 },
+      UI_WHITE,
+      this.font(28, true)
+    );
+
+    this.drawButton(
+      ctx,
+      this.exitConfirmYesButton,
+      "Yes",
+      rectContains(this.exitConfirmYesButton, this.mousePos)
+        ? this.currentTheme.menuButtonHover
+        : this.currentTheme.menuButtonNormal,
+      UI_WHITE
+    );
+    this.drawButton(
+      ctx,
+      this.exitConfirmNoButton,
+      "No",
+      rectContains(this.exitConfirmNoButton, this.mousePos)
+        ? this.currentTheme.menuButtonHover
+        : this.currentTheme.menuButtonNormal,
+      UI_WHITE
+    );
   }
 
   private renderCasualMenu(ctx: CanvasRenderingContext2D) {
@@ -2245,8 +2399,8 @@ export class Game {
     drawCenteredText(
       ctx,
       title,
-      { x: panelX + panelWidth / 2, y: panelY + 24 },
-      this.currentTheme.menuTitleText,
+      { x: panelX + panelWidth / 2, y: panelY + 34 },
+      UI_WHITE,
       this.font(24, true)
     );
 
@@ -2273,7 +2427,7 @@ export class Game {
     rect: Rect,
     label: string,
     color: Color,
-    textColor: Color = this.currentTheme.menuButtonText
+    textColor: Color = UI_WHITE
   ) {
     if (this.images.menuButton) {
       ctx.drawImage(this.images.menuButton, rect.x, rect.y, rect.width, rect.height);
