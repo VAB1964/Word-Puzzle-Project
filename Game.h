@@ -57,7 +57,7 @@ public:
 
 private:
 
-    const std::string HINT_DESC_REVEAL_FIRST = "\nThis hint will reveal the next\navailable letter.";
+    const std::string HINT_DESC_REVEAL_FIRST = "\nThis hint lets you pick any\nempty letter to reveal.";
     const std::string HINT_DESC_REVEAL_RANDOM = "\nThis hint will reveal one\n random letter for each word.";
     const std::string HINT_DESC_REVEAL_LAST = "\nThis hint will reveal the last word\n that hasn't been revealed.";
     const std::string HINT_DESC_REVEAL_FIRST_OF_EACH = "\nThis hint will reveal the first\n unrevealed letter for every word.";
@@ -161,6 +161,7 @@ private:
     float m_currentLetterRenderRadius;
     bool m_firstFrame = true;
     bool m_dragging;
+    bool m_isAwaitingLetterHintTarget = false;
     std::vector<int> m_path;
     std::string m_currentGuess;
 
@@ -190,6 +191,7 @@ private:
     float m_scoreFlourishTimer;
     const float SCORE_FLOURISH_DURATION = 0.4f;
     const float SCORE_FLOURISH_SCALE = 1.3f;
+    const float LETTER_HINT_TARGET_TILE_SCALE = 0.92f;
 
     sf::Texture m_scrambleTex;
     sf::Texture m_sapphireTex;
@@ -341,6 +343,9 @@ private:
     void m_updateScoreAnims(float dt);
     sf::Vector2f m_tilePos(int wordIdx, int charIdx);
     void m_clearDragState();
+    void m_clearPendingLetterHintTarget();
+    bool m_isValidLetterHintTargetTile(int wordIdx, int charIdx) const;
+    bool m_revealSpecificGridLetter(int wordIdx, int charIdx);
 
     void m_handleMainMenuEvents(const sf::Event& event);
     void m_renderMainMenu(const sf::Vector2f& mousePos);

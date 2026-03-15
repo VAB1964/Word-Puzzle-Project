@@ -1346,9 +1346,11 @@ void Game::m_rebuild() {
         }
         else { m_grid[i].clear(); std::cerr << "Warning: Word at m_sorted index " << i << " has empty text. Grid row will be empty." << std::endl; }
     }
-    m_found.clear(); m_foundBonusWords.clear(); m_anims.clear(); m_scoreAnims.clear(); m_hintPointAnims.clear(); m_scoreFlourishes.clear(); 
+    m_found.clear(); m_foundBonusWords.clear(); m_anims.clear(); m_scoreAnims.clear(); m_hintPointAnims.clear(); m_scoreFlourishes.clear();
     m_hintPointsTextFlourishTimer = 0.f;
-    m_clearDragState(); m_gameState = GState::Playing;
+    m_clearDragState();
+    m_clearPendingLetterHintTarget();
+    m_gameState = GState::Playing;
 
     // --- Reset Score/Hints ---
     if (m_currentPuzzleIndex == 0 && m_isInSession) {
@@ -2071,6 +2073,73 @@ void Game::m_clearDragState() {
     m_currentGuess.clear();
 }
 
+void Game::m_clearPendingLetterHintTarget() {
+    m_isAwaitingLetterHintTarget = false;
+}
+
+bool Game::m_isValidLetterHintTargetTile(int wordIdx, int charIdx) const {
+    if (wordIdx < 0 || charIdx < 0) {
+        return false;
+    }
+    if (static_cast<std::size_t>(wordIdx) >= m_grid.size() || static_cast<std::size_t>(wordIdx) >= m_sorted.size()) {
+        return false;
+    }
+    if (static_cast<std::size_t>(charIdx) >= m_grid[wordIdx].size()) {
+        return false;
+    }
+    if (m_found.count(m_sorted[wordIdx].text)) {
+        return false;
+    }
+    return m_grid[wordIdx][charIdx] == '_';
+}
+
+bool Game::m_revealSpecificGridLetter(int wordIdx, int charIdx) {
+    if (!m_isValidLetterHintTargetTile(wordIdx, charIdx)) {
+        return false;
+    }
+
+    const std::string& solutionWord = m_sorted[wordIdx].text;
+    if (static_cast<std::size_t>(charIdx) >= solutionWord.length()) {
+        std::cerr << "ERROR: Letter hint target index out of bounds for solution word." << std::endl;
+        return false;
+    }
+
+    const char letter = solutionWord[charIdx];
+
+    sf::Vector2f hintEndPos = m_tilePos(wordIdx, charIdx);
+    float renderTileScaleFactor = (m_currentGridLayoutScale < 1.0f) ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1.0f;
+    const float finalRenderTileSize = S(this, TILE_SIZE) * renderTileScaleFactor;
+    hintEndPos += sf::Vector2f{ finalRenderTileSize / 2.f, finalRenderTileSize / 2.f };
+
+    sf::Vector2f hintStartPos = { m_wheelX, m_wheelY };
+    for (size_t i = 0; i < m_base.length(); ++i) {
+        if (std::toupper(m_base[i]) == std::toupper(letter)) {
+            if (i < m_wheelLetterRenderPos.size()) {
+                hintStartPos = m_wheelLetterRenderPos[i];
+            }
+            else if (i < m_wheelCentres.size()) {
+                hintStartPos = m_wheelCentres[i];
+            }
+            break;
+        }
+    }
+
+    m_anims.push_back({
+        static_cast<char>(std::toupper(letter)),
+        hintStartPos,
+        hintEndPos,
+        0.0f,
+        wordIdx,
+        charIdx,
+        AnimTarget::Grid
+        });
+
+    if (m_hintUsedSound) {
+        m_hintUsedSound->play();
+    }
+    return true;
+}
+
 void Game::m_handleMainMenuEvents(const sf::Event& event) {
     if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
         if (mb->button != sf::Mouse::Button::Left) return;
@@ -2283,12 +2352,57 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                 m_isInSession = false;
                 m_selectedDifficulty = DifficultyLevel::None;
                 m_clearDragState(); // Ensure this resets guess, path, dragging
+                m_clearPendingLetterHintTarget();
                 return;
             }
             if (m_scrambleSpr && m_scrambleSpr->getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
                 std::shuffle(m_base.begin(), m_base.end(), Rng()); // Ensure Rng() is defined and seeded
                 m_clearDragState();
+                m_clearPendingLetterHintTarget();
+                return;
+            }
+
+            if (m_isAwaitingLetterHintTarget) {
+                const float tileSize = TILE_SIZE * m_currentGridLayoutScale;
+                bool clickedAnyTile = false;
+                for (std::size_t w = 0; w < m_sorted.size() && w < m_grid.size(); ++w) {
+                    for (std::size_t c = 0; c < m_grid[w].size(); ++c) {
+                        sf::Vector2f p_tile = m_tilePos(static_cast<int>(w), static_cast<int>(c));
+                        sf::FloatRect tileRect({ p_tile.x, p_tile.y }, { tileSize, tileSize });
+                        if (!tileRect.contains(mp)) {
+                            continue;
+                        }
+
+                        clickedAnyTile = true;
+                        if (!m_isValidLetterHintTargetTile(static_cast<int>(w), static_cast<int>(c))) {
+                            if (m_errorWordSound) m_errorWordSound->play();
+                            return;
+                        }
+
+                        if (m_hintPoints < HINT_COST_REVEAL_FIRST) {
+                            if (m_errorWordSound) m_errorWordSound->play();
+                            m_clearPendingLetterHintTarget();
+                            return;
+                        }
+
+                        if (m_revealSpecificGridLetter(static_cast<int>(w), static_cast<int>(c))) {
+                            m_hintPoints -= HINT_COST_REVEAL_FIRST;
+                            if (m_hintPointsText) {
+                                m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
+                            }
+                            m_clearPendingLetterHintTarget();
+                            return;
+                        }
+
+                        if (m_errorWordSound) m_errorWordSound->play();
+                        return;
+                    }
+                }
+
+                if (!clickedAnyTile && m_errorWordSound) {
+                    m_errorWordSound->play();
+                }
                 return;
             }
 
@@ -2303,9 +2417,36 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         m_hintFrameClickAnimTimers[i] = HINT_FRAME_CLICK_DURATION;
                     }
 
-                    if (m_hintPoints >= HINT_COSTS_EVENT_ARR[i]) {
+                    if (i == 0) {
+                        bool hasValidTarget = false;
+                        for (std::size_t w = 0; w < m_sorted.size() && w < m_grid.size() && !hasValidTarget; ++w) {
+                            if (m_found.count(m_sorted[w].text)) {
+                                continue;
+                            }
+                            for (std::size_t c = 0; c < m_grid[w].size(); ++c) {
+                                if (m_grid[w][c] == '_') {
+                                    hasValidTarget = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (m_hintPoints >= HINT_COSTS_EVENT_ARR[i] && hasValidTarget) {
+                            std::cout << "DEBUG: Letter hint is awaiting player target tile selection." << std::endl;
+                            m_isAwaitingLetterHintTarget = true;
+                            m_clearDragState();
+                        }
+                        else {
+                            std::cout << "DEBUG: Clicked Letter hint, but cannot use it now." << std::endl;
+                            if (m_errorWordSound) m_errorWordSound->play();
+                        }
+                    }
+                    else if (m_hintPoints >= HINT_COSTS_EVENT_ARR[i]) {
                         std::cout << "DEBUG: Clicked Hint " << (i + 1) << " (Type: " << static_cast<int>(HINT_TYPES_EVENT_ARR[i]) << ")" << std::endl;
                         m_hintPoints -= HINT_COSTS_EVENT_ARR[i];
+                        if (m_hintPointsText) {
+                            m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints));
+                        }
                         m_activateHint(HINT_TYPES_EVENT_ARR[i]);
                     }
                     else {
@@ -2600,41 +2741,6 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
         }
     } // --- End Mouse Button Released ---
 
-    // Also, ensure that when a hint is used, the m_hintPointsText is updated immediately:
-    if (const auto* mb_pressed_for_hint = event.getIf<sf::Event::MouseButtonPressed>()) {
-        if (mb_pressed_for_hint->button == sf::Mouse::Button::Left) {
-            sf::Vector2f mp = m_window.mapPixelToCoords(mb_pressed_for_hint->position);
-            // ... (existing button checks like return to menu, scramble) ...
-
-            bool hintButtonClickedThisPress = false; // Use a local flag for this press
-            const int HINT_COSTS_EVENT_ARR_LOCAL[] = { HINT_COST_REVEAL_FIRST, HINT_COST_REVEAL_RANDOM, HINT_COST_REVEAL_LAST, HINT_COST_REVEAL_FIRST_OF_EACH };
-            const HintType HINT_TYPES_EVENT_ARR_LOCAL[] = { HintType::RevealFirst, HintType::RevealRandom, HintType::RevealLast, HintType::RevealFirstOfEach };
-
-            for (int i = 0; i < 4; ++i) {
-                if (i < m_hintClickableRegions.size() && m_hintClickableRegions[i].contains(mp)) {
-
-                    if (i < m_hintFrameClickAnimTimers.size()) {
-                        m_hintFrameClickAnimTimers[i] = HINT_FRAME_CLICK_DURATION;
-                    }
-
-                    if (m_hintPoints >= HINT_COSTS_EVENT_ARR_LOCAL[i]) {
-                        m_hintPoints -= HINT_COSTS_EVENT_ARR_LOCAL[i];
-                        if (m_hintPointsText) m_hintPointsText->setString("Points: " + std::to_string(m_hintPoints)); // Update display
-                        m_activateHint(HINT_TYPES_EVENT_ARR_LOCAL[i]);
-                        // m_hintUsedSound will be played in m_activateHint if successful
-                    }
-                    else {
-                        if (m_errorWordSound) m_errorWordSound->play();
-                    }
-                    hintButtonClickedThisPress = true;
-                    break;
-                }
-            }
-            if (hintButtonClickedThisPress) return; // If a hint button was processed, return
-            // ... (rest of mouse button pressed logic for wheel) ...
-        }
-    }
-    
 } // End m_handlePlayingEvents
 
 
@@ -2671,6 +2777,7 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
                 m_isInSession = false;    // Example
                 m_selectedDifficulty = DifficultyLevel::None; // Example
                 m_gameState = GState::Playing; // Reset internal state for menu
+                m_clearPendingLetterHintTarget();
                 return; // Processed button click
             }
 
@@ -2712,6 +2819,7 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
                     // Not in a session (e.g., maybe a future single puzzle mode ended)
                     m_currentScreen = GameScreen::MainMenu;
                     m_gameState = GState::Playing; // Reset internal state for menu
+                    m_clearPendingLetterHintTarget();
                 }
             }
         }
@@ -2808,13 +2916,17 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
                 sf::Vector2f p_tile = m_tilePos(static_cast<int>(w), static_cast<int>(c));
                 bool isFilled = (m_grid[w][c] != '_');
+                const bool isSelectableLetterHintTarget =
+                    m_isAwaitingLetterHintTarget && m_isValidLetterHintTargetTile(static_cast<int>(w), static_cast<int>(c));
                 
-                // Draw button sprite instead of grey box (origin top-left so guess-display use of same sprite doesn't affect grid)
+                // Draw button sprite for tile frame; shrink selectable targets slightly in Letter hint target mode.
                 if (m_buttonSpr && m_buttonTex.getSize().x > 0) {
-                    m_buttonSpr->setOrigin(sf::Vector2f(0.f, 0.f));
-                    float buttonScale = finalRenderTileSize / static_cast<float>(m_buttonTex.getSize().x);
+                    const float baseButtonScale = finalRenderTileSize / static_cast<float>(m_buttonTex.getSize().x);
+                    const float buttonScale = baseButtonScale * (isSelectableLetterHintTarget ? LETTER_HINT_TARGET_TILE_SCALE : 1.0f);
+                    const sf::Vector2f tileCenter = p_tile + sf::Vector2f(finalRenderTileSize / 2.f, finalRenderTileSize / 2.f);
+                    m_buttonSpr->setOrigin(sf::Vector2f(static_cast<float>(m_buttonTex.getSize().x) / 2.f, static_cast<float>(m_buttonTex.getSize().y) / 2.f));
                     m_buttonSpr->setScale(sf::Vector2f(buttonScale, buttonScale));
-                    m_buttonSpr->setPosition(p_tile);
+                    m_buttonSpr->setPosition(tileCenter);
                     m_window.draw(*m_buttonSpr);
                 }
 
