@@ -160,11 +160,14 @@ const HINT_TYPES = [
   HintType.RevealFirstOfEach
 ];
 const HINT_DESCRIPTIONS = [
-  "This hint will reveal the next available letter.",
+  "This hint lets you pick any empty letter to reveal.",
   "This hint will reveal one random letter for each word.",
   "This hint will reveal the last word that hasn't been revealed.",
   "This hint will reveal the first unrevealed letter for every word."
 ];
+const LETTER_HINT_TARGET_TILE_SCALE_BASE = 0.92;
+const LETTER_HINT_TARGET_TILE_SCALE_PULSE_AMPLITUDE = 0.04;
+const LETTER_HINT_TARGET_TILE_SCALE_PULSE_SPEED = 5.5;
 const GEM_HINT_POINTS_BY_RARITY: Record<number, number> = {
   2: 2, // Emerald
   3: 4, // Ruby
@@ -239,6 +242,8 @@ export class Game {
   private hoveredHintIndex = -1;
   private isHoveringHintPointsText = false;
   private hoveredSolvedWordIndex = -1;
+  private isAwaitingLetterHintTarget = false;
+  private letterHintTargetPulseTime = 0;
 
   private dragging = false;
   private path: number[] = [];
@@ -310,6 +315,12 @@ export class Game {
     if (!this.ready) return;
 
     this.decor.update(dt, { x: REF_W, y: REF_H }, this.currentTheme);
+
+    if (this.isAwaitingLetterHintTarget) {
+      this.letterHintTargetPulseTime += dt;
+    } else {
+      this.letterHintTargetPulseTime = 0;
+    }
 
     if (this.scoreFlourishTimer > 0) {
       this.scoreFlourishTimer = Math.max(0, this.scoreFlourishTimer - dt);
@@ -633,6 +644,7 @@ export class Game {
       this.resumeScreenFromMainMenu = GameScreen.Playing;
       this.updateMenuLayout();
       this.clearDragState();
+      this.clearPendingLetterHintTarget();
       return;
     }
 
@@ -642,13 +654,49 @@ export class Game {
       this.keyboardLetterPulseTimers = Array(this.base.length).fill(0);
       this.updateLayout();
       this.clearDragState();
+      this.clearPendingLetterHintTarget();
+      return;
+    }
+
+    if (this.isAwaitingLetterHintTarget) {
+      const clickedTile = this.getGridTileAtPoint(world);
+      if (!clickedTile) {
+        this.playSound("error");
+        return;
+      }
+
+      if (!this.isValidLetterHintTargetTile(clickedTile.wordIdx, clickedTile.charIdx)) {
+        this.playSound("error");
+        return;
+      }
+
+      if (this.hintPoints < HINT_COST_REVEAL_FIRST) {
+        this.playSound("error");
+        this.clearPendingLetterHintTarget();
+        return;
+      }
+
+      if (this.revealSpecificGridLetter(clickedTile.wordIdx, clickedTile.charIdx)) {
+        this.hintPoints -= HINT_COST_REVEAL_FIRST;
+        this.clearPendingLetterHintTarget();
+        return;
+      }
+
+      this.playSound("error");
       return;
     }
 
     for (let i = 0; i < this.hintClickableRegions.length; i += 1) {
       if (rectContains(this.hintClickableRegions[i], world)) {
         this.hintFrameClickAnimTimers[i] = 0.15;
-        if (this.hintPoints >= HINT_COSTS[i]) {
+        if (i === 0) {
+          if (this.hintPoints >= HINT_COSTS[i] && this.hasAnyValidLetterHintTarget()) {
+            this.isAwaitingLetterHintTarget = true;
+            this.clearDragState();
+          } else {
+            this.playSound("error");
+          }
+        } else if (this.hintPoints >= HINT_COSTS[i]) {
           this.hintPoints -= HINT_COSTS[i];
           this.activateHint(HINT_TYPES[i]);
         } else {
@@ -1263,6 +1311,7 @@ export class Game {
     this.scoreFlourishes = [];
     this.hintPointAnims = [];
     this.gridFlourishes = [];
+    this.clearPendingLetterHintTarget();
     this.gameState = GState.Playing;
     this.bonusWordsCacheIsValid = false;
     this.bonusWordsPopupScrollOffset = 0;
@@ -2019,10 +2068,24 @@ export class Game {
     for (let w = 0; w < this.sorted.length; w += 1) {
       for (let c = 0; c < this.sorted[w].text.length; c += 1) {
         const pos = this.tilePos(w, c);
+        const selectableHintTarget =
+          this.isAwaitingLetterHintTarget && this.isValidLetterHintTargetTile(w, c);
+        const tileScale = selectableHintTarget
+          ? clamp(
+              LETTER_HINT_TARGET_TILE_SCALE_BASE +
+                Math.sin(this.letterHintTargetPulseTime * LETTER_HINT_TARGET_TILE_SCALE_PULSE_SPEED) *
+                  LETTER_HINT_TARGET_TILE_SCALE_PULSE_AMPLITUDE,
+              0.85,
+              0.98
+            )
+          : 1;
+        const renderTileSize = tileSize * tileScale;
+        const renderX = pos.x + (tileSize - renderTileSize) / 2;
+        const renderY = pos.y + (tileSize - renderTileSize) / 2;
         if (buttonImage) {
-          ctx.drawImage(buttonImage, pos.x, pos.y, tileSize, tileSize);
+          ctx.drawImage(buttonImage, renderX, renderY, renderTileSize, renderTileSize);
         } else {
-          drawRoundedRect(ctx, pos.x, pos.y, tileSize, tileSize, 4, this.currentTheme.gridEmptyTile);
+          drawRoundedRect(ctx, renderX, renderY, renderTileSize, renderTileSize, 4, this.currentTheme.gridEmptyTile);
         }
 
         const isFilled = this.grid[w]?.[c] !== "_";
@@ -3041,6 +3104,77 @@ export class Game {
       });
       delay -= 0.03;
     }
+  }
+
+  private clearPendingLetterHintTarget() {
+    this.isAwaitingLetterHintTarget = false;
+  }
+
+  private hasAnyValidLetterHintTarget() {
+    for (let w = 0; w < this.grid.length && w < this.sorted.length; w += 1) {
+      for (let c = 0; c < this.grid[w].length; c += 1) {
+        if (this.isValidLetterHintTargetTile(w, c)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private isValidLetterHintTargetTile(wordIdx: number, charIdx: number) {
+    if (wordIdx < 0 || charIdx < 0) return false;
+    if (wordIdx >= this.grid.length || wordIdx >= this.sorted.length) return false;
+    if (charIdx >= this.grid[wordIdx].length || charIdx >= this.sorted[wordIdx].text.length) return false;
+    if (this.found.has(this.sorted[wordIdx].text)) return false;
+    return this.grid[wordIdx][charIdx] === "_";
+  }
+
+  private getGridTileAtPoint(world: Vec2): { wordIdx: number; charIdx: number } | null {
+    const tileSize = TILE_SIZE * this.currentGridLayoutScale;
+    for (let w = 0; w < this.sorted.length && w < this.grid.length; w += 1) {
+      for (let c = 0; c < this.grid[w].length; c += 1) {
+        const pos = this.tilePos(w, c);
+        if (
+          world.x >= pos.x &&
+          world.x <= pos.x + tileSize &&
+          world.y >= pos.y &&
+          world.y <= pos.y + tileSize
+        ) {
+          return { wordIdx: w, charIdx: c };
+        }
+      }
+    }
+    return null;
+  }
+
+  private revealSpecificGridLetter(wordIdx: number, charIdx: number) {
+    if (!this.isValidLetterHintTargetTile(wordIdx, charIdx)) {
+      return false;
+    }
+
+    const letter = this.sorted[wordIdx].text[charIdx];
+    const endPos = this.tilePos(wordIdx, charIdx);
+    const tileSize =
+      TILE_SIZE * this.currentGridLayoutScale * (this.currentGridLayoutScale < 1 ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1);
+    let startPos = this.wheelCenter;
+    for (let i = 0; i < this.base.length; i += 1) {
+      if (this.base[i].toUpperCase() === letter.toUpperCase()) {
+        startPos = this.wheelLetterRenderPos[i] ?? startPos;
+        break;
+      }
+    }
+
+    this.letterAnims.push({
+      ch: letter.toUpperCase(),
+      start: startPos,
+      end: { x: endPos.x + tileSize / 2, y: endPos.y + tileSize / 2 },
+      t: 0,
+      wordIdx,
+      charIdx,
+      target: AnimTarget.Grid
+    });
+    this.playSound("hintUsed");
+    return true;
   }
 
   private checkWordCompletion(wordIdx: number) {
