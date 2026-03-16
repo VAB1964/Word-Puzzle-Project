@@ -16,10 +16,15 @@ export enum GState {
 export enum GameScreen {
   MainMenu = "MainMenu",
   CasualMenu = "CasualMenu",
-  CompetitiveMenu = "CompetitiveMenu",
+  CrosswordMenu = "CrosswordMenu",
   Playing = "Playing",
   GameOver = "GameOver",
   SessionComplete = "SessionComplete"
+}
+
+export enum GameMode {
+  Casual = "Casual",
+  Crossword = "Crossword"
 }
 
 export enum DifficultyLevel {

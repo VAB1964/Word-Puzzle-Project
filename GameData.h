@@ -120,7 +120,7 @@ struct HintPointAnimParticle {
 
 
 enum class GState { Playing, Solved }; // Internal game state
-enum class GameScreen { MainMenu, CasualMenu, CompetitiveMenu, Playing, GameOver, SessionComplete }; // Overall screen state
+enum class GameScreen { MainMenu, CasualMenu, CrosswordMenu, Playing, GameOver, SessionComplete }; // Overall screen state
 
 //--------------------------------------------------------------------
 //  Animation Structures

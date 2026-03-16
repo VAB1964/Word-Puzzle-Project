@@ -476,12 +476,45 @@ void Game::m_updateAnims(float dt)
                     if (a.wordIdx >= 0 && static_cast<size_t>(a.wordIdx) < m_grid.size() &&
                         a.charIdx >= 0 && static_cast<size_t>(a.charIdx) < m_grid[a.wordIdx].size())
                     {
-                        // The double assignment was in your original code, likely a harmless typo
-                        // m_grid[a.wordIdx][a.charIdx] = a.ch; 
-                        m_grid[a.wordIdx][a.charIdx] = a.ch; // This updates the grid data model
+                        m_grid[a.wordIdx][a.charIdx] = a.ch;
+
+                        // Crossword shared-cell propagation
+                        if (m_gameMode == GameMode::Crossword) {
+                            const auto& p = m_crosswordPlacements[a.wordIdx];
+                            int gr = (p.dir == Direction::Horizontal) ? p.gridRow : p.gridRow + a.charIdx;
+                            int gc = (p.dir == Direction::Horizontal) ? p.gridCol + a.charIdx : p.gridCol;
+                            auto it = m_crosswordSharedCells.find({gr, gc});
+                            if (it != m_crosswordSharedCells.end()) {
+                                for (const auto& owner : it->second) {
+                                    int ow = owner.first;
+                                    int oc = owner.second;
+                                    if (ow != a.wordIdx || oc != a.charIdx) {
+                                        if (ow >= 0 && static_cast<size_t>(ow) < m_grid.size() &&
+                                            oc >= 0 && static_cast<size_t>(oc) < m_grid[ow].size()) {
+                                            m_grid[ow][oc] = a.ch;
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
                         std::cout << "DEBUG: Anim to grid: m_grid[" << a.wordIdx << "][" << a.charIdx << "] = " << a.ch << std::endl;
                         m_checkWordCompletion(a.wordIdx);
+
+                        // Check completion on all words sharing this cell
+                        if (m_gameMode == GameMode::Crossword) {
+                            const auto& p = m_crosswordPlacements[a.wordIdx];
+                            int gr = (p.dir == Direction::Horizontal) ? p.gridRow : p.gridRow + a.charIdx;
+                            int gc = (p.dir == Direction::Horizontal) ? p.gridCol + a.charIdx : p.gridCol;
+                            auto it = m_crosswordSharedCells.find({gr, gc});
+                            if (it != m_crosswordSharedCells.end()) {
+                                for (const auto& owner : it->second) {
+                                    if (owner.first != a.wordIdx) {
+                                        m_checkWordCompletion(owner.first);
+                                    }
+                                }
+                            }
+                        }
                     }
                     else {
                         std::cerr << "ERROR: Anim completion - word/char index out of bounds for grid. "
@@ -637,7 +670,7 @@ void Game::m_loadResources() {
     m_hintCountTxt = std::make_unique<sf::Text>(m_font, "", 20); // Potentially redundant with m_hintPointsText
     m_mainMenuTitle = std::make_unique<sf::Text>(m_font, "Main Menu", 36);
     m_casualButtonText = std::make_unique<sf::Text>(m_font, "Casual", 24);
-    m_competitiveButtonText = std::make_unique<sf::Text>(m_font, "Competitive", 24);
+    m_competitiveButtonText = std::make_unique<sf::Text>(m_font, "Crossword", 24);
     m_quitButtonText = std::make_unique<sf::Text>(m_font, "Quit", 24);
     m_hintRevealFirstButtonText = std::make_unique<sf::Text>(m_font, "Letter", 18);
     m_hintRevealFirstButtonText->setFillColor(sf::Color::White);
@@ -813,6 +846,7 @@ void Game::m_processEvents()
         //---------------- existing per‑screen event handling ----------
         if (m_currentScreen == GameScreen::MainMenu)          m_handleMainMenuEvents(ev);
         else if (m_currentScreen == GameScreen::CasualMenu)   m_handleCasualMenuEvents(ev);
+        else if (m_currentScreen == GameScreen::CrosswordMenu) m_handleCrosswordMenuEvents(ev);
         else if (m_currentScreen == GameScreen::Playing)      m_handlePlayingEvents(ev);
         else if (m_currentScreen == GameScreen::GameOver)     m_handleGameOverEvents(ev);
         else if (m_currentScreen == GameScreen::SessionComplete) m_handleSessionCompleteEvents(ev);
@@ -955,6 +989,7 @@ void Game::m_render() {
     {
         if (m_currentScreen == GameScreen::MainMenu) { m_renderMainMenu(mpos); }
         else if (m_currentScreen == GameScreen::CasualMenu) { m_renderCasualMenu(mpos); }
+        else if (m_currentScreen == GameScreen::CrosswordMenu) { m_renderCrosswordMenu(mpos); }
         else if (m_currentScreen == GameScreen::SessionComplete) { m_renderSessionComplete(mpos); }
         else { m_renderGameScreen(mpos); }
     }
@@ -1011,11 +1046,20 @@ void Game::m_rebuild() {
     }
     else {
         PuzzleCriteria baseCriteria = m_getCriteriaForCurrentPuzzle();
-        switch (m_selectedDifficulty) {
-        case DifficultyLevel::Easy:   maxSolutionsForDifficulty = EASY_MAX_SOLUTIONS; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
-        case DifficultyLevel::Medium: maxSolutionsForDifficulty = MEDIUM_MAX_SOLUTIONS; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
-        case DifficultyLevel::Hard:   maxSolutionsForDifficulty = HARD_MAX_SOLUTIONS; minSubLengthForDifficulty = HARD_MIN_WORD_LENGTH; break;
-        default: maxSolutionsForDifficulty = 999; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+        if (m_gameMode == GameMode::Crossword) {
+            switch (m_selectedDifficulty) {
+            case DifficultyLevel::Easy:   maxSolutionsForDifficulty = CROSSWORD_EASY_MAX_SOLUTIONS; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+            case DifficultyLevel::Medium: maxSolutionsForDifficulty = CROSSWORD_MEDIUM_MAX_SOLUTIONS; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+            case DifficultyLevel::Hard:   maxSolutionsForDifficulty = CROSSWORD_HARD_MAX_SOLUTIONS; minSubLengthForDifficulty = HARD_MIN_WORD_LENGTH; break;
+            default: maxSolutionsForDifficulty = 999; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+            }
+        } else {
+            switch (m_selectedDifficulty) {
+            case DifficultyLevel::Easy:   maxSolutionsForDifficulty = EASY_MAX_SOLUTIONS; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+            case DifficultyLevel::Medium: maxSolutionsForDifficulty = MEDIUM_MAX_SOLUTIONS; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+            case DifficultyLevel::Hard:   maxSolutionsForDifficulty = HARD_MAX_SOLUTIONS; minSubLengthForDifficulty = HARD_MIN_WORD_LENGTH; break;
+            default: maxSolutionsForDifficulty = 999; minSubLengthForDifficulty = MIN_WORD_LENGTH; break;
+            }
         }
 
         // --- Print Status ---
@@ -1288,6 +1332,24 @@ void Game::m_rebuild() {
     m_solutions = final_solutions; // UNIQUE list
     m_sorted = Words::sortForGrid(m_solutions);
 
+    // --- Crossword mode: arrange words into a crossword layout ---
+    if (m_gameMode == GameMode::Crossword && !m_sorted.empty()) {
+        CrosswordResult cwResult = generateCrossword(m_sorted);
+        m_crosswordPlacements = cwResult.placements;
+        m_crosswordSharedCells = cwResult.sharedCells;
+        m_crosswordGridRows = cwResult.gridRows;
+        m_crosswordGridCols = cwResult.gridCols;
+
+        // Replace sorted/solutions with only the words that were placed
+        m_sorted = cwResult.placedWords;
+        m_solutions = cwResult.placedWords;
+    } else {
+        m_crosswordPlacements.clear();
+        m_crosswordSharedCells.clear();
+        m_crosswordGridRows = 0;
+        m_crosswordGridCols = 0;
+    }
+
     m_bonusWordsCacheIsValid = false;
     m_cachedBonusWords.clear();
     m_bonusWordsPopupScrollOffset = 0.f; // reset scroll when puzzle changes
@@ -1526,7 +1588,36 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
     m_wordCol.clear(); m_wordRow.clear(); m_colMaxLen.clear(); m_colXOffset.clear();
     float gridElementsScaleFactor = 1.0f;
 
-    if (!m_sorted.empty()) {
+    if (m_gameMode == GameMode::Crossword && !m_crosswordPlacements.empty()) {
+        // Crossword layout: compute scale to fit the crossword grid into the zone
+        const float st_base = TILE_SIZE;
+        const float sp_base = TILE_PAD;
+        const float stpw_base = st_base + sp_base;
+        const float stph_base = st_base + sp_base;
+
+        float totalWidthUnscaled = static_cast<float>(m_crosswordGridCols) * stpw_base - (m_crosswordGridCols > 0 ? sp_base : 0.f);
+        float totalHeightUnscaled = static_cast<float>(m_crosswordGridRows) * stph_base - (m_crosswordGridRows > 0 ? sp_base : 0.f);
+        if (totalWidthUnscaled < 0) totalWidthUnscaled = 0;
+        if (totalHeightUnscaled < 0) totalHeightUnscaled = 0;
+
+        float scaleToFitX = 1.0f;
+        if (totalWidthUnscaled > zoneInnerWidth_grid && totalWidthUnscaled > 0)
+            scaleToFitX = zoneInnerWidth_grid / totalWidthUnscaled;
+        float scaleToFitY = 1.0f;
+        if (totalHeightUnscaled > zoneInnerHeight_grid && totalHeightUnscaled > 0)
+            scaleToFitY = zoneInnerHeight_grid / totalHeightUnscaled;
+        gridElementsScaleFactor = std::min(scaleToFitX, scaleToFitY);
+
+        float totalWidthScaled = totalWidthUnscaled * gridElementsScaleFactor;
+        float totalHeightScaled = totalHeightUnscaled * gridElementsScaleFactor;
+
+        m_gridStartX = zoneInnerX_grid + (zoneInnerWidth_grid - totalWidthScaled) / 2.f;
+        m_gridStartY = zoneInnerY_grid + (zoneInnerHeight_grid - totalHeightScaled) / 2.f;
+        m_totalGridW = totalWidthScaled;
+        actualGridFinalHeight = totalHeightScaled;
+        m_currentGridLayoutScale = gridElementsScaleFactor;
+    }
+    else if (!m_sorted.empty()) {
         const float st_base_design = TILE_SIZE;
         const float sp_base_design = TILE_PAD;
         const float sc_base_design = COL_PAD;
@@ -2038,6 +2129,30 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 sf::Vector2f Game::m_tilePos(int wordIdx, int charIdx) {
     sf::Vector2f result = { -1000.f, -1000.f }; // Default off-screen
 
+    const float scaledTileSize = TILE_SIZE * m_currentGridLayoutScale;
+    const float scaledTilePad = TILE_PAD * m_currentGridLayoutScale;
+    const float scaledStepWidth = scaledTileSize + scaledTilePad;
+    const float scaledStepHeight = scaledTileSize + scaledTilePad;
+
+    if (m_gameMode == GameMode::Crossword) {
+        if (wordIdx < 0 || static_cast<size_t>(wordIdx) >= m_crosswordPlacements.size() || charIdx < 0)
+            return result;
+
+        const auto& p = m_crosswordPlacements[wordIdx];
+        int gridRow, gridCol;
+        if (p.dir == Direction::Horizontal) {
+            gridRow = p.gridRow;
+            gridCol = p.gridCol + charIdx;
+        } else {
+            gridRow = p.gridRow + charIdx;
+            gridCol = p.gridCol;
+        }
+        float x = m_gridStartX + static_cast<float>(gridCol) * scaledStepWidth;
+        float y = m_gridStartY + static_cast<float>(gridRow) * scaledStepHeight;
+        return { x, y };
+    }
+
+    // Casual mode (original logic)
     if (m_sorted.empty() || wordIdx < 0 || static_cast<size_t>(wordIdx) >= m_wordCol.size() ||
         static_cast<size_t>(wordIdx) >= m_wordRow.size() || charIdx < 0) {
         return result;
@@ -2048,17 +2163,6 @@ sf::Vector2f Game::m_tilePos(int wordIdx, int charIdx) {
         return result;
     }
 
-    // --- Calculate Tile/Padding/Step Sizes using the gridElementsScaleFactor ---
-    // m_currentGridLayoutScale now stores the uniform scale factor for grid elements.
-    const float scaledTileSize = TILE_SIZE * m_currentGridLayoutScale;
-    const float scaledTilePad = TILE_PAD * m_currentGridLayoutScale;
-    // Column padding is handled by m_colXOffset structure.
-
-    const float scaledStepWidth = scaledTileSize + scaledTilePad;
-    const float scaledStepHeight = scaledTileSize + scaledTilePad;
-
-    // m_colXOffset[c] is already the absolute starting X for this column in design space.
-    // m_gridStartY is the absolute starting Y for the grid content area in design space.
     float x = m_colXOffset[c] + static_cast<float>(charIdx) * scaledStepWidth;
     float y = m_gridStartY + static_cast<float>(r) * scaledStepHeight;
 
@@ -2152,9 +2256,8 @@ void Game::m_handleMainMenuEvents(const sf::Event& event) {
             // m_rebuild(); // DON'T rebuild here, wait for difficulty selection
         }
         else if (m_competitiveButtonShape.getGlobalBounds().contains(mp)) {
-            m_clickSound->play(); // Use ->
-            m_currentScreen = GameScreen::CompetitiveMenu; // Just switch for now
-            // m_rebuild(); // DON'T rebuild here, wait for difficulty selection
+            m_clickSound->play();
+            m_currentScreen = GameScreen::CrosswordMenu;
         }
         else if (m_quitButtonShape.getGlobalBounds().contains(mp)) {
             m_clickSound->play(); // Use ->
@@ -2196,6 +2299,7 @@ void Game::m_handleCasualMenuEvents(const sf::Event& event) {
 
             // --- Set Session State ---
             m_selectedDifficulty = selected;
+            m_gameMode = GameMode::Casual;
             m_puzzlesPerSession = puzzles;
             m_currentPuzzleIndex = 0; // Start at the first puzzle (index 0)
             m_isInSession = true;
@@ -2275,6 +2379,7 @@ void Game::m_renderMainMenu(const sf::Vector2f& mousePos) {
 void Game::m_renderCasualMenu(const sf::Vector2f& mousePos) {
     // Apply theme colors (fallback when menu background texture not used)
     m_casualMenuBg.setFillColor(m_currentTheme.menuBg);
+    m_casualMenuTitle->setString("Casual");
     m_casualMenuTitle->setFillColor(m_currentTheme.menuTitleText);
     m_easyButtonText->setFillColor(m_currentTheme.menuButtonText);
     m_mediumButtonText->setFillColor(m_currentTheme.menuButtonText);
@@ -2303,6 +2408,77 @@ void Game::m_renderCasualMenu(const sf::Vector2f& mousePos) {
     m_window.draw(*m_returnButtonText);
 
     // TODO: Draw pop-up if hovering
+}
+
+void Game::m_handleCrosswordMenuEvents(const sf::Event& event) {
+    if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
+        if (mb->button != sf::Mouse::Button::Left) return;
+        sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
+
+        DifficultyLevel selected = DifficultyLevel::None;
+        int puzzles = 0;
+
+        if (m_easyButtonShape.getGlobalBounds().contains(mp)) {
+            selected = DifficultyLevel::Easy;
+            puzzles = EASY_PUZZLE_COUNT;
+        }
+        else if (m_mediumButtonShape.getGlobalBounds().contains(mp)) {
+            selected = DifficultyLevel::Medium;
+            puzzles = MEDIUM_PUZZLE_COUNT;
+        }
+        else if (m_hardButtonShape.getGlobalBounds().contains(mp)) {
+            selected = DifficultyLevel::Hard;
+            puzzles = HARD_PUZZLE_COUNT;
+        }
+        else if (m_returnButtonShape.getGlobalBounds().contains(mp)) {
+            if (m_clickSound) m_clickSound->play();
+            m_currentScreen = GameScreen::MainMenu;
+            return;
+        }
+
+        if (selected != DifficultyLevel::None) {
+            if (m_clickSound) m_clickSound->play();
+
+            m_selectedDifficulty = selected;
+            m_gameMode = GameMode::Crossword;
+            m_puzzlesPerSession = puzzles;
+            m_currentPuzzleIndex = 0;
+            m_isInSession = true;
+            m_usedBaseWordsThisSession.clear();
+
+            m_rebuild();
+            m_currentScreen = GameScreen::Playing;
+        }
+    }
+}
+
+void Game::m_renderCrosswordMenu(const sf::Vector2f& mousePos) {
+    m_casualMenuBg.setFillColor(m_currentTheme.menuBg);
+    m_casualMenuTitle->setFillColor(m_currentTheme.menuTitleText);
+    m_casualMenuTitle->setString("Crossword");
+    m_easyButtonText->setFillColor(m_currentTheme.menuButtonText);
+    m_mediumButtonText->setFillColor(m_currentTheme.menuButtonText);
+    m_hardButtonText->setFillColor(m_currentTheme.menuButtonText);
+    m_returnButtonText->setFillColor(m_currentTheme.menuButtonText);
+
+    m_easyButtonShape.setFillColor(m_easyButtonShape.getGlobalBounds().contains(mousePos) ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
+    m_mediumButtonShape.setFillColor(m_mediumButtonShape.getGlobalBounds().contains(mousePos) ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
+    m_hardButtonShape.setFillColor(m_hardButtonShape.getGlobalBounds().contains(mousePos) ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
+    m_returnButtonShape.setFillColor(m_returnButtonShape.getGlobalBounds().contains(mousePos) ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
+
+    if (m_casualMenuBgSpr && m_menuBgTexture.getSize().x > 0)
+        m_window.draw(*m_casualMenuBgSpr);
+    else
+        m_window.draw(m_casualMenuBg);
+    m_window.draw(*m_casualMenuTitle);
+    if (m_easyButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_easyButtonSpr); else m_window.draw(m_easyButtonShape);
+    m_window.draw(*m_easyButtonText);
+    if (m_mediumButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_mediumButtonSpr); else m_window.draw(m_mediumButtonShape);
+    m_window.draw(*m_mediumButtonText);
+    if (m_hardButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_hardButtonSpr); else m_window.draw(m_hardButtonShape);
+    m_window.draw(*m_hardButtonText);
+    if (m_returnButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_returnButtonSpr); else m_window.draw(m_returnButtonShape);
+    m_window.draw(*m_returnButtonText);
 }
 
 // --- Event Handlers for Specific Screens ---
@@ -2976,8 +3152,8 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
             }
         }
 
-        // --- Draw column dividers so words don't run together ---
-        if (GRID_COLUMN_DIVIDER_WIDTH > 0.f && m_colXOffset.size() >= 2u) {
+        // --- Draw column dividers so words don't run together (casual mode only) ---
+        if (m_gameMode == GameMode::Casual && GRID_COLUMN_DIVIDER_WIDTH > 0.f && m_colXOffset.size() >= 2u) {
             const int numCols = static_cast<int>(m_colXOffset.size());
             const float scaledTileSize = TILE_SIZE * m_currentGridLayoutScale;
             const float scaledTilePad = TILE_PAD * m_currentGridLayoutScale;

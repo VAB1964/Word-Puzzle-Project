@@ -25,12 +25,16 @@
 #include "GameData.h"
 #include "DecorLayer.h"
 #include "Constants.h" // Include constants used in the header (like GRID_TOP_MARGIN default)
+#include "Crossword.h"
 
 // Standard Library Headers needed for declarations
 #include <vector>
 #include <string>
 #include <set>
+#include <map>
 #include <memory> 
+
+enum class GameMode { Casual, Crossword };
 
 enum class DifficultyLevel {
     None, // Default state or for modes without difficulty
@@ -141,9 +145,16 @@ private:
     sf::Vector2u m_lastKnownSize;
 
     DifficultyLevel m_selectedDifficulty;
+    GameMode m_gameMode = GameMode::Casual;
     int m_puzzlesPerSession;
     int m_currentPuzzleIndex;
     bool m_isInSession;
+
+    // Crossword mode data
+    std::vector<CrosswordPlacement> m_crosswordPlacements;
+    std::map<std::pair<int,int>, std::vector<std::pair<int,int>>> m_crosswordSharedCells;
+    int m_crosswordGridRows = 0;
+    int m_crosswordGridCols = 0;
 
     std::vector<WordInfo> m_allPotentialSolutions;
     std::set<std::string> m_foundBonusWords;
@@ -351,6 +362,8 @@ private:
     void m_renderMainMenu(const sf::Vector2f& mousePos);
     void m_handleCasualMenuEvents(const sf::Event& event);
     void m_renderCasualMenu(const sf::Vector2f& mousePos);
+    void m_handleCrosswordMenuEvents(const sf::Event& event);
+    void m_renderCrosswordMenu(const sf::Vector2f& mousePos);
     void m_handlePlayingEvents(const sf::Event& event);
     void m_handleGameOverEvents(const sf::Event& event);
     void m_renderGameScreen(const sf::Vector2f& mousePos);

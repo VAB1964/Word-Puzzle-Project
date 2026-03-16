@@ -44,6 +44,10 @@ export const MEDIUM_MAX_SOLUTIONS = 12;
 export const HARD_MAX_SOLUTIONS = 15;
 export const MIN_DESIRED_GRID_WORDS = 5;
 
+export const CROSSWORD_EASY_MAX_SOLUTIONS = 10;
+export const CROSSWORD_MEDIUM_MAX_SOLUTIONS = 15;
+export const CROSSWORD_HARD_MAX_SOLUTIONS = 20;
+
 export const HINT_COST_REVEAL_FIRST = 2;
 export const HINT_COST_REVEAL_RANDOM = 3;
 export const HINT_COST_REVEAL_LAST = 5;

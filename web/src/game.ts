@@ -8,6 +8,9 @@ import {
   COL_PAD,
   CONTINUE_BTN_OFFSET_Y,
   DEBUG_DRAW_WHEEL_HIT_AREAS,
+  CROSSWORD_EASY_MAX_SOLUTIONS,
+  CROSSWORD_HARD_MAX_SOLUTIONS,
+  CROSSWORD_MEDIUM_MAX_SOLUTIONS,
   EASY_MAX_SOLUTIONS,
   EASY_PUZZLE_COUNT,
   GUESS_DISPLAY_GAP,
@@ -104,6 +107,7 @@ import {
 import {
   AnimTarget,
   DifficultyLevel,
+  GameMode,
   GState,
   GameScreen,
   HintType,
@@ -129,6 +133,7 @@ import {
   shuffle
 } from "./core/utils";
 import { loadProcessedWordList, sortForGrid, subWords, withLength } from "./data/words";
+import { generateCrossword, Direction, type CrosswordPlacement } from "./data/crossword";
 import { DecorLayer } from "./render/decorLayer";
 import { drawCenteredText, drawRoundedRect, wrapTextForWidth } from "./render/draw";
 import { applyView, createViewTransform, screenToWorld, type ViewTransform } from "./render/view";
@@ -230,6 +235,12 @@ export class Game {
   private currentPuzzleIndex = 0;
   private isInSession = false;
   private selectedDifficulty: DifficultyLevel = DifficultyLevel.None;
+  private gameMode: GameMode = GameMode.Casual;
+
+  private crosswordPlacements: CrosswordPlacement[] = [];
+  private crosswordSharedCells: Map<string, [number, number][]> = new Map();
+  private crosswordGridRows = 0;
+  private crosswordGridCols = 0;
 
   private bonusWordsPopupScrollOffset = 0;
   private bonusWordsPopupMaxScrollOffset = 0;
@@ -419,6 +430,8 @@ export class Game {
       this.renderMainMenu(ctx);
     } else if (this.currentScreen === GameScreen.CasualMenu) {
       this.renderCasualMenu(ctx);
+    } else if (this.currentScreen === GameScreen.CrosswordMenu) {
+      this.renderCrosswordMenu(ctx);
     } else if (this.currentScreen === GameScreen.SessionComplete) {
       this.renderSessionComplete(ctx);
     } else {
@@ -582,6 +595,10 @@ export class Game {
     }
     if (this.currentScreen === GameScreen.CasualMenu) {
       this.handleCasualMenuInput(world);
+      return;
+    }
+    if (this.currentScreen === GameScreen.CrosswordMenu) {
+      this.handleCrosswordMenuInput(world);
       return;
     }
     if (this.currentScreen === GameScreen.SessionComplete) {
@@ -992,6 +1009,7 @@ export class Game {
     if (!hasReturn && this.mainMenuButtons.length < 3) return;
     const returnIdx = hasReturn ? 0 : -1;
     const casualIdx = hasReturn ? -1 : 0;
+    const crosswordIdx = hasReturn ? -1 : 1;
     const rulesIdx = hasReturn ? 1 : -1;
     const quitIdx = hasReturn ? 2 : 2;
 
@@ -1005,6 +1023,11 @@ export class Game {
     if (casualIdx >= 0 && rectContains(this.mainMenuButtons[casualIdx], world)) {
       this.playSound("click");
       this.currentScreen = GameScreen.CasualMenu;
+      return;
+    }
+    if (crosswordIdx >= 0 && rectContains(this.mainMenuButtons[crosswordIdx], world)) {
+      this.playSound("click");
+      this.currentScreen = GameScreen.CrosswordMenu;
       return;
     }
     if (rulesIdx >= 0 && rectContains(this.mainMenuButtons[rulesIdx], world)) {
@@ -1101,6 +1124,7 @@ export class Game {
     if (selected !== DifficultyLevel.None) {
       this.playSound("click");
       this.canResumeGameFromMainMenu = false;
+      this.gameMode = GameMode.Casual;
       this.selectedDifficulty = selected;
       this.puzzlesPerSession = puzzles;
       this.currentPuzzleIndex = 0;
@@ -1110,6 +1134,54 @@ export class Game {
       this.rebuild();
       this.currentScreen = GameScreen.Playing;
     }
+  }
+
+  private handleCrosswordMenuInput(world: Vec2) {
+    if (this.casualMenuButtons.length < 4) return;
+
+    const [easy, medium, hard, back] = this.casualMenuButtons;
+    if (rectContains(back, world)) {
+      this.playSound("click");
+      this.currentScreen = GameScreen.MainMenu;
+      return;
+    }
+
+    let selected = DifficultyLevel.None;
+    let puzzles = 0;
+    if (rectContains(easy, world)) {
+      selected = DifficultyLevel.Easy;
+      puzzles = EASY_PUZZLE_COUNT;
+    } else if (rectContains(medium, world)) {
+      selected = DifficultyLevel.Medium;
+      puzzles = MEDIUM_PUZZLE_COUNT;
+    } else if (rectContains(hard, world)) {
+      selected = DifficultyLevel.Hard;
+      puzzles = HARD_PUZZLE_COUNT;
+    }
+
+    if (selected !== DifficultyLevel.None) {
+      this.playSound("click");
+      this.canResumeGameFromMainMenu = false;
+      this.gameMode = GameMode.Crossword;
+      this.selectedDifficulty = selected;
+      this.puzzlesPerSession = puzzles;
+      this.currentPuzzleIndex = 0;
+      this.isInSession = true;
+      this.usedBaseWordsThisSession.clear();
+      this.usedLetterSetsThisSession.clear();
+      this.rebuild();
+      this.currentScreen = GameScreen.Playing;
+    }
+  }
+
+  private renderCrosswordMenu(ctx: CanvasRenderingContext2D) {
+    const buttons = [
+      { label: "Easy", rect: this.casualMenuButtons[0] },
+      { label: "Medium", rect: this.casualMenuButtons[1] },
+      { label: "Hard", rect: this.casualMenuButtons[2] },
+      { label: "Return", rect: this.casualMenuButtons[3] }
+    ];
+    this.drawMenuPanel(ctx, "Crossword", buttons);
   }
 
   private handleContinue() {
@@ -1136,23 +1208,44 @@ export class Game {
     let maxSolutionsForDifficulty = 0;
     let minSubLengthForDifficulty = MIN_WORD_LENGTH;
 
-    switch (this.selectedDifficulty) {
-      case DifficultyLevel.Easy:
-        maxSolutionsForDifficulty = EASY_MAX_SOLUTIONS;
-        minSubLengthForDifficulty = MIN_WORD_LENGTH;
-        break;
-      case DifficultyLevel.Medium:
-        maxSolutionsForDifficulty = MEDIUM_MAX_SOLUTIONS;
-        minSubLengthForDifficulty = MIN_WORD_LENGTH;
-        break;
-      case DifficultyLevel.Hard:
-        maxSolutionsForDifficulty = HARD_MAX_SOLUTIONS;
-        minSubLengthForDifficulty = HARD_MIN_WORD_LENGTH;
-        break;
-      default:
-        maxSolutionsForDifficulty = 999;
-        minSubLengthForDifficulty = MIN_WORD_LENGTH;
-        break;
+    if (this.gameMode === GameMode.Crossword) {
+      switch (this.selectedDifficulty) {
+        case DifficultyLevel.Easy:
+          maxSolutionsForDifficulty = CROSSWORD_EASY_MAX_SOLUTIONS;
+          minSubLengthForDifficulty = MIN_WORD_LENGTH;
+          break;
+        case DifficultyLevel.Medium:
+          maxSolutionsForDifficulty = CROSSWORD_MEDIUM_MAX_SOLUTIONS;
+          minSubLengthForDifficulty = MIN_WORD_LENGTH;
+          break;
+        case DifficultyLevel.Hard:
+          maxSolutionsForDifficulty = CROSSWORD_HARD_MAX_SOLUTIONS;
+          minSubLengthForDifficulty = HARD_MIN_WORD_LENGTH;
+          break;
+        default:
+          maxSolutionsForDifficulty = 999;
+          minSubLengthForDifficulty = MIN_WORD_LENGTH;
+          break;
+      }
+    } else {
+      switch (this.selectedDifficulty) {
+        case DifficultyLevel.Easy:
+          maxSolutionsForDifficulty = EASY_MAX_SOLUTIONS;
+          minSubLengthForDifficulty = MIN_WORD_LENGTH;
+          break;
+        case DifficultyLevel.Medium:
+          maxSolutionsForDifficulty = MEDIUM_MAX_SOLUTIONS;
+          minSubLengthForDifficulty = MIN_WORD_LENGTH;
+          break;
+        case DifficultyLevel.Hard:
+          maxSolutionsForDifficulty = HARD_MAX_SOLUTIONS;
+          minSubLengthForDifficulty = HARD_MIN_WORD_LENGTH;
+          break;
+        default:
+          maxSolutionsForDifficulty = 999;
+          minSubLengthForDifficulty = MIN_WORD_LENGTH;
+          break;
+      }
     }
 
     let selectedBaseWord = "";
@@ -1303,6 +1396,22 @@ export class Game {
 
     this.solutions = finalSolutions;
     this.sorted = sortForGrid(this.solutions);
+
+    if (this.gameMode === GameMode.Crossword && this.sorted.length > 0) {
+      const cwResult = generateCrossword(this.sorted);
+      this.crosswordPlacements = cwResult.placements;
+      this.crosswordSharedCells = cwResult.sharedCells;
+      this.crosswordGridRows = cwResult.gridRows;
+      this.crosswordGridCols = cwResult.gridCols;
+      this.sorted = cwResult.placedWords;
+      this.solutions = cwResult.placedWords;
+    } else {
+      this.crosswordPlacements = [];
+      this.crosswordSharedCells = new Map();
+      this.crosswordGridRows = 0;
+      this.crosswordGridCols = 0;
+    }
+
     this.grid = this.sorted.map((info) => Array(info.text.length).fill("_"));
 
     this.found.clear();
@@ -1403,6 +1512,23 @@ export class Game {
     let numCols = 1;
     let maxRowsPerCol = wordCount;
     let gridScale = 1;
+
+    if (this.gameMode === GameMode.Crossword && this.crosswordPlacements.length > 0) {
+      const totalWidthUnscaled = this.crosswordGridCols * (TILE_SIZE + TILE_PAD) - (this.crosswordGridCols > 0 ? TILE_PAD : 0);
+      const totalHeightUnscaled = this.crosswordGridRows * (TILE_SIZE + TILE_PAD) - (this.crosswordGridRows > 0 ? TILE_PAD : 0);
+
+      const scaleToFitX = totalWidthUnscaled > 0 ? Math.min(1, zoneInnerWidth / totalWidthUnscaled) : 1;
+      const scaleToFitY = totalHeightUnscaled > 0 ? Math.min(1, zoneInnerHeight / totalHeightUnscaled) : 1;
+      gridScale = Math.min(scaleToFitX, scaleToFitY);
+
+      const totalWidthScaled = totalWidthUnscaled * gridScale;
+      const totalHeightScaled = totalHeightUnscaled * gridScale;
+
+      this.gridStartX = zoneInnerX + (zoneInnerWidth - totalWidthScaled) / 2;
+      this.gridStartY = zoneInnerY + (zoneInnerHeight - totalHeightScaled) / 2;
+      this.currentGridLayoutScale = gridScale;
+      return;
+    }
 
     if (this.sorted.length > 0) {
       const maxPossibleCols = Math.min(8, wordCount);
@@ -1676,7 +1802,7 @@ export class Game {
         ]
       : [
           { label: "Casual", rect: this.mainMenuButtons[0] },
-          { label: "Competitive", rect: this.mainMenuButtons[1], disabled: true },
+          { label: "Crossword", rect: this.mainMenuButtons[1] },
           { label: "Quit", rect: this.mainMenuButtons[2] }
         ];
 
@@ -2125,7 +2251,7 @@ export class Game {
       }
     }
 
-    if (GRID_COLUMN_DIVIDER_WIDTH > 0 && this.colXOffset.length >= 2) {
+    if (this.gameMode === GameMode.Casual && GRID_COLUMN_DIVIDER_WIDTH > 0 && this.colXOffset.length >= 2) {
       const dividerRows = GRID_COLUMN_DIVIDER_ROWS;
       const dividerHeight =
         dividerRows * (tileSize + tilePad) - (dividerRows > 0 ? tilePad : 0);
@@ -2930,7 +3056,43 @@ export class Game {
           const gridRow = this.grid[anim.wordIdx];
           if (gridRow && anim.charIdx >= 0 && anim.charIdx < gridRow.length) {
             gridRow[anim.charIdx] = anim.ch;
+
+            if (this.gameMode === GameMode.Crossword) {
+              const p = this.crosswordPlacements[anim.wordIdx];
+              if (p) {
+                const gr = p.dir === Direction.Horizontal ? p.gridRow : p.gridRow + anim.charIdx;
+                const gc = p.dir === Direction.Horizontal ? p.gridCol + anim.charIdx : p.gridCol;
+                const key = `${gr},${gc}`;
+                const owners = this.crosswordSharedCells.get(key);
+                if (owners) {
+                  for (const [ow, oc] of owners) {
+                    if (ow !== anim.wordIdx || oc !== anim.charIdx) {
+                      const otherRow = this.grid[ow];
+                      if (otherRow && oc >= 0 && oc < otherRow.length) {
+                        otherRow[oc] = anim.ch;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
             this.checkWordCompletion(anim.wordIdx);
+
+            if (this.gameMode === GameMode.Crossword) {
+              const p = this.crosswordPlacements[anim.wordIdx];
+              if (p) {
+                const gr = p.dir === Direction.Horizontal ? p.gridRow : p.gridRow + anim.charIdx;
+                const gc = p.dir === Direction.Horizontal ? p.gridCol + anim.charIdx : p.gridCol;
+                const key = `${gr},${gc}`;
+                const owners = this.crosswordSharedCells.get(key);
+                if (owners) {
+                  for (const [ow] of owners) {
+                    if (ow !== anim.wordIdx) this.checkWordCompletion(ow);
+                  }
+                }
+              }
+            }
           }
           this.playSound("place");
         }
@@ -3210,6 +3372,18 @@ export class Game {
   private tilePos(wordIdx: number, charIdx: number): Vec2 {
     const tileSize = TILE_SIZE * this.currentGridLayoutScale;
     const tilePad = TILE_PAD * this.currentGridLayoutScale;
+    const step = tileSize + tilePad;
+
+    if (this.gameMode === GameMode.Crossword && wordIdx < this.crosswordPlacements.length) {
+      const p = this.crosswordPlacements[wordIdx];
+      const gridRow = p.dir === Direction.Horizontal ? p.gridRow : p.gridRow + charIdx;
+      const gridCol = p.dir === Direction.Horizontal ? p.gridCol + charIdx : p.gridCol;
+      return {
+        x: this.gridStartX + gridCol * step,
+        y: this.gridStartY + gridRow * step
+      };
+    }
+
     const col = this.wordCol[wordIdx] ?? 0;
     const row = this.wordRow[wordIdx] ?? 0;
     const x = (this.colXOffset[col] ?? this.gridStartX) + charIdx * (tileSize + tilePad);

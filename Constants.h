@@ -50,6 +50,10 @@ const int MEDIUM_MAX_SOLUTIONS = 12;
 const int HARD_MAX_SOLUTIONS = 15;
 const int MIN_DESIRED_GRID_WORDS = 5;
 
+const int CROSSWORD_EASY_MAX_SOLUTIONS = 10;
+const int CROSSWORD_MEDIUM_MAX_SOLUTIONS = 15;
+const int CROSSWORD_HARD_MAX_SOLUTIONS = 20;
+
 const int HINT_COST_REVEAL_FIRST = 2; 
 const int HINT_COST_REVEAL_RANDOM = 3; 
 const int HINT_COST_REVEAL_LAST = 5;
@@ -76,7 +80,7 @@ const float RETURN_BTN_HEIGHT_DESIGN = 35.f; // Adjusted for typical button heig
 const float TOP_BAR_PADDING_X_DESIGN = 20.f;    // Example padding from left edge of top bar
 const unsigned int RETURN_BTN_FONT_SIZE_DESIGN = 16; // Example font size
 
-// Menu line-item buttons (Casual, Competitive, Quit, Easy, Medium, Hard, Return) — tweak button size only
+// Menu line-item buttons (Casual, Crossword, Quit, Easy, Medium, Hard, Return) — tweak button size only
 const float MENU_BUTTON_WIDTH_DESIGN = 250.f;   // Width of each menu button (design units)
 const float MENU_BUTTON_HEIGHT_DESIGN = 75.f;   // Height of each menu button (design units)
 
