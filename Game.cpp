@@ -1575,6 +1575,13 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         centerTextOnShape_General(*m_returnToMenuButtonText, m_returnToMenuButtonShape);
     }
 
+    {
+        float voiceBtnSize = S(this, RETURN_BTN_HEIGHT_DESIGN);
+        float voiceBtnX = TOP_BAR_ZONE_DESIGN.position.x + TOP_BAR_ZONE_DESIGN.size.x - S(this, TOP_BAR_PADDING_X_DESIGN) - voiceBtnSize;
+        float voiceBtnY = TOP_BAR_ZONE_DESIGN.position.y + (TOP_BAR_ZONE_DESIGN.size.y - voiceBtnSize) / 2.f;
+        m_voiceToggleButton = sf::FloatRect(sf::Vector2f(voiceBtnX, voiceBtnY), sf::Vector2f(voiceBtnSize, voiceBtnSize));
+    }
+
     // --- 4. Calculate Grid Layout ---
     const float zoneInnerX_grid = GRID_ZONE_RECT_DESIGN.position.x + GRID_ZONE_PADDING_X_DESIGN;
     const float zoneInnerY_grid = GRID_ZONE_RECT_DESIGN.position.y + GRID_ZONE_PADDING_Y_DESIGN;
@@ -2527,8 +2534,13 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                 m_backgroundMusic.stop();
                 m_isInSession = false;
                 m_selectedDifficulty = DifficultyLevel::None;
-                m_clearDragState(); // Ensure this resets guess, path, dragging
+                m_clearDragState();
                 m_clearPendingLetterHintTarget();
+                return;
+            }
+            if (m_voiceToggleButton.contains(mp)) {
+                if (m_clickSound) m_clickSound->play();
+                m_voiceCommentary.toggle();
                 return;
             }
             if (m_scrambleSpr && m_scrambleSpr->getGlobalBounds().contains(mp)) {
@@ -2757,6 +2769,7 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                         // --- NEW Grid Word Found ---
                         std::cout << "DEBUG: Found NEW match on GRID: '" << solutionOriginalCase << "'" << std::endl;
                         m_found.insert(solutionOriginalCase);
+                        m_voiceCommentary.onWordFound(solutionOriginalCase, m_sorted[w].rarity);
 
                         int baseScore = static_cast<int>(m_currentGuess.length()) * 10;
                         int rarityBonus = (m_sorted[w].rarity > 1) ? (m_sorted[w].rarity * 25) : 0;
@@ -2805,6 +2818,7 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                             if (m_winSound) m_winSound->play();
                             m_gameState = GState::Solved;
                             m_currentScreen = GameScreen::GameOver;
+                            m_voiceCommentary.onPuzzleSolved();
                             m_updateLayout(m_window.getSize());
                         }
                         actionTaken = true;
@@ -2949,12 +2963,17 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
             if (m_returnToMenuButtonShape.getGlobalBounds().contains(mp)) {
                 if (m_clickSound) m_clickSound->play();
                 m_currentScreen = GameScreen::MainMenu;
-                m_backgroundMusic.stop(); // Example
-                m_isInSession = false;    // Example
-                m_selectedDifficulty = DifficultyLevel::None; // Example
-                m_gameState = GState::Playing; // Reset internal state for menu
+                m_backgroundMusic.stop();
+                m_isInSession = false;
+                m_selectedDifficulty = DifficultyLevel::None;
+                m_gameState = GState::Playing;
                 m_clearPendingLetterHintTarget();
-                return; // Processed button click
+                return;
+            }
+            if (m_voiceToggleButton.contains(mp)) {
+                if (m_clickSound) m_clickSound->play();
+                m_voiceCommentary.toggle();
+                return;
             }
 
             // Check Continue Button Click
@@ -2982,8 +3001,9 @@ void Game::m_handleGameOverEvents(const sf::Event& event) {
                         m_selectedDifficulty = DifficultyLevel::None;
                         m_gameState = GState::Playing; // Or maybe a dedicated GState::Celebrating? Using Playing for now.
 
-                        m_startCelebrationEffects(); // <<< Initialize effects
-                        m_currentScreen = GameScreen::SessionComplete; // <<< Change screen state
+                        m_startCelebrationEffects();
+                        m_currentScreen = GameScreen::SessionComplete;
+                        m_voiceCommentary.onSessionComplete();
                         // Don't reset score yet, display it on celebration screen
 
                         // Consider stopping game music and playing victory music?
@@ -3031,6 +3051,10 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         m_returnToMenuButtonText->setFillColor(m_currentTheme.menuButtonText);
         centerTextOnShape_General(*m_returnToMenuButtonText, m_returnToMenuButtonShape);
         m_window.draw(*m_returnToMenuButtonText);
+    }
+
+    if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) {
+        m_renderVoiceToggle(m_window, mousePos);
     }
 
     // --- Score Zone Elements (Right Side) ---
@@ -3584,6 +3608,61 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 }
 // ***** END OF COMPLETE Game::m_renderGameScreen FUNCTION *****
 
+void Game::m_renderVoiceToggle(sf::RenderTarget& target, const sf::Vector2f& mousePos) {
+    const sf::FloatRect& btn = m_voiceToggleButton;
+    bool hovered = btn.contains(mousePos);
+    bool enabled = m_voiceCommentary.isEnabled();
+
+    RoundedRectangleShape bg(sf::Vector2f(btn.size.x, btn.size.y), S(this, 6.f), 8);
+    bg.setPosition(btn.position);
+    bg.setFillColor(hovered ? m_currentTheme.menuButtonHover : m_currentTheme.menuButtonNormal);
+    bg.setOutlineColor(sf::Color(200, 200, 200, 180));
+    bg.setOutlineThickness(1.f);
+    target.draw(bg);
+
+    float cx = btn.position.x + btn.size.x / 2.f;
+    float cy = btn.position.y + btn.size.y / 2.f;
+    float s = btn.size.x * 0.32f;
+
+    sf::Color iconColor = enabled ? sf::Color::White : sf::Color(180, 180, 180);
+
+    sf::ConvexShape speaker(6);
+    speaker.setPoint(0, sf::Vector2f(cx - s * 0.5f, cy - s * 0.3f));
+    speaker.setPoint(1, sf::Vector2f(cx - s * 0.15f, cy - s * 0.3f));
+    speaker.setPoint(2, sf::Vector2f(cx + s * 0.3f, cy - s * 0.75f));
+    speaker.setPoint(3, sf::Vector2f(cx + s * 0.3f, cy + s * 0.75f));
+    speaker.setPoint(4, sf::Vector2f(cx - s * 0.15f, cy + s * 0.3f));
+    speaker.setPoint(5, sf::Vector2f(cx - s * 0.5f, cy + s * 0.3f));
+    speaker.setFillColor(iconColor);
+    target.draw(speaker);
+
+    if (enabled) {
+        const int arcSegments = 12;
+        float arcR1 = s * 0.55f;
+        float arcR2 = s * 0.85f;
+        float startAng = -3.14159f / 3.f;
+        float endAng = 3.14159f / 3.f;
+
+        auto drawArc = [&](float r) {
+            sf::VertexArray arc(sf::PrimitiveType::LineStrip, arcSegments + 1);
+            for (int i = 0; i <= arcSegments; ++i) {
+                float angle = startAng + (endAng - startAng) * (static_cast<float>(i) / arcSegments);
+                arc[i].position = sf::Vector2f(cx + s * 0.3f + r * std::cos(angle), cy + r * std::sin(angle));
+                arc[i].color = iconColor;
+            }
+            target.draw(arc);
+        };
+        drawArc(arcR1);
+        drawArc(arcR2);
+    } else {
+        sf::VertexArray slash(sf::PrimitiveType::Lines, 2);
+        slash[0].position = sf::Vector2f(cx - s * 0.7f, cy - s * 0.7f);
+        slash[0].color = sf::Color(255, 80, 80);
+        slash[1].position = sf::Vector2f(cx + s * 0.9f, cy + s * 0.9f);
+        slash[1].color = sf::Color(255, 80, 80);
+        target.draw(slash);
+    }
+}
 
 // --- Celebration Effects ---
 void Game::m_startCelebrationEffects() {
@@ -4287,13 +4366,14 @@ void Game::m_checkWordCompletion(int wordIdx) {
         if (gridWordUpper == solutionWordUpper) {
             std::cout << "DEBUG: Word '" << solutionWord << "' completed by hint/auto-reveal." << std::endl;
             m_found.insert(solutionWord);
+            m_voiceCommentary.onWordFound(solutionWord, m_sorted[wordIdx].rarity);
 
             int baseScore = static_cast<int>(solutionWord.length()) * 10;
             int rarityBonus = (m_sorted[wordIdx].rarity > 1) ? (m_sorted[wordIdx].rarity * 25) : 0;
-            int wordScoreForThisWord = baseScore + rarityBonus; // <<< NEW LINE
+            int wordScoreForThisWord = baseScore + rarityBonus;
 
             m_currentScore += wordScoreForThisWord;
-            m_spawnScoreFlourish(wordScoreForThisWord, wordIdx); // <<< NEW LINE
+            m_spawnScoreFlourish(wordScoreForThisWord, wordIdx);
 
             if (m_scoreValueText) {
                 m_scoreValueText->setString(std::to_string(m_currentScore));
@@ -4308,6 +4388,7 @@ void Game::m_checkWordCompletion(int wordIdx) {
                 if (m_winSound) m_winSound->play();
                 m_gameState = GState::Solved;
                 m_currentScreen = GameScreen::GameOver;
+                m_voiceCommentary.onPuzzleSolved();
                 m_updateLayout(m_window.getSize());
             }
         }

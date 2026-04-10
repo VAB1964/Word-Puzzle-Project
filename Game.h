@@ -26,6 +26,7 @@
 #include "DecorLayer.h"
 #include "Constants.h" // Include constants used in the header (like GRID_TOP_MARGIN default)
 #include "Crossword.h"
+#include "VoiceCommentary.h"
 
 // Standard Library Headers needed for declarations
 #include <vector>
@@ -210,6 +211,10 @@ private:
     sf::Texture m_diamondTex;
     sf::Texture m_buttonTex;
     sf::Texture m_circularLetterFrameTex;
+
+    VoiceCommentary m_voiceCommentary;
+    sf::FloatRect m_voiceToggleButton;
+    void m_renderVoiceToggle(sf::RenderTarget& target, const sf::Vector2f& mousePos);
 
     sf::SoundBuffer m_selectBuffer;
     sf::SoundBuffer m_placeBuffer;
