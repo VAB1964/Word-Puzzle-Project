@@ -137,6 +137,7 @@ import { generateCrossword, Direction, type CrosswordPlacement } from "./data/cr
 import { DecorLayer } from "./render/decorLayer";
 import { drawCenteredText, drawRoundedRect, wrapTextForWidth } from "./render/draw";
 import { applyView, createViewTransform, screenToWorld, type ViewTransform } from "./render/view";
+import { VoiceCommentary } from "./core/voiceCommentary";
 
 const HINT_LABELS = ["Letter", "Random", "Full Word", "1st of Each"];
 const HINT_LABEL_FONT_BASE = 75;
@@ -203,6 +204,7 @@ export class Game {
   private currentTheme: ColorTheme = loadThemes()[0];
 
   private decor = new DecorLayer(10);
+  readonly voiceCommentary = new VoiceCommentary();
 
   private currentScreen: GameScreen = GameScreen.MainMenu;
   private gameState: GState = GState.Playing;
@@ -290,6 +292,7 @@ export class Game {
   private mainMenuButtons: Rect[] = [];
   private casualMenuButtons: Rect[] = [];
   private returnToMenuButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private voiceToggleButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private continueButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private scrambleButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private bonusWordsTextRect: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -665,6 +668,12 @@ export class Game {
       return;
     }
 
+    if (rectContains(this.voiceToggleButton, world)) {
+      this.playSound("click");
+      this.voiceCommentary.toggle();
+      return;
+    }
+
     if (rectContains(this.scrambleButton, world)) {
       this.playSound("click");
       this.base = shuffle(this.base.split("")).join("");
@@ -820,6 +829,7 @@ export class Game {
           actionTaken = true;
         } else {
           this.found.add(this.sorted[w].text);
+          this.voiceCommentary.onWordFound(this.sorted[w].text, this.sorted[w].rarity);
           const baseScore = this.currentGuess.length * 10;
           const rarityBonus = this.sorted[w].rarity > 1 ? this.sorted[w].rarity * 25 : 0;
           const wordScore = baseScore + rarityBonus;
@@ -854,6 +864,7 @@ export class Game {
           if (this.found.size === this.solutions.length) {
             this.gameState = GState.Solved;
             this.currentScreen = GameScreen.GameOver;
+            this.voiceCommentary.onPuzzleSolved();
           }
           actionTaken = true;
         }
@@ -1192,6 +1203,7 @@ export class Game {
         this.currentScreen = GameScreen.Playing;
       } else {
         this.currentScreen = GameScreen.SessionComplete;
+        this.voiceCommentary.onSessionComplete();
         this.startCelebrationEffects();
       }
     } else {
@@ -1750,6 +1762,13 @@ export class Game {
       width: RETURN_BTN_WIDTH_DESIGN,
       height: RETURN_BTN_HEIGHT_DESIGN
     };
+    const voiceBtnSize = RETURN_BTN_HEIGHT_DESIGN;
+    this.voiceToggleButton = {
+      x: TOP_BAR_ZONE_DESIGN.x + TOP_BAR_ZONE_DESIGN.width - TOP_BAR_PADDING_X_DESIGN - voiceBtnSize,
+      y: TOP_BAR_ZONE_DESIGN.y + (TOP_BAR_ZONE_DESIGN.height - voiceBtnSize) / 2,
+      width: voiceBtnSize,
+      height: voiceBtnSize
+    };
   }
 
   private updateExitConfirmLayout() {
@@ -2083,6 +2102,56 @@ export class Game {
       "Menu",
       hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal
     );
+
+    this.renderVoiceToggle(ctx);
+  }
+
+  private renderVoiceToggle(ctx: CanvasRenderingContext2D) {
+    const btn = this.voiceToggleButton;
+    const hovered = rectContains(btn, this.mousePos);
+    const enabled = this.voiceCommentary.isEnabled;
+    const bg = hovered ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal;
+
+    drawRoundedRect(ctx, btn.x, btn.y, btn.width, btn.height, 6, bg, { r: 200, g: 200, b: 200, a: 180 }, 1);
+
+    ctx.save();
+    const cx = btn.x + btn.width / 2;
+    const cy = btn.y + btn.height / 2;
+    const s = btn.width * 0.32;
+
+    ctx.strokeStyle = enabled ? colorToCss({ r: 255, g: 255, b: 255 }) : colorToCss({ r: 180, g: 180, b: 180 });
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(cx - s * 0.5, cy - s * 0.3);
+    ctx.lineTo(cx - s * 0.5, cy + s * 0.3);
+    ctx.lineTo(cx - s * 0.15, cy + s * 0.3);
+    ctx.lineTo(cx + s * 0.3, cy + s * 0.75);
+    ctx.lineTo(cx + s * 0.3, cy - s * 0.75);
+    ctx.lineTo(cx - s * 0.15, cy - s * 0.3);
+    ctx.closePath();
+    ctx.fill();
+
+    if (enabled) {
+      ctx.beginPath();
+      ctx.arc(cx + s * 0.3, cy, s * 0.55, -Math.PI / 3, Math.PI / 3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx + s * 0.3, cy, s * 0.85, -Math.PI / 4, Math.PI / 4);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.7, cy - s * 0.7);
+      ctx.lineTo(cx + s * 0.9, cy + s * 0.9);
+      ctx.strokeStyle = colorToCss({ r: 255, g: 80, b: 80 });
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
   private renderScoreZone(ctx: CanvasRenderingContext2D) {
@@ -3349,6 +3418,7 @@ export class Game {
     const gridWord = this.grid[wordIdx].join("").toUpperCase();
     if (gridWord === solution.toUpperCase()) {
       this.found.add(solution);
+      this.voiceCommentary.onWordFound(solution, this.sorted[wordIdx].rarity);
       const baseScore = solution.length * 10;
       const rarityBonus = this.sorted[wordIdx].rarity > 1 ? this.sorted[wordIdx].rarity * 25 : 0;
       const wordScore = baseScore + rarityBonus;
@@ -3365,6 +3435,7 @@ export class Game {
         this.gameState = GState.Solved;
         this.currentScreen = GameScreen.GameOver;
         this.playSound("win");
+        this.voiceCommentary.onPuzzleSolved();
       }
     }
   }
