@@ -559,10 +559,28 @@ export class Game {
       this.handleKeyboardInput(ev);
     };
 
+    const onContextMenu = (ev: MouseEvent) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const screen = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      const world = screenToWorld(this.view, screen);
+      if (rectContains(this.voiceToggleButton, world)) {
+        ev.preventDefault();
+        const current = this.voiceCommentary.hasApiKey ? "(key is set)" : "(no key)";
+        const key = window.prompt(
+          `Enter OpenAI API key for AI voice commentary ${current}.\n` +
+          `Leave blank and click OK to clear the key.`
+        );
+        if (key !== null) {
+          this.voiceCommentary.setApiKey(key || null);
+        }
+      }
+    };
+
     this.canvas.addEventListener("pointerdown", onPointerDown);
     this.canvas.addEventListener("pointermove", onPointerMove);
     this.canvas.addEventListener("pointerup", onPointerUp);
     this.canvas.addEventListener("wheel", onWheel, { passive: false });
+    this.canvas.addEventListener("contextmenu", onContextMenu);
     window.addEventListener("keydown", onKeyDown);
   }
 
@@ -1446,6 +1464,8 @@ export class Game {
 
     this.updateLayout();
     // this.startBackgroundMusic(); // Disabled - music gets repetitive
+
+    this.voiceCommentary.prewarmForPuzzle(this.sorted);
   }
 
   private updateLayout() {
@@ -2149,6 +2169,32 @@ export class Game {
       ctx.strokeStyle = colorToCss({ r: 255, g: 80, b: 80 });
       ctx.lineWidth = 2;
       ctx.stroke();
+    }
+
+    const mode = this.voiceCommentary.activeMode;
+    const isCaching = this.voiceCommentary.isCaching;
+    const dotColor =
+      isCaching ? { r: 80, g: 180, b: 255 } :
+      mode === "ai" ? { r: 80, g: 220, b: 120 } :
+      mode === "prebaked" ? { r: 255, g: 180, b: 50 } :
+      { r: 160, g: 160, b: 160 };
+    const dotR = btn.width * 0.12;
+    ctx.beginPath();
+    ctx.arc(btn.x + btn.width - dotR - 2, btn.y + btn.height - dotR - 2, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = colorToCss(dotColor);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.4)";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    if (isCaching) {
+      const progress = this.voiceCommentary.cacheProgress;
+      const barY = btn.y + btn.height + 3;
+      const barH = 3;
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(btn.x, barY, btn.width, barH);
+      ctx.fillStyle = colorToCss({ r: 80, g: 180, b: 255 });
+      ctx.fillRect(btn.x, barY, btn.width * progress, barH);
     }
 
     ctx.restore();

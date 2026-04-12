@@ -362,3 +362,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 NewDirectory/*.json
+
+# Environment files (API keys)
+.env
+.env.*
+
+# Vite build output
+web/dist/

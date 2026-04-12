@@ -28,5 +28,19 @@ export const Assets = {
     new URL("../../assets/music/track4.mp3", import.meta.url).toString(),
     new URL("../../assets/music/track5.mp3", import.meta.url).toString()
   ],
+  voice: {
+    wordFound: Array.from({ length: 15 }, (_, i) =>
+      new URL(`../../assets/voice/word_found_${String(i + 1).padStart(2, "0")}.wav`, import.meta.url).toString()
+    ),
+    rareWord: Array.from({ length: 8 }, (_, i) =>
+      new URL(`../../assets/voice/rare_word_${String(i + 1).padStart(2, "0")}.wav`, import.meta.url).toString()
+    ),
+    puzzleSolved: Array.from({ length: 10 }, (_, i) =>
+      new URL(`../../assets/voice/puzzle_solved_${String(i + 1).padStart(2, "0")}.wav`, import.meta.url).toString()
+    ),
+    sessionComplete: Array.from({ length: 10 }, (_, i) =>
+      new URL(`../../assets/voice/session_complete_${String(i + 1).padStart(2, "0")}.wav`, import.meta.url).toString()
+    ),
+  },
   wordsCsv: new URL("../../words_processed.csv", import.meta.url).toString()
 };
