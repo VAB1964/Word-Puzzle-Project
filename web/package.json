@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm --prefix ../cribbage-transfer/cribbage run build && node ./scripts/copyCribbageDist.mjs",
-    "build:cribbage": "npm --prefix ../cribbage-transfer/cribbage run build && node ./scripts/copyCribbageDist.mjs",
+    "build": "vite build && npm --prefix ../cribbage-transfer/cribbage ci --no-audit --no-fund && npm --prefix ../cribbage-transfer/cribbage run build && node ./scripts/copyCribbageDist.mjs",
+    "build:cribbage": "npm --prefix ../cribbage-transfer/cribbage ci --no-audit --no-fund && npm --prefix ../cribbage-transfer/cribbage run build && node ./scripts/copyCribbageDist.mjs",
     "preview": "vite preview"
   },
   "devDependencies": {
