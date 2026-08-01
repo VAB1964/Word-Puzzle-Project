@@ -149,6 +149,7 @@ export default function Home() {
   const audioRef = useRef<AudioContext | null>(null);
   const mutedRef = useRef(muted);
   const volumeRef = useRef(volume);
+  const pendingScoreByTeamRef = useRef<Record<number, number>>({});
 
   const needDiscard = playerCount === 2 ? 2 : playerCount === 3 ? 1 : 1;
   const handSize = playerCount === 2 ? 6 : 5;
@@ -208,7 +209,10 @@ export default function Home() {
   function addScore(index: number, amount: number, reason: string) {
     if (!amount) return false;
     const team = players[index].team;
-    const final = Math.min(121, (players.find(p => p.team === team)?.score ?? 0) + amount);
+    const pending = pendingScoreByTeamRef.current[team] ?? 0;
+    const baseScore = (players.find(p => p.team === team)?.score ?? 0) + pending;
+    const final = Math.min(121, baseScore + amount);
+    pendingScoreByTeamRef.current[team] = pending + (final - baseScore);
     setPlayers(old => old.map((p, i) => {
       if (p.team !== team) return p;
       return { ...p, score: Math.min(121, p.score + amount) };
@@ -406,6 +410,10 @@ export default function Home() {
   useEffect(() => {
     mutedRef.current = muted;
   }, [muted]);
+
+  useEffect(() => {
+    pendingScoreByTeamRef.current = {};
+  }, [players]);
 
   useEffect(() => {
     volumeRef.current = volume;
