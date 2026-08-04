@@ -1,6 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { buildTableTalkContext, toPublicCard } from "./tableTalk/context";
+import { TableTalkService } from "./tableTalk/service";
+import {
+  loadCloudVoiceUsageStats,
+  loadTableTalkLevel,
+  loadTableTalkVoiceEnabled,
+  loadTableTalkVoiceMode,
+  saveCloudVoiceUsageStats,
+  saveTableTalkLevel,
+  saveTableTalkVoiceEnabled,
+  saveTableTalkVoiceMode,
+  type CloudVoiceUsageStats,
+} from "./tableTalk/storage";
+import type {
+  CharacterDialogueEmission,
+  PeggingKind,
+  TableTalkContext,
+  TableTalkEvent,
+  TableTalkLevel,
+  TableTalkVoiceMode,
+} from "./tableTalk/types";
+import { TableTalkVoiceOutput } from "./tableTalk/voiceOutput";
+import { CloudTableTalkVoiceOutput, type CloudVoiceUsageDelta } from "./tableTalk/cloudVoiceOutput";
+import { DynamicTableTalkClient } from "./tableTalk/dynamicDialogue";
 
 type Suit = "♠" | "♥" | "♦" | "♣";
 type Card = { rank: number; suit: Suit; id: string };
@@ -10,9 +34,27 @@ type Difficulty = "easy" | "medium" | "hard";
 type ScoreEvent = { label: string; points: number; cards: Card[] };
 type HandCount = { label: string; color: string; kind: "hand" | "crib"; cards: Card[]; cut: Card; result: ReturnType<typeof scoreCards> };
 type OpeningDraw = { player: number; card: Card; round: number };
+type HistoryEntry =
+  | { kind: "game"; text: string }
+  | { kind: "dialogue"; characterName: string; characterColor: string; text: string };
+type TableTalkPlayback = {
+  line: CharacterDialogueEmission;
+  phase: "intro" | "generatingText" | "generating" | "speaking" | "reading";
+};
+type CardPlayAnimation = {
+  card: Card;
+  playerIndex: number;
+  faceDown: boolean;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  dx: number;
+  dy: number;
+};
 
 const SUITS: Suit[] = ["♠", "♥", "♦", "♣"];
-const COLORS = ["red", "blue", "green"];
+const COLORS = ["red", "blue", "green", "purple"];
 const NAMES = ["You", "Mabel", "Arthur", "Clara"];
 const RANK = (n: number) => n === 1 ? "A" : n === 11 ? "J" : n === 12 ? "Q" : n === 13 ? "K" : String(n);
 const value = (c: Card) => Math.min(c.rank, 10);
@@ -43,6 +85,29 @@ function discardSynergy(cards: Card[]) {
 function deck(): Card[] {
   return SUITS.flatMap(suit => Array.from({ length: 13 }, (_, i) => ({ rank: i + 1, suit, id: `${suit}-${i + 1}` })))
     .sort(() => Math.random() - .5);
+}
+
+function peggingEvents(next: Card, currentPile: Card[], total: number): { kind: PeggingKind; points: number }[] {
+  const cards = [...currentPile, next];
+  const nextTotal = total + value(next);
+  const events: { kind: PeggingKind; points: number }[] = [];
+  if (nextTotal === 15) events.push({ kind: "fifteen", points: 2 });
+  if (nextTotal === 31) events.push({ kind: "thirty_one", points: 2 });
+
+  let same = 1;
+  for (let i = cards.length - 2; i >= 0 && cards[i].rank === next.rank; i--) same++;
+  if (same === 2) events.push({ kind: "pair", points: 2 });
+  if (same === 3) events.push({ kind: "pair_royal", points: 6 });
+  if (same === 4) events.push({ kind: "double_pair_royal", points: 12 });
+
+  for (let len = Math.min(cards.length, 7); len >= 3; len--) {
+    const ranks = cards.slice(-len).map(card => card.rank).sort((a, b) => a - b);
+    if (new Set(ranks).size === len && ranks[len - 1] - ranks[0] === len - 1) {
+      events.push({ kind: "pegging_run", points: len });
+      break;
+    }
+  }
+  return events;
 }
 
 function scoreCards(cards: Card[], cut?: Card, isCrib = false) {
@@ -88,11 +153,32 @@ function CountCard({ card, tableCard = false }: { card: Card; tableCard?: boolea
   return <span className={`count-card ${warm ? "warm" : ""} ${tableCard ? "table-card" : ""}`} title={tableCard ? "Table card" : undefined}>{RANK(card.rank)}{card.suit}</span>;
 }
 
-function CardView({ card, selected, hidden, onClick, small }: { card: Card; selected?: boolean; hidden?: boolean; onClick?: () => void; small?: boolean }) {
+function CardView({ card, selected, hidden, onClick, small, playSource, animating }: { card: Card; selected?: boolean; hidden?: boolean; onClick?: () => void; small?: boolean; playSource?: string; animating?: boolean }) {
   const warm = !hidden && (card.suit === "♥" || card.suit === "♦");
-  return <button className={`card ${hidden ? "back" : ""} ${warm ? "warm" : ""} ${selected ? "selected" : ""} ${small ? "small" : ""}`} onClick={onClick} disabled={!onClick} aria-label={hidden ? "Face-down card" : `${RANK(card.rank)} of ${card.suit}`}>
+  return <button data-play-source={playSource} className={`card ${hidden ? "back" : ""} ${warm ? "warm" : ""} ${selected ? "selected" : ""} ${small ? "small" : ""} ${animating ? "playing" : ""}`} onClick={onClick} disabled={!onClick} aria-label={hidden ? "Face-down card" : `${RANK(card.rank)} of ${card.suit}`}>
     {!hidden && <><span>{RANK(card.rank)}</span><b>{card.suit}</b><em>{card.suit}</em></>}
   </button>;
+}
+
+function AnimatedScore({ score }: { score: number }) {
+  const [displayedScore, setDisplayedScore] = useState(score);
+  const [gain, setGain] = useState(0);
+  useEffect(() => {
+    if (score === displayedScore) return;
+    if (score < displayedScore) {
+      setDisplayedScore(score);
+      setGain(0);
+      return;
+    }
+    setGain(score - displayedScore);
+    const updateTimer = window.setTimeout(() => setDisplayedScore(score), 450);
+    const clearTimer = window.setTimeout(() => setGain(0), 1800);
+    return () => {
+      window.clearTimeout(updateTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [score]);
+  return <div className="player-score"><strong>{displayedScore}</strong>{gain > 0 && <span key={`${displayedScore}-${score}`}>+{gain}</span>}</div>;
 }
 
 function Board({ players, playerCount }: { players: Player[]; playerCount: number }) {
@@ -101,18 +187,36 @@ function Board({ players, playerCount }: { players: Player[]; playerCount: numbe
     { name: playerCount === 4 ? "Mabel + Clara" : "Mabel", score: players[1]?.score ?? 0, color: "blue" },
     { name: playerCount >= 3 && playerCount !== 4 ? "Arthur" : "Open lane", score: playerCount === 3 ? players[2]?.score ?? 0 : 0, color: "green" },
   ];
+  const scores = laneInfo.map(lane => lane.score);
+  const previousScoresRef = useRef(scores);
+  const [scoreMoves, setScoreMoves] = useState<Record<number, { from: number; to: number; amount: number }>>({});
+  useEffect(() => {
+    const moves: Record<number, { from: number; to: number; amount: number }> = {};
+    scores.forEach((score, index) => {
+      const previous = previousScoresRef.current[index] ?? 0;
+      if (score > previous) moves[index] = { from: previous, to: score, amount: score - previous };
+    });
+    previousScoresRef.current = scores;
+    if (!Object.keys(moves).length) return;
+    setScoreMoves(moves);
+    const timer = window.setTimeout(() => setScoreMoves({}), 2000);
+    return () => window.clearTimeout(timer);
+  }, [scores[0], scores[1], scores[2]]);
   return <section className="board" aria-label="Three lane cribbage board">
     <div className="board-title"><span>♣</span><h1>Cribbage</h1><span>♣</span></div>
     <div className="route-key"><strong>START</strong><span>Score travels left to right</span><b>FINISH · 121</b></div>
     {laneInfo.map((lane, idx) => {
       const active = idx < (playerCount === 4 ? 2 : playerCount);
+      const move = scoreMoves[idx];
       return <div className={`lane ${lane.color} ${active ? "" : "inactive"}`} key={lane.color}>
         <div className="lane-name"><span className="color-dot" />{lane.name}<strong>{active ? lane.score : "—"}</strong></div>
         <div className="track">
           {Array.from({ length: 121 }, (_, i) => {
             const point = i + 1;
             const marker = active && Math.min(121, lane.score) === point;
-            return <i key={point} className={`${point % 5 === 0 ? "fifth" : ""} ${marker ? "has-peg" : ""}`} title={`${point} points`}><span /></i>;
+            const inTrail = !!move && move.amount > 1 && point > move.from && point <= move.to;
+            const ghost = !!move && move.amount > 1 && move.from > 0 && point === move.from;
+            return <i key={point} className={`${point % 5 === 0 ? "fifth" : ""} ${marker ? "has-peg" : ""} ${inTrail ? "score-trail" : ""} ${ghost ? "has-ghost" : ""}`} title={`${point} points`}><span />{marker && move?.amount > 1 && <b className="score-jump">+{move.amount}</b>}</i>;
           })}
         </div>
         <div className="milestones"><span>0</span><span>30</span><span>60</span><span>90</span><span>121</span></div>
@@ -127,6 +231,16 @@ export default function Home() {
   const [phase, setPhase] = useState<Phase>("menu");
   const [playerCount, setPlayerCount] = useState(3);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [tableTalkLevel, setTableTalkLevel] = useState<TableTalkLevel>(() => loadTableTalkLevel("occasional"));
+  const [tableTalkVoiceEnabled, setTableTalkVoiceEnabled] = useState(() => loadTableTalkVoiceEnabled(false));
+  const [tableTalkVoiceMode, setTableTalkVoiceMode] = useState<TableTalkVoiceMode>(() => loadTableTalkVoiceMode("browser"));
+  const [showCloudUsage, setShowCloudUsage] = useState(false);
+  const [cloudUsageSession, setCloudUsageSession] = useState<CloudVoiceUsageStats>({
+    requestCount: 0,
+    charCount: 0,
+    estimatedUsd: 0,
+  });
+  const [cloudUsageLifetime, setCloudUsageLifetime] = useState<CloudVoiceUsageStats>(() => loadCloudVoiceUsageStats());
   const [players, setPlayers] = useState<Player[]>([]);
   const [scoringHands, setScoringHands] = useState<Card[][]>([]);
   const [dealer, setDealer] = useState(1);
@@ -137,7 +251,14 @@ export default function Home() {
   const [running, setRunning] = useState(0);
   const [turn, setTurn] = useState(0);
   const [lastPegger, setLastPegger] = useState<number | null>(null);
-  const [messageHistory, setMessageHistory] = useState<string[]>(["Choose the number of players, then start a game."]);
+  const [messageHistory, setMessageHistory] = useState<HistoryEntry[]>([
+    { kind: "game", text: "Choose the number of players, then start a game." },
+  ]);
+  const [tableTalkPlayback, setTableTalkPlayback] = useState<TableTalkPlayback | null>(null);
+  const [nextTableTalkSpeaker, setNextTableTalkSpeaker] = useState<string | null>(null);
+  const [tableTalkBlocking, setTableTalkBlocking] = useState(false);
+  const [peggingHold, setPeggingHold] = useState(false);
+  const [cardPlayAnimation, setCardPlayAnimation] = useState<CardPlayAnimation | null>(null);
   const [breakdown, setBreakdown] = useState<ReturnType<typeof scoreCards> | null>(null);
   const [handCounts, setHandCounts] = useState<HandCount[]>([]);
   const [winner, setWinner] = useState("");
@@ -146,15 +267,180 @@ export default function Home() {
   const [volume, setVolume] = useState(.55);
   const deckRef = useRef<Card[]>([]);
   const messageWindowRef = useRef<HTMLDivElement>(null);
+  const peggingTargetRef = useRef<HTMLDivElement>(null);
+  const messageHistoryRef = useRef<HistoryEntry[]>(messageHistory);
+  const shouldAutoScrollRef = useRef(true);
   const audioRef = useRef<AudioContext | null>(null);
   const mutedRef = useRef(muted);
   const volumeRef = useRef(volume);
+  const playersRef = useRef<Player[]>(players);
+  const tableTalkVoiceModeRef = useRef<TableTalkVoiceMode>(tableTalkVoiceMode);
   const pendingScoreByTeamRef = useRef<Record<number, number>>({});
+  const scoreRaceStateRef = useRef<Record<number, { behind: boolean }>>({});
+  const goPlayersRef = useRef(new Set<number>());
+  const pendingGoResolutionRef = useRef<{ declarer: number; lastPegger: number | null } | null>(null);
+  const cardPlayAnimatingRef = useRef(false);
+  const cardPlayTimerRef = useRef<number | null>(null);
+  const tableTalkVoiceRef = useRef<TableTalkVoiceOutput | null>(null);
+  const cloudTableTalkVoiceRef = useRef<CloudTableTalkVoiceOutput | null>(null);
+  const dynamicTableTalkRef = useRef<DynamicTableTalkClient | null>(null);
+  const tableTalkQueueRef = useRef<CharacterDialogueEmission[]>([]);
+  const tableTalkSpeakersInSequenceRef = useRef(new Set<CharacterDialogueEmission["characterId"]>());
+  const tableTalkPlayingRef = useRef(false);
+  const continueTableTalkRef = useRef<(() => void) | null>(null);
+  const tableTalkSkippedRef = useRef(false);
+  if (!tableTalkVoiceRef.current) {
+    tableTalkVoiceRef.current = new TableTalkVoiceOutput({
+      enabled: tableTalkVoiceEnabled && !muted,
+    });
+  }
+  if (!cloudTableTalkVoiceRef.current) {
+    cloudTableTalkVoiceRef.current = new CloudTableTalkVoiceOutput({
+      enabled: tableTalkVoiceEnabled && !muted && tableTalkVoiceMode === "cloud",
+      onError: (message) => {
+        announce(`Cloud voice unavailable: ${message}`);
+      },
+      onStatus: (message) => {
+        announce(message);
+      },
+      onUsage: (delta) => {
+        setCloudUsageSession(current => applyCloudUsageDelta(current, delta));
+        setCloudUsageLifetime(current => {
+          const next = applyCloudUsageDelta(current, delta);
+          saveCloudVoiceUsageStats(next);
+          return next;
+        });
+      },
+    });
+  }
+  if (!dynamicTableTalkRef.current) dynamicTableTalkRef.current = new DynamicTableTalkClient();
+
+  function waitForTableTalk(ms: number) {
+    return new Promise<void>(resolve => window.setTimeout(resolve, ms));
+  }
+  function continueTableTalk() {
+    if (!continueTableTalkRef.current) return;
+    tableTalkSkippedRef.current = true;
+    tableTalkVoiceRef.current?.cancel();
+    cloudTableTalkVoiceRef.current?.cancel();
+    continueTableTalkRef.current();
+  }
+  async function playNextTableTalk() {
+    if (tableTalkPlayingRef.current) return;
+    const queuedLine = tableTalkQueueRef.current.shift();
+    if (!queuedLine) {
+      tableTalkSpeakersInSequenceRef.current.clear();
+      setNextTableTalkSpeaker(null);
+      setTableTalkBlocking(false);
+      return;
+    }
+    tableTalkPlayingRef.current = true;
+    tableTalkSkippedRef.current = false;
+    setTableTalkBlocking(true);
+    setNextTableTalkSpeaker(tableTalkQueueRef.current[0]?.characterName ?? null);
+    let line = queuedLine;
+    if (line.dynamic) {
+      setTableTalkPlayback({ line, phase: "generatingText" });
+      const recentDialogue = messageHistoryRef.current
+        .filter((entry): entry is Extract<HistoryEntry, { kind: "dialogue" }> => entry.kind === "dialogue")
+        .slice(-4)
+        .map(entry => `${entry.characterName}: ${entry.text}`);
+      const generated = await dynamicTableTalkRef.current?.generate(line, recentDialogue);
+      if (generated) line = { ...line, text: generated };
+      appendDialogueHistory(line);
+    } else {
+      setTableTalkPlayback({ line, phase: "intro" });
+      if (line.eventType !== "go_declared") await waitForTableTalk(350);
+    }
+    const continued = new Promise<void>(resolve => {
+      continueTableTalkRef.current = resolve;
+    });
+    setTableTalkPlayback({ line, phase: "generating" });
+    const showSpeaking = () => setTableTalkPlayback({ line, phase: "speaking" });
+    if (tableTalkVoiceModeRef.current === "cloud") {
+      const cloudSpoke = await cloudTableTalkVoiceRef.current?.speak(line, showSpeaking);
+      if (!cloudSpoke) await tableTalkVoiceRef.current?.speak(line, showSpeaking);
+    } else {
+      await tableTalkVoiceRef.current?.speak(line, showSpeaking);
+    }
+    if (!tableTalkSkippedRef.current) {
+      setTableTalkPlayback({ line, phase: "reading" });
+      await Promise.race([waitForTableTalk(line.eventType === "go_declared" ? 0 : 1800), continued]);
+    }
+    continueTableTalkRef.current?.();
+    continueTableTalkRef.current = null;
+    setTableTalkPlayback(null);
+    tableTalkPlayingRef.current = false;
+    void playNextTableTalk();
+  }
+  function enqueueTableTalk(line: CharacterDialogueEmission) {
+    if (tableTalkSpeakersInSequenceRef.current.has(line.characterId)) return;
+    tableTalkSpeakersInSequenceRef.current.add(line.characterId);
+    tableTalkQueueRef.current.push(line);
+    if (tableTalkPlayingRef.current) {
+      setNextTableTalkSpeaker(tableTalkQueueRef.current[0]?.characterName ?? null);
+    }
+    void playNextTableTalk();
+  }
+  function appendDialogueHistory(line: CharacterDialogueEmission) {
+    const speaker = playersRef.current.find(player => player.name === line.characterName);
+    setMessageHistory(old => [
+      ...old,
+      {
+        kind: "dialogue",
+        characterName: line.characterName,
+        characterColor: speaker?.color ?? "blue",
+        text: line.text,
+      },
+    ]);
+  }
+
+  const tableTalkRef = useRef<TableTalkService | null>(null);
+  if (!tableTalkRef.current) {
+    tableTalkRef.current = new TableTalkService({
+      level: tableTalkLevel,
+      emit: (line: CharacterDialogueEmission) => {
+        if (!line.dynamic) appendDialogueHistory(line);
+        enqueueTableTalk(line);
+      },
+    });
+  }
 
   const needDiscard = playerCount === 2 ? 2 : playerCount === 3 ? 1 : 1;
   const handSize = playerCount === 2 ? 6 : 5;
+  function applyCloudUsageDelta(current: CloudVoiceUsageStats, delta: CloudVoiceUsageDelta): CloudVoiceUsageStats {
+    return {
+      requestCount: current.requestCount + Math.max(0, delta.requestCount),
+      charCount: current.charCount + Math.max(0, delta.charCount),
+      estimatedUsd: current.estimatedUsd + Math.max(0, delta.estimatedUsd),
+    };
+  }
+  function formatUsd(value: number): string {
+    return `$${value.toFixed(value < 1 ? 4 : 2)}`;
+  }
+  function asHistoryText(entry: HistoryEntry) {
+    return entry.kind === "game" ? entry.text : `${entry.characterName}: "${entry.text}"`;
+  }
   function announce(text: string) {
-    setMessageHistory(old => [...old, text]);
+    setMessageHistory(old => [...old, { kind: "game", text }]);
+  }
+  function tableTalkContext(overrideScores?: Player[]): TableTalkContext {
+    return buildTableTalkContext({
+      level: tableTalkLevel,
+      players: (overrideScores ?? players).map(player => ({ name: player.name, color: player.color, score: player.score, team: player.team })),
+      playerCount,
+      dealerIndex: dealer,
+      runningCount: running,
+    });
+  }
+  function publishTableTalk(event: TableTalkEvent, overrideScores?: Player[]) {
+    tableTalkRef.current?.handleEvent(event, tableTalkContext(overrideScores));
+  }
+  function onHistoryScroll() {
+    const window = messageWindowRef.current;
+    if (!window) return;
+    const distanceToBottom = window.scrollHeight - window.scrollTop - window.clientHeight;
+    shouldAutoScrollRef.current = distanceToBottom < 24;
   }
   function audioContext() {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -206,13 +492,43 @@ export default function Home() {
     }
   }
 
+  function teamLeaderFrom(playersView: Player[]) {
+    const teamScores = new Map<number, number>();
+    playersView.slice(0, playerCount).forEach(player => {
+      teamScores.set(player.team, Math.max(teamScores.get(player.team) ?? 0, player.score));
+    });
+    let bestTeam: number | null = null;
+    let bestScore = -1;
+    let tied = false;
+    teamScores.forEach((score, team) => {
+      if (score > bestScore) {
+        bestScore = score;
+        bestTeam = team;
+        tied = false;
+        return;
+      }
+      if (score === bestScore) tied = true;
+    });
+    return tied ? null : bestTeam;
+  }
+
+  function scoreForIndex(playersView: Player[], index: number) {
+    return playersView[index]?.score ?? 0;
+  }
+
   function addScore(index: number, amount: number, reason: string) {
     if (!amount) return false;
+    const beforeLeader = teamLeaderFrom(players);
     const team = players[index].team;
     const pending = pendingScoreByTeamRef.current[team] ?? 0;
     const baseScore = (players.find(p => p.team === team)?.score ?? 0) + pending;
     const final = Math.min(121, baseScore + amount);
     pendingScoreByTeamRef.current[team] = pending + (final - baseScore);
+    const projectedPlayers = players.map(player => (
+      player.team !== team
+        ? player
+        : { ...player, score: Math.min(121, player.score + amount) }
+    ));
     setPlayers(old => old.map((p, i) => {
       if (p.team !== team) return p;
       return { ...p, score: Math.min(121, p.score + amount) };
@@ -220,11 +536,47 @@ export default function Home() {
     chime(index, amount);
     const pegVerb = players[index].name === "You" ? "peg" : "pegs";
     announce(`${players[index].name} ${pegVerb} ${amount} for ${reason}. New score: ${final}.`);
+
+    if (reason === "31") publishTableTalk({ type: "pegging_scored", actorIndex: index, points: amount, kind: "thirty_one", runningTotal: 31 }, projectedPlayers);
+    if (reason === "last card") publishTableTalk({ type: "last_card_scored", actorIndex: index, points: 1 }, projectedPlayers);
+
+    const afterLeader = teamLeaderFrom(projectedPlayers);
+    if (afterLeader !== null && beforeLeader !== afterLeader) {
+      publishTableTalk({ type: "lead_changed", newLeaderTeam: afterLeader }, projectedPlayers);
+    }
+
+    const closeToWinThreshold = 110;
+    projectedPlayers.slice(0, playerCount).forEach((player, playerIndex) => {
+      const previous = scoreForIndex(players, playerIndex);
+      const now = player.score;
+      if (previous < closeToWinThreshold && now >= closeToWinThreshold) {
+        if (playerIndex === 0) publishTableTalk({ type: "opponent_close_to_winning", actorIndex: playerIndex, score: now }, projectedPlayers);
+        else publishTableTalk({ type: "player_close_to_winning", actorIndex: playerIndex, score: now }, projectedPlayers);
+      }
+    });
+
+    const topScore = Math.max(...projectedPlayers.slice(0, playerCount).map(player => player.score));
+    projectedPlayers.slice(1, playerCount).forEach((player, playerIndexOffset) => {
+      const playerIndex = playerIndexOffset + 1;
+      const deficit = topScore - player.score;
+      const beforeDeficit = topScore - scoreForIndex(players, playerIndex);
+      const wasBehind = scoreRaceStateRef.current[playerIndex]?.behind ?? beforeDeficit >= 18;
+      const isBehind = deficit >= 18;
+      if (!wasBehind && isBehind) publishTableTalk({ type: "computer_falls_well_behind", actorIndex: playerIndex, deficit }, projectedPlayers);
+      if (wasBehind && deficit <= 6) publishTableTalk({ type: "computer_catches_up", actorIndex: playerIndex, deficit }, projectedPlayers);
+      scoreRaceStateRef.current[playerIndex] = { behind: isBehind };
+    });
+
     if (final >= 121) {
       const winnerName = playerCount === 4 ? (team === 0 ? "You and Arthur" : "Mabel and Clara") : players[index].name;
       const winVerb = playerCount === 4 || winnerName === "You" ? "win" : "wins";
       setWinner(winnerName);
       announce(`${winnerName} ${winVerb} the game! The finish peg reached 121.`);
+      publishTableTalk({ type: "game_won", winnerIndex: index, winnerTeam: team }, projectedPlayers);
+      projectedPlayers.slice(1, playerCount).forEach((player, playerIndexOffset) => {
+        const playerIndex = playerIndexOffset + 1;
+        if (player.team !== team) publishTableTalk({ type: "game_lost", loserIndex: playerIndex, winnerTeam: team }, projectedPlayers);
+      });
       sound("win");
       setPhase("gameover");
       return true;
@@ -236,12 +588,21 @@ export default function Home() {
     const d = deck(); deckRef.current = d;
     sound("deal");
     const dealt = basePlayers.slice(0, playerCount).map(p => ({ ...p, hand: d.splice(0, handSize).sort((a,b)=>a.rank-b.rank) }));
+    goPlayersRef.current.clear();
+    pendingGoResolutionRef.current = null;
+    if (cardPlayTimerRef.current !== null) window.clearTimeout(cardPlayTimerRef.current);
+    cardPlayTimerRef.current = null;
+    cardPlayAnimatingRef.current = false;
+    setCardPlayAnimation(null);
+    setPeggingHold(false);
     setPlayers(old => old.map((p, i) => dealt[i] ?? p)); setScoringHands([]); setCrib([]); setCut(null); setSelected([]); setPile([]); setRunning(0); setLastPegger(null); setBreakdown(null); setHandCounts([]); setTurn((dealerIndex + 1) % playerCount); setPhase("discard");
-    announce(`Round ${Math.floor(dealerIndex / playerCount) + 1}: choose ${needDiscard} card${needDiscard > 1 ? "s" : ""} for ${NAMES[dealerIndex]}’s crib.`);
+    const roundNumber = Math.floor(dealerIndex / playerCount) + 1;
+    announce(`Round ${roundNumber}: choose ${needDiscard} card${needDiscard > 1 ? "s" : ""} for ${NAMES[dealerIndex]}’s crib.`);
+    publishTableTalk({ type: "round_started", dealerIndex, roundNumber }, dealt);
   }
 
   function startGame() {
-    const ps = NAMES.map((name, i) => ({ name, color: COLORS[i % 3], hand: [] as Card[], score: 0, team: playerCount === 4 ? i % 2 : i }));
+    const ps = NAMES.map((name, i) => ({ name, color: COLORS[i], hand: [] as Card[], score: 0, team: playerCount === 4 ? i % 2 : i }));
     const drawDeck = deck();
     const draws: OpeningDraw[] = [];
     let contenders = Array.from({ length: playerCount }, (_, i) => i);
@@ -254,16 +615,18 @@ export default function Home() {
       round++;
     }
     const firstDealer = contenders[0];
-    const history: string[] = [];
+    const history: HistoryEntry[] = [];
     for (let drawRound = 1; drawRound < round; drawRound++) {
       const roundDraws = draws.filter(draw => draw.round === drawRound);
-      history.push(roundDraws.map(draw => `${NAMES[draw.player]} ${NAMES[draw.player] === "You" ? "draw" : "draws"} ${RANK(draw.card.rank)}${draw.card.suit}`).join(" · "));
+      history.push({ kind: "game", text: roundDraws.map(draw => `${NAMES[draw.player]} ${NAMES[draw.player] === "You" ? "draw" : "draws"} ${RANK(draw.card.rank)}${draw.card.suit}`).join(" · ") });
       const lowRank = Math.min(...roundDraws.map(draw => draw.card.rank));
       const tied = roundDraws.filter(draw => draw.card.rank === lowRank);
-      if (tied.length > 1) history.push(`${tied.map(draw => NAMES[draw.player]).join(" and ")} tie for low card and draw again.`);
+      if (tied.length > 1) history.push({ kind: "game", text: `${tied.map(draw => NAMES[draw.player]).join(" and ")} tie for low card and draw again.` });
     }
-    history.push(`${NAMES[firstDealer]} ${NAMES[firstDealer] === "You" ? "win" : "wins"} the draw and get${NAMES[firstDealer] === "You" ? "" : "s"} the first deal and crib.`);
+    history.push({ kind: "game", text: `${NAMES[firstDealer]} ${NAMES[firstDealer] === "You" ? "win" : "wins"} the draw and get${NAMES[firstDealer] === "You" ? "" : "s"} the first deal and crib.` });
     setPlayers(ps); setDealer(firstDealer); setWinner(""); setMessageHistory(history); setOpeningDraws(draws); setCut(null); setPhase("cutting");
+    publishTableTalk({ type: "game_started" }, ps);
+    publishTableTalk({ type: "first_crib_won", dealerIndex: firstDealer }, ps);
   }
 
   function beginFirstDeal() {
@@ -313,21 +676,78 @@ export default function Home() {
   }
 
   function playCard(index: number, card: Card) {
+    if (cardPlayAnimatingRef.current || value(card) + running > 31) return;
+    const source = document.querySelector<HTMLElement>(`[data-play-source="${index}-${CSS.escape(card.id)}"]`);
+    const target = peggingTargetRef.current;
+    if (!source || !target) {
+      commitPlayCard(index, card);
+      return;
+    }
+    const from = source.getBoundingClientRect();
+    const to = target.getBoundingClientRect();
+    cardPlayAnimatingRef.current = true;
+    setCardPlayAnimation({
+      card,
+      playerIndex: index,
+      faceDown: index > 0,
+      left: from.left,
+      top: from.top,
+      width: from.width,
+      height: from.height,
+      dx: to.left + to.width / 2 - (from.left + from.width / 2),
+      dy: to.top + to.height / 2 - (from.top + from.height / 2),
+    });
+    cardPlayTimerRef.current = window.setTimeout(() => {
+      setCardPlayAnimation(null);
+      cardPlayAnimatingRef.current = false;
+      cardPlayTimerRef.current = null;
+      commitPlayCard(index, card);
+    }, 650);
+  }
+
+  function commitPlayCard(index: number, card: Card) {
     if (value(card) + running > 31) return;
     sound("card");
-    const pts = pegPoints(card, pile, running); const nextTotal = running + value(card);
+    const scoreEvents = peggingEvents(card, pile, running);
+    const pts = scoreEvents.reduce((sum, event) => sum + event.points, 0);
+    const nextTotal = running + value(card);
     const remaining = players.slice(0, playerCount).reduce((n,p,i)=>n+p.hand.length-(i===index?1:0),0);
     const lastCardPoint = remaining === 0 && nextTotal !== 31 ? 1 : 0;
     setPlayers(old => old.map((p,i)=>i===index?{...p,hand:p.hand.filter(c=>c.id!==card.id)}:p)); setPile(old => [...old, card]); setRunning(nextTotal);
     setLastPegger(index);
+    announce(`${players[index].name} ${players[index].name === "You" ? "play" : "plays"} ${RANK(card.rank)}${card.suit}. Count: ${nextTotal}.`);
+    publishTableTalk({ type: "card_played", actorIndex: index, card: toPublicCard(card), runningTotal: nextTotal });
     if (pts + lastCardPoint) {
+      scoreEvents.forEach(event => publishTableTalk({ type: "pegging_scored", actorIndex: index, points: event.points, kind: event.kind, runningTotal: nextTotal }));
+      if (lastCardPoint) publishTableTalk({ type: "last_card_scored", actorIndex: index, points: 1 });
       const won = addScore(index, pts + lastCardPoint, lastCardPoint ? (pts ? "pegging and last card" : "last card") : nextTotal === 31 ? "31" : "pegging");
       if (won) return;
     }
-    else announce(`${players[index].name} plays ${RANK(card.rank)}${card.suit}. Count: ${nextTotal}.`);
-    if (nextTotal === 31) { setPile([]); setRunning(0); setLastPegger(null); }
+    if (nextTotal === 31) {
+      setPeggingHold(true);
+      window.setTimeout(() => {
+        goPlayersRef.current.clear();
+        setPile([]);
+        setRunning(0);
+        setLastPegger(null);
+        setPeggingHold(false);
+        if (!remaining) {
+          beginCounting();
+          return;
+        }
+        const nextAfterThirtyOne = Array.from({ length: playerCount }, (_, offset) => (index + offset + 1) % playerCount)
+          .find(playerIndex => players[playerIndex].hand.some(held => held.id !== card.id || playerIndex !== index));
+        setTurn(nextAfterThirtyOne ?? (index + 1) % playerCount);
+      }, 1000);
+      return;
+    }
     if (!remaining) { setTimeout(() => beginCounting(), 500); return; }
-    setTurn((index + 1) % playerCount);
+    const nextPlayer = Array.from({ length: playerCount }, (_, offset) => (index + offset + 1) % playerCount)
+      .find(playerIndex => {
+        if (goPlayersRef.current.has(playerIndex)) return false;
+        return players[playerIndex].hand.some(held => held.id !== card.id || playerIndex !== index);
+      });
+    setTurn(nextPlayer ?? (index + 1) % playerCount);
   }
 
   function chooseAiPeg(index: number, playable: Card[]) {
@@ -355,30 +775,38 @@ export default function Home() {
   function beginCounting() { setPhase("counting"); setTurn((dealer + 1) % playerCount); setPile([]); setRunning(0); setLastPegger(null); announce("Pegging complete. Count each hand, then the dealer’s crib."); }
 
   function sayGo(index: number) {
+    if (index === lastPegger && goPlayersRef.current.size > 0) {
+      finishGoSequence(index, lastPegger);
+      return;
+    }
     sound("go");
-    const followingPlayers = Array.from({ length: playerCount - 1 }, (_, offset) => (index + offset + 1) % playerCount);
-    const nextPlayablePosition = followingPlayers.findIndex(i => players[i].hand.some(c => value(c) + running <= 31));
-    const nextPlayable = nextPlayablePosition >= 0 ? followingPlayers[nextPlayablePosition] : undefined;
+    goPlayersRef.current.add(index);
+    announce(`${players[index].name} ${index === 0 ? "say" : "says"} Go.`);
+    publishTableTalk({ type: "go_declared", actorIndex: index });
 
-    // Record every player passed over because they cannot legally play, not
-    // only the player whose turn happened to trigger the search.
-    const goPlayers = nextPlayablePosition >= 0
-      ? [index, ...followingPlayers.slice(0, nextPlayablePosition)]
-      : [index, ...followingPlayers];
-    goPlayers.forEach(i => announce(`${players[i].name} says Go.`));
-
-    if (nextPlayable !== undefined) {
-      setTurn(nextPlayable);
+    const nextPlayer = Array.from({ length: playerCount - 1 }, (_, offset) => (index + offset + 1) % playerCount)
+      .find(playerIndex => !goPlayersRef.current.has(playerIndex) && players[playerIndex].hand.length > 0);
+    if (nextPlayer !== undefined) {
+      setTurn(nextPlayer);
       return;
     }
 
-    if (lastPegger !== null && addScore(lastPegger, 1, "go")) return;
+    if (index > 0 && tableTalkLevel !== "off") {
+      pendingGoResolutionRef.current = { declarer: index, lastPegger };
+      return;
+    }
+    finishGoSequence(index, lastPegger);
+  }
+
+  function finishGoSequence(declarer: number, sequenceLastPegger: number | null) {
+    if (sequenceLastPegger !== null && addScore(sequenceLastPegger, 1, "go")) return;
     const cardsRemain = players.slice(0, playerCount).some(p => p.hand.length > 0);
     if (!cardsRemain) { setTimeout(() => beginCounting(), 500); return; }
 
-    const startAfter = lastPegger ?? index;
+    const startAfter = sequenceLastPegger ?? declarer;
     const nextLeader = Array.from({ length: playerCount }, (_, offset) => (startAfter + offset + 1) % playerCount)
       .find(i => players[i].hand.length > 0);
+    goPlayersRef.current.clear();
     setPile([]); setRunning(0); setLastPegger(null);
     setTurn(nextLeader ?? 0);
   }
@@ -391,6 +819,9 @@ export default function Home() {
     setBreakdown(result);
     const countedCards = scoringHands[countingPlayer] ?? [];
     setHandCounts(old => [...old, { label: players[countingPlayer].name, color: players[countingPlayer].color, kind: "hand", cards: countedCards, cut, result }]);
+    publishTableTalk({ type: "hand_revealed", actorIndex: countingPlayer, points: result.total });
+    if (result.total >= 8) publishTableTalk({ type: "large_hand_scored", actorIndex: countingPlayer, points: result.total });
+    if (result.total === 0) publishTableTalk({ type: "zero_point_hand", actorIndex: countingPlayer });
     if (addScore(countingPlayer, result.total, "the hand")) return;
 
     // Counting begins to the dealer's left and continues in play order.
@@ -400,6 +831,8 @@ export default function Home() {
       const cribResult = scoreCards(crib.slice(0,4), cut, true);
       setBreakdown(cribResult);
       setHandCounts(old => [...old, { label: `${players[dealer].name}’s crib`, color: players[dealer].color, kind: "crib", cards: crib.slice(0,4), cut, result: cribResult }]);
+      publishTableTalk({ type: "crib_revealed", ownerIndex: dealer });
+      if (cribResult.total >= 8) publishTableTalk({ type: "large_crib_scored", ownerIndex: dealer, points: cribResult.total });
       if (addScore(dealer, cribResult.total, "the crib")) return;
       announce(`${players[dealer].name} ${players[dealer].name === "You" ? "peg" : "pegs"} ${cribResult.total} for the crib. New score: ${Math.min(121, players[dealer].score + cribResult.total)}. Start the next deal when ready.`); setTurn(-1);
     } else setTurn(next);
@@ -412,6 +845,14 @@ export default function Home() {
   }, [muted]);
 
   useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
+  useEffect(() => {
+    tableTalkVoiceModeRef.current = tableTalkVoiceMode;
+  }, [tableTalkVoiceMode]);
+
+  useEffect(() => {
     pendingScoreByTeamRef.current = {};
   }, [players]);
 
@@ -420,22 +861,66 @@ export default function Home() {
   }, [volume]);
 
   useEffect(() => {
-    if (phase !== "pegging" || turn <= 0 || turn >= playerCount) return;
+    tableTalkRef.current?.setLevel(tableTalkLevel);
+    saveTableTalkLevel(tableTalkLevel);
+  }, [tableTalkLevel]);
+
+  useEffect(() => {
+    tableTalkVoiceRef.current?.setEnabled(tableTalkVoiceEnabled && !muted);
+    cloudTableTalkVoiceRef.current?.setEnabled(tableTalkVoiceEnabled && !muted && tableTalkVoiceMode === "cloud");
+    saveTableTalkVoiceEnabled(tableTalkVoiceEnabled);
+  }, [tableTalkVoiceEnabled, muted, tableTalkVoiceMode]);
+
+  useEffect(() => {
+    saveTableTalkVoiceMode(tableTalkVoiceMode);
+  }, [tableTalkVoiceMode]);
+
+  useEffect(() => {
+    tableTalkVoiceRef.current?.setVolume(Math.max(0, Math.min(1, volume)));
+    cloudTableTalkVoiceRef.current?.setVolume(Math.max(0, Math.min(1, volume)));
+  }, [volume]);
+
+  useEffect(() => () => {
+    tableTalkVoiceRef.current?.cancel();
+    cloudTableTalkVoiceRef.current?.cancel();
+  }, []);
+
+  useEffect(() => {
+    if (cardPlayAnimation || peggingHold || tableTalkBlocking || phase !== "pegging" || turn <= 0 || turn >= playerCount) return;
     const timer = setTimeout(() => {
       const playable = players[turn].hand.filter(c => value(c) + running <= 31);
       if (playable.length) playCard(turn, chooseAiPeg(turn, playable));
       else sayGo(turn);
     }, 650); return () => clearTimeout(timer);
-  }, [phase, turn, running, players, playerCount]);
+  }, [phase, turn, running, players, playerCount, tableTalkBlocking, peggingHold, cardPlayAnimation]);
 
   useEffect(() => {
-    if (phase !== "counting" || turn <= 0) return;
+    if (cardPlayAnimation || peggingHold || tableTalkBlocking || phase !== "pegging" || turn !== 0) return;
+    if (!players.slice(0, playerCount).some(player => player.hand.length > 0)) return;
+    if (players[0]?.hand.some(card => value(card) + running <= 31)) return;
+    const timer = setTimeout(() => sayGo(0), 350);
+    return () => clearTimeout(timer);
+  }, [phase, turn, running, players, playerCount, tableTalkBlocking, peggingHold, cardPlayAnimation]);
+
+  useEffect(() => {
+    if (tableTalkBlocking || phase !== "counting" || turn <= 0) return;
     const timer = setTimeout(countCurrent, 800); return () => clearTimeout(timer);
-  }, [phase, turn]);
+  }, [phase, turn, tableTalkBlocking]);
+
+  useEffect(() => {
+    if (tableTalkBlocking || !pendingGoResolutionRef.current) return;
+    const pending = pendingGoResolutionRef.current;
+    pendingGoResolutionRef.current = null;
+    finishGoSequence(pending.declarer, pending.lastPegger);
+  }, [tableTalkBlocking]);
 
   useEffect(() => {
     const window = messageWindowRef.current;
-    if (window) window.scrollTop = window.scrollHeight;
+    if (window && shouldAutoScrollRef.current) window.scrollTop = window.scrollHeight;
+  }, [messageHistory]);
+
+  useEffect(() => {
+    messageHistoryRef.current = messageHistory;
   }, [messageHistory]);
 
   const shownPlayers = useMemo(() => players.slice(0, playerCount), [players, playerCount]);
@@ -446,11 +931,79 @@ export default function Home() {
       if (button && !button.classList.contains("card") && !button.classList.contains("sound-toggle")) sound("click");
     }}>
       <Board players={players} playerCount={playerCount} />
+      {cardPlayAnimation && <div
+        className="flying-card"
+        style={{
+          left: cardPlayAnimation.left,
+          top: cardPlayAnimation.top,
+          width: cardPlayAnimation.width,
+          height: cardPlayAnimation.height,
+          "--fly-x": `${cardPlayAnimation.dx}px`,
+          "--fly-y": `${cardPlayAnimation.dy}px`,
+        } as CSSProperties}
+        aria-hidden="true"
+      ><div className={`flying-card-inner ${cardPlayAnimation.faceDown ? "starts-down" : ""}`}>
+        <div className="flying-card-back" />
+        <div className={`flying-card-front ${cardPlayAnimation.card.suit === "♥" || cardPlayAnimation.card.suit === "♦" ? "warm" : ""}`}><span>{RANK(cardPlayAnimation.card.rank)}</span><b>{cardPlayAnimation.card.suit}</b><em>{cardPlayAnimation.card.suit}</em></div>
+      </div></div>}
       <section className="play-area">
-        <div className="status-bar"><span className="phase-tag">{phase === "menu" ? "Welcome" : phase}</span><div className="history-column"><strong className="history-title">Pegging history</strong><div className="message-window" ref={messageWindowRef} role="log" aria-live="polite" aria-label="Game and pegging history">{messageHistory.map((entry, i) => <p className={i === messageHistory.length - 1 ? "latest" : ""} key={`${i}-${entry}`}>{entry}</p>)}</div></div><div className="sound-controls"><button className="quiet sound-toggle" onClick={() => { setMuted(value => !value); if (muted) setTimeout(() => sound("click"), 0); }} aria-pressed={muted}>{muted ? "Sound off" : "Sound on"}</button><label>Volume<input aria-label="Sound volume" type="range" min="0" max="1" step="0.05" value={volume} onChange={event => setVolume(Number(event.target.value))} /></label><button className="quiet" onClick={() => setPhase("menu")}>Menu</button><a className="quiet home-link" href="https://vabgames.com" onClick={() => sound("click")}>Back to VABGames.com</a></div></div>
+        <div className="status-bar"><span className="phase-tag">{phase === "menu" ? "Welcome" : phase}</span><div className="history-column"><strong className="history-title">Pegging history</strong><div className="message-window" onScroll={onHistoryScroll} ref={messageWindowRef} role="log" aria-live="polite" aria-label="Game and pegging history">{messageHistory.map((entry, i) => <p className={`${entry.kind === "dialogue" ? `dialogue ${entry.characterColor}` : ""} ${i === messageHistory.length - 1 ? "latest" : ""}`} key={`${i}-${asHistoryText(entry)}`}>{entry.kind === "dialogue" ? <><span className="speaker">{entry.characterName}:</span> “{entry.text}”</> : entry.text}</p>)}</div></div><div className="sound-controls"><button className="quiet sound-toggle" onClick={() => { setMuted(value => !value); if (muted) setTimeout(() => sound("click"), 0); }} aria-pressed={muted}>{muted ? "Sound off" : "Sound on"}</button><label>Volume<input aria-label="Sound volume" type="range" min="0" max="1" step="0.05" value={volume} onChange={event => setVolume(Number(event.target.value))} /></label><button className="quiet" onClick={() => setPhase("menu")}>Menu</button><a className="quiet home-link" href="https://vabgames.com" onClick={() => sound("click")}>Back to VABGames.com</a></div></div>
         {phase === "menu" ? <div className="menu-panel">
           <div><span className="eyebrow">A classic card-room game</span><h2>Pull up a chair.</h2><p>Play against up to three computer opponents. Four-player games use traditional partnerships.</p></div>
-          <div className="menu-controls"><label>Number of players</label><div className="player-picks">{[2,3,4].map(n=><button key={n} className={playerCount===n?"active":""} onClick={()=>setPlayerCount(n)}>{n}</button>)}</div><label>Computer challenge</label><div className="difficulty-picks">{(["easy","medium","hard"] as Difficulty[]).map(level=><button key={level} className={difficulty===level?"active":""} onClick={()=>setDifficulty(level)}>{level}</button>)}</div><p className="difficulty-note">{difficulty === "easy" ? "Relaxed play with occasional computer mistakes." : difficulty === "medium" ? "Balanced opponents that make sensible choices." : "Skilled opponents that evaluate hands, cribs, and pegging replies."}</p><button className="primary" onClick={startGame}>Start game</button><button className="quit" onClick={()=>announce("Thanks for playing. You can close this tab whenever you’re ready.")}>Quit</button></div>
+          <div className="menu-controls">
+            <label>Number of players</label>
+            <div className="player-picks">
+              {[2,3,4].map(n => <button key={n} className={playerCount===n?"active":""} onClick={()=>setPlayerCount(n)}>{n}</button>)}
+            </div>
+            <label>Computer challenge</label>
+            <div className="difficulty-picks">
+              {(["easy","medium","hard"] as Difficulty[]).map(level => <button key={level} className={difficulty===level?"active":""} onClick={()=>setDifficulty(level)}>{level}</button>)}
+            </div>
+            <label>Table Talk</label>
+            <div className="table-talk-picks">
+              {(["off","occasional","chatty"] as TableTalkLevel[]).map(level => <button key={level} className={tableTalkLevel===level?"active":""} onClick={()=>setTableTalkLevel(level)}>{level}</button>)}
+            </div>
+            <label>Table Talk voice</label>
+            <div className="table-talk-voice-picks">
+              <button className={tableTalkVoiceEnabled ? "active" : ""} onClick={() => setTableTalkVoiceEnabled(true)}>on</button>
+              <button className={!tableTalkVoiceEnabled ? "active" : ""} onClick={() => setTableTalkVoiceEnabled(false)}>off</button>
+            </div>
+            <label>Voice engine</label>
+            <div className="table-talk-engine-picks">
+              <button className={tableTalkVoiceMode === "browser" ? "active" : ""} onClick={() => setTableTalkVoiceMode("browser")}>browser</button>
+              <button className={tableTalkVoiceMode === "cloud" ? "active" : ""} onClick={() => setTableTalkVoiceMode("cloud")}>cloud</button>
+            </div>
+            <p className="difficulty-note">{difficulty === "easy" ? "Relaxed play with occasional computer mistakes." : difficulty === "medium" ? "Balanced opponents that make sensible choices." : "Skilled opponents that evaluate hands, cribs, and pegging replies."}</p>
+            <p className="table-talk-note">
+              {tableTalkLevel === "off" ? "No personality comments are shown." : tableTalkLevel === "occasional" ? "Comments appear on notable moments." : "Characters chat more often, with cooldowns to avoid spam."}
+              {" "}
+              {!tableTalkVoiceEnabled
+                ? "Voice is currently off."
+                : tableTalkVoiceMode === "cloud"
+                  ? "Cloud voice uses a secure server session token and server-side provider key."
+                  : "Voice uses your browser speech engine."}
+            </p>
+            <button className="quiet usage-toggle" onClick={() => setShowCloudUsage(open => !open)}>
+              {showCloudUsage ? "Hide cloud voice usage" : "Cloud voice usage"}
+            </button>
+            {showCloudUsage && <div className="cloud-usage-panel">
+              <strong>Cloud Voice Usage</strong>
+              <div className="usage-grid">
+                <span>Session requests</span><b>{cloudUsageSession.requestCount}</b>
+                <span>Session characters</span><b>{cloudUsageSession.charCount}</b>
+                <span>Session est. cost</span><b>{formatUsd(cloudUsageSession.estimatedUsd)}</b>
+                <span>Lifetime requests</span><b>{cloudUsageLifetime.requestCount}</b>
+                <span>Lifetime characters</span><b>{cloudUsageLifetime.charCount}</b>
+                <span>Lifetime est. cost</span><b>{formatUsd(cloudUsageLifetime.estimatedUsd)}</b>
+              </div>
+              <div className="usage-actions">
+                <button className="quiet" onClick={() => setCloudUsageSession({ requestCount: 0, charCount: 0, estimatedUsd: 0 })}>Reset session</button>
+                <button className="quiet" onClick={() => { const reset = { requestCount: 0, charCount: 0, estimatedUsd: 0 }; setCloudUsageLifetime(reset); saveCloudVoiceUsageStats(reset); }}>Reset lifetime</button>
+              </div>
+            </div>}
+            <button className="primary" onClick={startGame}>Start game</button>
+            <button className="quit" onClick={()=>announce("Thanks for playing. You can close this tab whenever you’re ready.")}>Quit</button>
+          </div>
         </div> : phase === "cutting" ? <div className="opening-draw">
           <span className="eyebrow">Cut for first crib</span>
           <h2>Low card deals first</h2>
@@ -462,12 +1015,12 @@ export default function Home() {
           <button className="primary" onClick={beginFirstDeal}>Deal first hand</button>
         </div> : <>
           <div className="table-center">
-            <div className="pile-zone"><span>PEGGING COUNT</span><strong>{running}</strong><div className="mini-pile" aria-label="Cards played in the current pegging sequence">{pile.map(c=><CardView key={c.id} card={c} small />)}</div></div>
+            <div className="pile-zone"><span>PEGGING COUNT</span><strong>{running}</strong><div className="mini-pile" ref={peggingTargetRef} aria-label="Cards played in the current pegging sequence">{pile.map(c=><CardView key={c.id} card={c} small />)}</div></div>
             <div className="cut-zone"><span>STARTER CARD</span>{cut ? <CardView card={cut} small /> : <div className="card-placeholder" />}</div>
             <div className="count-box"><span>HAND COUNT</span>{handCounts.length ? <div className="hand-count-list">{handCounts.map((count, i) => <div className="hand-count-row" key={`${count.kind}-${count.label}-${i}`}><div className="hand-count-heading"><span className={`count-token ${count.color}`} /><strong>{count.label}</strong><div className="counted-cards">{[...count.cards, count.cut].map(card => <CountCard key={card.id} card={card} tableCard={card.id === count.cut.id} />)}</div><b>{count.result.total}</b></div><div className="score-events">{count.result.events.length ? count.result.events.map((event, eventIndex) => <div className="score-event" key={`${event.label}-${eventIndex}`}><span>{event.label}</span><div>{event.cards.map(card => <CountCard key={card.id} card={card} tableCard={card.id === count.cut.id} />)}</div><b>+{event.points}</b></div>) : <div className="score-event zero"><span>No scoring combinations</span><b>+0</b></div>}</div></div>)}</div> : breakdown ? <p>Counting hands…</p> : <p>Scores will appear here.</p>}{phase === "counting" && turn === -1 && <div className="crib-reveal"><strong>{dealer === 0 ? "Your crib" : `${players[dealer]?.name}’s crib`}</strong><div>{crib.slice(0,4).map(card => <CardView key={card.id} card={card} small />)}</div></div>}</div>
-            <div className="action-zone">{phase === "discard" && <button className="primary" disabled={selected.length!==needDiscard} onClick={finishDiscard}>Send {needDiscard} to crib</button>}{phase === "pegging" && turn===0 && !players[0]?.hand.some(c=>value(c)+running<=31) && <button className="primary" onClick={()=>sayGo(0)}>Say Go</button>}{phase === "counting" && turn===0 && <button className="primary" onClick={countCurrent}>Count my hand</button>}{phase === "counting" && turn===-1 && <button className="primary" onClick={nextRound}>Next deal</button>}</div>
+            <div className="action-zone">{phase === "discard" && <button className="primary" disabled={selected.length!==needDiscard} onClick={finishDiscard}>Send {needDiscard} to crib</button>}{phase === "pegging" && turn===0 && !players[0]?.hand.some(c=>value(c)+running<=31) && <span className="forced-go">Passing…</span>}{phase === "counting" && turn===0 && <button className="primary" onClick={countCurrent}>Count my hand</button>}{phase === "counting" && turn===-1 && <button className="primary" onClick={nextRound}>Next deal</button>}</div>
           </div>
-          <div className="players">{shownPlayers.map((p,i)=>{ const shownHand = phase === "counting" ? (scoringHands[i] ?? []) : p.hand; return <article className={`player ${turn===i?"turn":""}`} key={p.name}><header><span className={`player-token ${p.color}`}/><h3>{p.name}</h3><strong>{p.score}</strong>{i>0&&<small>AI</small>}</header><div className="hand">{shownHand.map(c=><CardView key={c.id} card={c} hidden={i>0 && phase!=="counting"} selected={selected.includes(c.id)} onClick={i===0 && phase==="discard"?()=>toggleCard(c.id):i===0&&phase==="pegging"&&turn===0?()=>playCard(0,c):undefined} />)}</div></article>})}</div>
+          <div className="players">{shownPlayers.map((p,i)=>{ const shownHand = phase === "counting" ? (scoringHands[i] ?? []) : p.hand; const isSpeaker = tableTalkPlayback?.line.characterName === p.name; const isNextSpeaker = nextTableTalkSpeaker === p.name; const isGeneratingText = tableTalkPlayback?.phase === "generatingText"; return <article className={`player ${turn===i?"turn":""} ${isSpeaker?"talking":""} ${isNextSpeaker?"talking-next":""}`} key={p.name}><header>{i>0 ? <div className={`player-portrait ${p.color}`} aria-hidden="true">{p.name[0]}</div> : <span className={`player-token ${p.color}`}/>}<h3>{p.name}</h3><AnimatedScore score={p.score}/>{i>0&&<small>AI</small>}</header>{isSpeaker && <div className="player-caption" role="status" aria-live="polite"><div className="caption-status"><span>{isGeneratingText ? `${p.name} is thinking…` : tableTalkPlayback.phase === "intro" ? `${p.name} is about to speak` : tableTalkPlayback.phase === "generating" ? "Generating voice…" : tableTalkPlayback.phase === "reading" ? "Take a moment…" : `${p.name} is speaking`}</span>{(isGeneratingText || tableTalkPlayback.phase === "generating") && <div className="voice-meter" role="progressbar" aria-label={isGeneratingText ? "Generating response" : "Generating voice"}><i /></div>}</div>{!isGeneratingText && <p>“{tableTalkPlayback.line.text}”</p>}{tableTalkPlayback.phase !== "intro" && !isGeneratingText && <button className="caption-continue" onClick={continueTableTalk}>Continue</button>}</div>}{isNextSpeaker && !isSpeaker && <div className="next-speaker-label">Up next: {p.name}</div>}<div className="hand">{shownHand.map(c=><CardView key={c.id} card={c} playSource={`${i}-${c.id}`} animating={cardPlayAnimation?.playerIndex === i && cardPlayAnimation.card.id === c.id} hidden={i>0 && phase!=="counting"} selected={selected.includes(c.id)} onClick={i===0 && phase==="discard"?()=>toggleCard(c.id):i===0&&phase==="pegging"&&turn===0&&!peggingHold&&!cardPlayAnimation?()=>playCard(0,c):undefined} />)}</div></article>})}</div>
         </>}
       </section>
       {phase === "gameover" && <div className="modal"><div><span>★ GAME ★</span><h2>{winner} {playerCount === 4 || winner === "You" ? "win" : "wins"}!</h2><p>The finish peg has reached 121.</p><button className="primary" onClick={()=>setPhase("menu")}>Play again</button></div></div>}

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build && npm --prefix ../cribbage-transfer/cribbage ci --no-audit --no-fund && npm --prefix ../cribbage-transfer/cribbage run build && node ./scripts/copyCribbageDist.mjs",
     "build:cribbage": "npm --prefix ../cribbage-transfer/cribbage ci --no-audit --no-fund && npm --prefix ../cribbage-transfer/cribbage run build && node ./scripts/copyCribbageDist.mjs",
+    "generate:cribbage-voices": "node ./scripts/generateCribbageVoicePack.mjs",
     "preview": "vite preview"
   },
   "devDependencies": {

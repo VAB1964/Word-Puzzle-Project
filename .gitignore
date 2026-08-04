@@ -366,6 +366,7 @@ NewDirectory/*.json
 # Environment files (API keys)
 .env
 .env.*
+.dev.vars
 
 # Vite build output
 web/dist/
