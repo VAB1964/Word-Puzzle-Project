@@ -16,6 +16,8 @@ export class CloudTableTalkVoiceOutput {
   private busy = false;
   private token: string | null = null;
   private tokenExpMs = 0;
+  private apiUnavailable = false;
+  private reportedApiUnavailable = false;
   private readonly fetcher: FetchLike;
   private readonly onError?: (message: string) => void;
   private readonly onUsage?: (delta: CloudVoiceUsageDelta) => void;
@@ -218,11 +220,21 @@ export class CloudTableTalkVoiceOutput {
   }
 
   private async ensureSessionToken(): Promise<string | null> {
+    if (this.apiUnavailable) return null;
     const now = Date.now();
     if (this.token && now < this.tokenExpMs - 5_000) return this.token;
 
     const response = await this.fetcher("/api/table-talk-session", { method: "POST" });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      if (response.status === 404) {
+        this.apiUnavailable = true;
+        if (!this.reportedApiUnavailable) {
+          this.onStatus?.("Cloud voice API is unavailable in this server environment. Falling back to browser voice.");
+          this.reportedApiUnavailable = true;
+        }
+      }
+      return null;
+    }
     const body = await response.json() as { token?: string; expiresAt?: number };
     if (!body.token || !body.expiresAt) return null;
     this.token = body.token;

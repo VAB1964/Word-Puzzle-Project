@@ -171,6 +171,20 @@ describe("TableTalkService", () => {
     expect(emissions[0].dynamic).toBe(false);
   });
 
+  it("does not let an AI claim first crib when the human won it", () => {
+    const emissions: CharacterDialogueEmission[] = [];
+    const service = new TableTalkService({
+      level: "chatty",
+      emit: line => emissions.push(line),
+      random: () => 0,
+      cooldownMs: { occasional: 0, chatty: 0 },
+    });
+
+    service.handleEvent({ type: "first_crib_won", dealerIndex: 0 }, baseContext("chatty"));
+
+    expect(emissions).toHaveLength(0);
+  });
+
   it("does not make an AI voice the human player's Go", () => {
     const emissions: CharacterDialogueEmission[] = [];
     const service = new TableTalkService({

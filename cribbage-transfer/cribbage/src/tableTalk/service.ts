@@ -174,6 +174,7 @@ export class TableTalkService {
       const actor = byIndex.get(actorIndex);
       if (actor) return actor;
       if (event.type === "go_declared") return null;
+      if (event.type === "first_crib_won") return null;
     }
 
     if (event.type === "lead_changed") {

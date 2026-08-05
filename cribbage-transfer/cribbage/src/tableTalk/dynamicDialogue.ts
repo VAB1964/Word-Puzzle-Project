@@ -5,6 +5,7 @@ type FetchLike = typeof fetch;
 export class DynamicTableTalkClient {
   private token: string | null = null;
   private tokenExpMs = 0;
+  private apiUnavailable = false;
   private readonly fetcher: FetchLike;
   private readonly timeoutMs: number;
 
@@ -14,7 +15,7 @@ export class DynamicTableTalkClient {
   }
 
   async generate(line: CharacterDialogueEmission, recentDialogue: string[] = []): Promise<string | null> {
-    if (!line.dynamic) return null;
+    if (!line.dynamic || this.apiUnavailable) return null;
     const controller = new AbortController();
     const timer = globalThis.setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -51,10 +52,14 @@ export class DynamicTableTalkClient {
   }
 
   private async ensureSessionToken(signal: AbortSignal): Promise<string | null> {
+    if (this.apiUnavailable) return null;
     const now = Date.now();
     if (this.token && now < this.tokenExpMs - 5_000) return this.token;
     const response = await this.fetcher("/api/table-talk-session", { method: "POST", signal });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      if (response.status === 404) this.apiUnavailable = true;
+      return null;
+    }
     const body = await response.json() as { token?: string; expiresAt?: number };
     if (!body.token || !body.expiresAt) return null;
     this.token = body.token;
