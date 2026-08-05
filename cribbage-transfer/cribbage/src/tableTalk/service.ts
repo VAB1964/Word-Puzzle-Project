@@ -259,7 +259,7 @@ export class TableTalkService {
     if (event.type === "round_started") return { key: "round_started", emotion: "playful", significant: false };
     if (event.type === "card_played") return { key: "generic_card_play", emotion: "playful", significant: false };
     if (event.type === "go_declared") return { key: "go_declared", emotion: "concerned", significant: false };
-    if (event.type === "first_crib_won") return { key: "round_started", emotion: "playful", significant: false };
+    if (event.type === "first_crib_won") return { key: "first_crib_won", emotion: "playful", significant: false };
 
     if (event.type === "pegging_scored") {
       const actorIsComputer = context.participants.some(participant => participant.playerIndex === event.actorIndex);

@@ -26,6 +26,7 @@ function event(type: TableTalkEvent["type"]): TableTalkEvent {
   if (type === "large_hand_scored") return { type, actorIndex: 1, points: 10 };
   if (type === "game_started") return { type };
   if (type === "go_declared") return { type, actorIndex: 1 };
+  if (type === "first_crib_won") return { type, dealerIndex: 1 };
   throw new Error(`Unsupported test event: ${type}`);
 }
 
@@ -150,6 +151,23 @@ describe("TableTalkService", () => {
     service.handleEvent(event("go_declared"), baseContext("chatty"));
 
     expect(emissions[0].text).toBe("Go.");
+    expect(emissions[0].dynamic).toBe(false);
+  });
+
+  it("lets the crib owner announce first crib possession", () => {
+    const emissions: CharacterDialogueEmission[] = [];
+    const service = new TableTalkService({
+      level: "chatty",
+      emit: line => emissions.push(line),
+      random: () => 0,
+      cooldownMs: { occasional: 0, chatty: 0 },
+    });
+
+    service.handleEvent(event("first_crib_won"), baseContext("chatty"));
+
+    expect(emissions).toHaveLength(1);
+    expect(emissions[0].characterName).toBe("Mabel");
+    expect(emissions[0].text).toBe("My crib.");
     expect(emissions[0].dynamic).toBe(false);
   });
 

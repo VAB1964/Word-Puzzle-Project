@@ -3,6 +3,7 @@ import type { CharacterId, TableTalkEmotion } from "./types";
 export type DialogueKey =
   | "game_started"
   | "round_started"
+  | "first_crib_won"
   | "self_fifteen"
   | "opp_fifteen"
   | "self_thirty_one"
@@ -42,6 +43,7 @@ export const DIALOGUE_LIBRARY: Record<CharacterId, CharacterDialoguePools> = {
   mabel: {
     game_started: { emotion: "supportive", lines: ["Cards are on the table, everyone play nice.", "New game, fresh luck, and maybe my best shuffling face.", "All right, friends, let's make this a good one.", "Settle in, this should be a nice game.", "Here we are again, cards and good company."] },
     round_started: { emotion: "playful", lines: ["New round, new mischief.", "Let's see what this deal has in store.", "Round's live; keep your pegs warm.", "All right, let's see these cards.", "Maybe this deal will be kind to us."] },
+    first_crib_won: { emotion: "playful", lines: ["My crib.", "My crib, send me good cards.", "Looks like I get the crib."] },
     self_fifteen: { emotion: "playful", lines: ["Fifteen for two, and I will absolutely take it.", "That fifteen came right on time.", "A tidy little fifteen.", "There we are, fifteen for two.", "That worked out rather nicely."] },
     opp_fifteen: { emotion: "supportive", lines: ["Nice fifteen there.", "Well played, that fifteen was clean.", "Good eye, that made fifteen nicely.", "You found a good fifteen there.", "That was a handy two points."] },
     self_thirty_one: { emotion: "competitive", lines: ["Thirty-one feels downright cozy.", "I'll gladly park on thirty-one.", "Thirty-one exactly; thank you kindly.", "Right on thirty-one, that will do.", "That landed just where I wanted it."] },
@@ -76,6 +78,7 @@ export const DIALOGUE_LIBRARY: Record<CharacterId, CharacterDialoguePools> = {
   arthur: {
     game_started: { emotion: "dry", lines: ["Another game. My confidence has not been consulted.", "Cards ready. Dignity may be optional.", "Excellent, a fresh chance to misread everything.", "All right, let us see how this goes.", "Another game seems entirely reasonable."] },
     round_started: { emotion: "dry", lines: ["New round. I remain cautiously skeptical.", "Round begins. Expectations suitably moderate.", "Let's proceed with measured optimism.", "Fresh cards, same quiet confidence.", "We begin again, as tradition demands."] },
+    first_crib_won: { emotion: "dry", lines: ["My crib.", "My crib. Try to be unhelpful, cards.", "Looks like I get the crib."] },
     self_fifteen: { emotion: "dry", lines: ["Fifteen for two. A modest miracle.", "I'll accept those two points quietly.", "Two points. A brief triumph.", "Fifteen. That will do nicely.", "A useful two points, no fuss."] },
     opp_fifteen: { emotion: "competitive", lines: ["A fine fifteen. Inconvenient for me.", "Nicely found. I noticed, unfortunately.", "Clean fifteen. Regrettably accurate.", "A sensible fifteen on your part.", "Two points placed rather well."] },
     self_thirty_one: { emotion: "competitive", lines: ["Thirty-one exactly. I'll frame that.", "At last, precision in my favor.", "Thirty-one. For once, the math cooperated.", "Thirty-one. Nicely settled.", "That count ended where it should."] },
@@ -110,6 +113,7 @@ export const DIALOGUE_LIBRARY: Record<CharacterId, CharacterDialoguePools> = {
   clara: {
     game_started: { emotion: "optimistic", lines: ["Here we go! Let's make this a good game.", "Fresh game and fresh luck. I love it.", "Cards are out, spirits are high.", "This should be a nice way to pass the time.", "All set, let us enjoy the game."] },
     round_started: { emotion: "optimistic", lines: ["New round! Let's see what we can build.", "Round starts now; this should be fun.", "Another round, another chance for a clever play.", "Fresh deal, let us see what happens.", "All right, on to the next round."] },
+    first_crib_won: { emotion: "optimistic", lines: ["My crib.", "My crib, send me good cards.", "Looks like I get the crib."] },
     self_fifteen: { emotion: "optimistic", lines: ["Fifteen for two, nice and tidy.", "I'll happily take that fifteen.", "Two points and a little momentum.", "A nice fifteen for me.", "That gives me two useful points."] },
     opp_fifteen: { emotion: "supportive", lines: ["Nice fifteen!", "That was a smart fifteen.", "Great eye for that fifteen.", "You found that fifteen nicely.", "A good two points there."] },
     self_thirty_one: { emotion: "competitive", lines: ["Thirty-one exactly. Lovely timing.", "Right to thirty-one, perfect.", "Thirty-one and feeling good about it.", "That settled neatly on thirty-one.", "Right where I wanted the count."] },

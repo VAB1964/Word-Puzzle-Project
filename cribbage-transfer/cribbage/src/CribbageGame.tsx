@@ -36,7 +36,7 @@ type HandCount = { label: string; color: string; kind: "hand" | "crib"; cards: C
 type OpeningDraw = { player: number; card: Card; round: number };
 type HistoryEntry =
   | { kind: "game"; text: string }
-  | { kind: "dialogue"; characterName: string; characterColor: string; text: string };
+  | { kind: "dialogue"; characterName: string; characterColor: string; text: string; scripted: boolean };
 type TableTalkPlayback = {
   line: CharacterDialogueEmission;
   phase: "intro" | "generatingText" | "generating" | "speaking" | "reading";
@@ -397,6 +397,7 @@ export default function Home() {
         characterName: line.characterName,
         characterColor: speaker?.color ?? "blue",
         text: line.text,
+        scripted: !line.dynamic,
       },
     ]);
   }
@@ -427,6 +428,9 @@ export default function Home() {
   function asHistoryText(entry: HistoryEntry) {
     return entry.kind === "game" ? entry.text : `${entry.characterName}: "${entry.text}"`;
   }
+  function formatDialogueText(text: string, scripted: boolean) {
+    return scripted ? `${text} (script)` : text;
+  }
   function announce(text: string) {
     setMessageHistory(old => [...old, { kind: "game", text }]);
   }
@@ -441,6 +445,16 @@ export default function Home() {
   }
   function publishTableTalk(event: TableTalkEvent, overrideScores?: Player[]) {
     tableTalkRef.current?.handleEvent(event, tableTalkContext(overrideScores));
+  }
+  function shouldPublishFocusCommentaryForActor(actorIndex: number) {
+    const focusHumanThisLine = Math.random() < 0.5;
+    const actorIsHuman = actorIndex === 0;
+    return focusHumanThisLine === actorIsHuman;
+  }
+  function shouldPublishFocusCommentaryForOwner(ownerIndex: number) {
+    const focusHumanThisLine = Math.random() < 0.5;
+    const ownerIsHuman = ownerIndex === 0;
+    return focusHumanThisLine === ownerIsHuman;
   }
   function onHistoryScroll() {
     const window = messageWindowRef.current;
@@ -522,7 +536,12 @@ export default function Home() {
     return playersView[index]?.score ?? 0;
   }
 
-  function addScore(index: number, amount: number, reason: string) {
+  function addScore(
+    index: number,
+    amount: number,
+    reason: string,
+    options?: { suppressLeadChangedTalk?: boolean },
+  ) {
     if (!amount) return false;
     const beforeLeader = teamLeaderFrom(players);
     const team = players[index].team;
@@ -543,11 +562,12 @@ export default function Home() {
     const pegVerb = players[index].name === "You" ? "peg" : "pegs";
     announce(`${players[index].name} ${pegVerb} ${amount} for ${reason}. New score: ${final}.`);
 
-    if (reason === "31") publishTableTalk({ type: "pegging_scored", actorIndex: index, points: amount, kind: "thirty_one", runningTotal: 31 }, projectedPlayers);
-    if (reason === "last card") publishTableTalk({ type: "last_card_scored", actorIndex: index, points: 1 }, projectedPlayers);
+    if (reason === "31" && shouldPublishFocusCommentaryForActor(index)) publishTableTalk({ type: "pegging_scored", actorIndex: index, points: amount, kind: "thirty_one", runningTotal: 31 }, projectedPlayers);
+    if (reason === "last card" && shouldPublishFocusCommentaryForActor(index)) publishTableTalk({ type: "last_card_scored", actorIndex: index, points: 1 }, projectedPlayers);
 
+    const suppressLeadChangedTalk = options?.suppressLeadChangedTalk ?? (phase === "pegging" || phase === "counting");
     const afterLeader = teamLeaderFrom(projectedPlayers);
-    if (afterLeader !== null && beforeLeader !== afterLeader) {
+    if (!suppressLeadChangedTalk && afterLeader !== null && beforeLeader !== afterLeader) {
       publishTableTalk({ type: "lead_changed", newLeaderTeam: afterLeader }, projectedPlayers);
     }
 
@@ -722,10 +742,12 @@ export default function Home() {
     setPlayers(old => old.map((p,i)=>i===index?{...p,hand:p.hand.filter(c=>c.id!==card.id)}:p)); setPile(old => [...old, card]); setRunning(nextTotal);
     setLastPegger(index);
     announce(`${players[index].name} ${players[index].name === "You" ? "play" : "plays"} ${RANK(card.rank)}${card.suit}. Count: ${nextTotal}.`);
-    publishTableTalk({ type: "card_played", actorIndex: index, card: toPublicCard(card), runningTotal: nextTotal });
+    if (shouldPublishFocusCommentaryForActor(index)) publishTableTalk({ type: "card_played", actorIndex: index, card: toPublicCard(card), runningTotal: nextTotal });
     if (pts + lastCardPoint) {
-      scoreEvents.forEach(event => publishTableTalk({ type: "pegging_scored", actorIndex: index, points: event.points, kind: event.kind, runningTotal: nextTotal }));
-      if (lastCardPoint) publishTableTalk({ type: "last_card_scored", actorIndex: index, points: 1 });
+      scoreEvents.forEach(event => {
+        if (shouldPublishFocusCommentaryForActor(index)) publishTableTalk({ type: "pegging_scored", actorIndex: index, points: event.points, kind: event.kind, runningTotal: nextTotal });
+      });
+      if (lastCardPoint && shouldPublishFocusCommentaryForActor(index)) publishTableTalk({ type: "last_card_scored", actorIndex: index, points: 1 });
       const won = addScore(index, pts + lastCardPoint, lastCardPoint ? (pts ? "pegging and last card" : "last card") : nextTotal === 31 ? "31" : "pegging");
       if (won) return;
     }
@@ -825,10 +847,11 @@ export default function Home() {
     setBreakdown(result);
     const countedCards = scoringHands[countingPlayer] ?? [];
     setHandCounts(old => [...old, { label: players[countingPlayer].name, color: players[countingPlayer].color, kind: "hand", cards: countedCards, cut, result }]);
-    publishTableTalk({ type: "hand_revealed", actorIndex: countingPlayer, points: result.total });
-    if (result.total >= 8) publishTableTalk({ type: "large_hand_scored", actorIndex: countingPlayer, points: result.total });
-    if (result.total === 0) publishTableTalk({ type: "zero_point_hand", actorIndex: countingPlayer });
-    if (addScore(countingPlayer, result.total, "the hand")) return;
+    if (shouldPublishFocusCommentaryForActor(countingPlayer)) publishTableTalk({ type: "hand_revealed", actorIndex: countingPlayer, points: result.total });
+    if (result.total >= 8 && shouldPublishFocusCommentaryForActor(countingPlayer)) publishTableTalk({ type: "large_hand_scored", actorIndex: countingPlayer, points: result.total });
+    if (result.total === 0 && shouldPublishFocusCommentaryForActor(countingPlayer)) publishTableTalk({ type: "zero_point_hand", actorIndex: countingPlayer });
+    const isFinalPlayerHandCount = countingPlayer === dealer;
+    if (addScore(countingPlayer, result.total, "the hand", { suppressLeadChangedTalk: !isFinalPlayerHandCount })) return;
 
     // Counting begins to the dealer's left and continues in play order.
     // The dealer is therefore always the final hand counted.
@@ -838,8 +861,8 @@ export default function Home() {
       setBreakdown(cribResult);
       setHandCounts(old => [...old, { label: `${players[dealer].name}’s crib`, color: players[dealer].color, kind: "crib", cards: crib.slice(0,4), cut, result: cribResult }]);
       publishTableTalk({ type: "crib_revealed", ownerIndex: dealer });
-      if (cribResult.total >= 8) publishTableTalk({ type: "large_crib_scored", ownerIndex: dealer, points: cribResult.total });
-      if (addScore(dealer, cribResult.total, "the crib")) return;
+      if (cribResult.total >= 8 && shouldPublishFocusCommentaryForOwner(dealer)) publishTableTalk({ type: "large_crib_scored", ownerIndex: dealer, points: cribResult.total });
+      if (addScore(dealer, cribResult.total, "the crib", { suppressLeadChangedTalk: false })) return;
       announce(`${players[dealer].name} ${players[dealer].name === "You" ? "peg" : "pegs"} ${cribResult.total} for the crib. New score: ${Math.min(121, players[dealer].score + cribResult.total)}. Start the next deal when ready.`); setTurn(-1);
     } else setTurn(next);
   }
@@ -953,7 +976,7 @@ export default function Home() {
         <div className={`flying-card-front ${cardPlayAnimation.card.suit === "♥" || cardPlayAnimation.card.suit === "♦" ? "warm" : ""}`}><span>{RANK(cardPlayAnimation.card.rank)}</span><b>{cardPlayAnimation.card.suit}</b><em>{cardPlayAnimation.card.suit}</em></div>
       </div></div>}
       <section className="play-area">
-        <div className="status-bar"><span className="phase-tag">{phase === "menu" ? "Welcome" : phase}</span><div className="history-column"><strong className="history-title">Pegging history</strong><div className="message-window" onScroll={onHistoryScroll} ref={messageWindowRef} role="log" aria-live="polite" aria-label="Game and pegging history">{messageHistory.map((entry, i) => <p className={`${entry.kind === "dialogue" ? `dialogue ${entry.characterColor}` : ""} ${i === messageHistory.length - 1 ? "latest" : ""}`} key={`${i}-${asHistoryText(entry)}`}>{entry.kind === "dialogue" ? <><span className="speaker">{entry.characterName}:</span> “{entry.text}”</> : entry.text}</p>)}</div></div><div className="sound-controls"><button className="quiet sound-toggle" onClick={() => { setMuted(value => !value); if (muted) setTimeout(() => sound("click"), 0); }} aria-pressed={muted}>{muted ? "Sound off" : "Sound on"}</button><label>Volume<input aria-label="Sound volume" type="range" min="0" max="1" step="0.05" value={volume} onChange={event => setVolume(Number(event.target.value))} /></label><button className="quiet" onClick={() => setPhase("menu")}>Menu</button><a className="quiet home-link" href="https://vabgames.com" onClick={() => sound("click")}>Back to VABGames.com</a></div></div>
+        <div className="status-bar"><span className="phase-tag">{phase === "menu" ? "Welcome" : phase}</span><div className="history-column"><strong className="history-title">Pegging history</strong><div className="message-window" onScroll={onHistoryScroll} ref={messageWindowRef} role="log" aria-live="polite" aria-label="Game and pegging history">{messageHistory.map((entry, i) => <p className={`${entry.kind === "dialogue" ? `dialogue ${entry.characterColor}` : ""} ${i === messageHistory.length - 1 ? "latest" : ""}`} key={`${i}-${asHistoryText(entry)}`}>{entry.kind === "dialogue" ? <><span className="speaker">{entry.characterName}:</span> “{formatDialogueText(entry.text, entry.scripted)}”</> : entry.text}</p>)}</div></div><div className="sound-controls"><button className="quiet sound-toggle" onClick={() => { setMuted(value => !value); if (muted) setTimeout(() => sound("click"), 0); }} aria-pressed={muted}>{muted ? "Sound off" : "Sound on"}</button><label>Volume<input aria-label="Sound volume" type="range" min="0" max="1" step="0.05" value={volume} onChange={event => setVolume(Number(event.target.value))} /></label><button className="quiet" onClick={() => setPhase("menu")}>Menu</button><a className="quiet home-link" href="https://vabgames.com" onClick={() => sound("click")}>Back to VABGames.com</a></div></div>
         {phase === "menu" ? <div className="menu-panel">
           <div><span className="eyebrow">A classic card-room game</span><h2>Pull up a chair.</h2><p>Play against up to three computer opponents. Four-player games use traditional partnerships.</p></div>
           <div className="menu-controls">
@@ -1026,7 +1049,7 @@ export default function Home() {
             <div className="count-box"><span>HAND COUNT</span>{handCounts.length ? <div className="hand-count-list">{handCounts.map((count, i) => <div className="hand-count-row" key={`${count.kind}-${count.label}-${i}`}><div className="hand-count-heading"><span className={`count-token ${count.color}`} /><strong>{count.label}</strong><div className="counted-cards">{[...count.cards, count.cut].map(card => <CountCard key={card.id} card={card} tableCard={card.id === count.cut.id} />)}</div><b>{count.result.total}</b></div><div className="score-events">{count.result.events.length ? count.result.events.map((event, eventIndex) => <div className="score-event" key={`${event.label}-${eventIndex}`}><span>{event.label}</span><div>{event.cards.map(card => <CountCard key={card.id} card={card} tableCard={card.id === count.cut.id} />)}</div><b>+{event.points}</b></div>) : <div className="score-event zero"><span>No scoring combinations</span><b>+0</b></div>}</div></div>)}</div> : breakdown ? <p>Counting hands…</p> : <p>Scores will appear here.</p>}{phase === "counting" && turn === -1 && <div className="crib-reveal"><strong>{dealer === 0 ? "Your crib" : `${players[dealer]?.name}’s crib`}</strong><div>{crib.slice(0,4).map(card => <CardView key={card.id} card={card} small />)}</div></div>}</div>
             <div className="action-zone">{phase === "discard" && <button className="primary" disabled={selected.length!==needDiscard} onClick={finishDiscard}>Send {needDiscard} to crib</button>}{phase === "pegging" && turn===0 && !players[0]?.hand.some(c=>value(c)+running<=31) && <span className="forced-go">Passing…</span>}{phase === "counting" && turn===0 && <button className="primary" onClick={countCurrent}>Count my hand</button>}{phase === "counting" && turn===-1 && <button className="primary" onClick={nextRound}>Next deal</button>}</div>
           </div>
-          <div className="players">{shownPlayers.map((p,i)=>{ const shownHand = phase === "counting" ? (scoringHands[i] ?? []) : p.hand; const isSpeaker = tableTalkPlayback?.line.characterName === p.name; const isNextSpeaker = nextTableTalkSpeaker === p.name; const isGeneratingText = tableTalkPlayback?.phase === "generatingText"; return <article className={`player ${turn===i?"turn":""} ${isSpeaker?"talking":""} ${isNextSpeaker?"talking-next":""}`} key={p.name}><header>{i>0 ? <div className={`player-portrait ${p.color}`} aria-hidden="true">{p.name[0]}</div> : <span className={`player-token ${p.color}`}/>}<h3>{p.name}</h3><AnimatedScore score={p.score}/>{i>0&&<small>AI</small>}</header>{isSpeaker && <div className="player-caption" role="status" aria-live="polite"><div className="caption-status"><span>{isGeneratingText ? `${p.name} is thinking…` : tableTalkPlayback.phase === "intro" ? `${p.name} is about to speak` : tableTalkPlayback.phase === "generating" ? "Generating voice…" : tableTalkPlayback.phase === "reading" ? "Take a moment…" : `${p.name} is speaking`}</span>{(isGeneratingText || tableTalkPlayback.phase === "generating") && <div className="voice-meter" role="progressbar" aria-label={isGeneratingText ? "Generating response" : "Generating voice"}><i /></div>}</div>{!isGeneratingText && <p>“{tableTalkPlayback.line.text}”</p>}{tableTalkPlayback.phase !== "intro" && !isGeneratingText && <button className="caption-continue" onClick={continueTableTalk}>Continue</button>}</div>}{isNextSpeaker && !isSpeaker && <div className="next-speaker-label">Up next: {p.name}</div>}<div className="hand">{shownHand.map(c=><CardView key={c.id} card={c} playSource={`${i}-${c.id}`} animating={cardPlayAnimation?.playerIndex === i && cardPlayAnimation.card.id === c.id} hidden={i>0 && phase!=="counting"} selected={selected.includes(c.id)} onClick={i===0 && phase==="discard"?()=>toggleCard(c.id):i===0&&phase==="pegging"&&turn===0&&!peggingHold&&!cardPlayAnimation?()=>playCard(0,c):undefined} />)}</div></article>})}</div>
+          <div className="players">{shownPlayers.map((p,i)=>{ const shownHand = phase === "counting" ? (scoringHands[i] ?? []) : p.hand; const isSpeaker = tableTalkPlayback?.line.characterName === p.name; const isNextSpeaker = nextTableTalkSpeaker === p.name; const isGeneratingText = tableTalkPlayback?.phase === "generatingText"; return <article className={`player ${turn===i?"turn":""} ${isSpeaker?"talking":""} ${isNextSpeaker?"talking-next":""}`} key={p.name}><header>{i>0 ? <div className={`player-portrait ${p.color}`} aria-hidden="true">{p.name[0]}</div> : <span className={`player-token ${p.color}`}/>}<h3>{p.name}</h3><AnimatedScore score={p.score}/>{i>0&&<small>AI</small>}</header>{isSpeaker && <div className="player-caption" role="status" aria-live="polite"><div className="caption-status"><span>{isGeneratingText ? `${p.name} is thinking…` : tableTalkPlayback.phase === "intro" ? `${p.name} is about to speak` : tableTalkPlayback.phase === "generating" ? "Generating voice…" : tableTalkPlayback.phase === "reading" ? "Take a moment…" : `${p.name} is speaking`}</span>{(isGeneratingText || tableTalkPlayback.phase === "generating") && <div className="voice-meter" role="progressbar" aria-label={isGeneratingText ? "Generating response" : "Generating voice"}><i /></div>}</div>{!isGeneratingText && <p>“{formatDialogueText(tableTalkPlayback.line.text, !tableTalkPlayback.line.dynamic)}”</p>}{tableTalkPlayback.phase !== "intro" && !isGeneratingText && <button className="caption-continue" onClick={continueTableTalk}>Continue</button>}</div>}{isNextSpeaker && !isSpeaker && <div className="next-speaker-label">Up next: {p.name}</div>}<div className="hand">{shownHand.map(c=><CardView key={c.id} card={c} playSource={`${i}-${c.id}`} animating={cardPlayAnimation?.playerIndex === i && cardPlayAnimation.card.id === c.id} hidden={i>0 && phase!=="counting"} selected={selected.includes(c.id)} onClick={i===0 && phase==="discard"?()=>toggleCard(c.id):i===0&&phase==="pegging"&&turn===0&&!peggingHold&&!cardPlayAnimation?()=>playCard(0,c):undefined} />)}</div></article>})}</div>
         </>}
       </section>
       {phase === "gameover" && <div className="modal"><div><span>★ GAME ★</span><h2>{winner} {playerCount === 4 || winner === "You" ? "win" : "wins"}!</h2><p>The finish peg has reached 121.</p><button className="primary" onClick={()=>setPhase("menu")}>Play again</button></div></div>}
