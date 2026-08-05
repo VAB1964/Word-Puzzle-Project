@@ -51,8 +51,8 @@ export class TableTalkVoiceOutput {
     this.volume = Math.max(0, Math.min(1, volume));
   }
 
-  speak(line: CharacterDialogueEmission, onPlaybackStart?: () => void): Promise<void> {
-    if (!this.enabled || !this.synthesis || this.synthesis.speaking) return Promise.resolve();
+  speak(line: CharacterDialogueEmission, onPlaybackStart?: () => void): Promise<boolean> {
+    if (!this.enabled || !this.synthesis || this.synthesis.speaking) return Promise.resolve(false);
     const synthesis = this.synthesis;
     return new Promise(resolve => {
       const utterance = this.makeUtterance(line.text);
@@ -63,7 +63,7 @@ export class TableTalkVoiceOutput {
       utterance.voice = this.pickVoice(line.characterId);
       const finish = () => {
         if (this.finishActiveSpeech === finish) this.finishActiveSpeech = null;
-        resolve();
+        resolve(true);
       };
       this.finishActiveSpeech = finish;
       utterance.onend = finish;

@@ -357,15 +357,21 @@ export default function Home() {
     });
     setTableTalkPlayback({ line, phase: "generating" });
     const showSpeaking = () => setTableTalkPlayback({ line, phase: "speaking" });
+    let didSpeak = false;
     if (tableTalkVoiceModeRef.current === "cloud") {
       const cloudSpoke = await cloudTableTalkVoiceRef.current?.speak(line, showSpeaking);
-      if (!cloudSpoke) await tableTalkVoiceRef.current?.speak(line, showSpeaking);
+      if (cloudSpoke) {
+        didSpeak = true;
+      } else {
+        didSpeak = (await tableTalkVoiceRef.current?.speak(line, showSpeaking)) ?? false;
+      }
     } else {
-      await tableTalkVoiceRef.current?.speak(line, showSpeaking);
+      didSpeak = (await tableTalkVoiceRef.current?.speak(line, showSpeaking)) ?? false;
     }
     if (!tableTalkSkippedRef.current) {
       setTableTalkPlayback({ line, phase: "reading" });
-      await Promise.race([waitForTableTalk(line.eventType === "go_declared" ? 0 : 1800), continued]);
+      const readingDelayMs = line.eventType === "go_declared" ? 0 : didSpeak ? 0 : 1800;
+      await Promise.race([waitForTableTalk(readingDelayMs), continued]);
     }
     continueTableTalkRef.current?.();
     continueTableTalkRef.current = null;
