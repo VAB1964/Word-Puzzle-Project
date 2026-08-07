@@ -68,7 +68,7 @@ describe("TableTalkService", () => {
     expect(occasionalEmissions.length).toBeLessThan(chattyEmissions.length);
   });
 
-  it("cooldown prevents excessive comments but never suppresses Go", () => {
+  it("cooldown prevents excessive comments but never suppresses Go or My crib", () => {
     const emissions: CharacterDialogueEmission[] = [];
     let now = 1_000;
     const service = new TableTalkService({
@@ -81,13 +81,19 @@ describe("TableTalkService", () => {
 
     service.handleEvent(event("game_started"), baseContext("chatty"));
     service.handleEvent(event("go_declared"), baseContext("chatty"));
-    expect(emissions).toHaveLength(2);
-    expect(emissions[1].text).toBe("Go.");
-
-    now += 5_100;
-    service.handleEvent(event("go_declared"), baseContext("chatty"));
+    service.handleEvent(event("first_crib_won"), baseContext("chatty"));
     expect(emissions).toHaveLength(3);
-    expect(emissions[2].text).toBe("Go.");
+    expect(emissions[2].text).toBe("My crib.");
+
+    now += 100;
+    service.handleEvent(event("first_crib_won"), baseContext("chatty"));
+    expect(emissions).toHaveLength(4);
+    expect(emissions[3].text).toBe("My crib.");
+
+    now += 100;
+    service.handleEvent(event("go_declared"), baseContext("chatty"));
+    expect(emissions).toHaveLength(5);
+    expect(emissions[4].text).toBe("Go.");
   });
 
   it("does not immediately repeat recent lines", () => {

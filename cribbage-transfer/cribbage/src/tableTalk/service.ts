@@ -104,7 +104,7 @@ export class TableTalkService {
 
     let prompt = this.promptFor(event, context);
     if (!prompt) return;
-    const forced = event.type === "go_declared";
+    const forced = event.type === "go_declared" || event.type === "first_crib_won";
 
     const inCooldown = this.inCooldown();
     if (!forced && inCooldown && !prompt.significant) return;
