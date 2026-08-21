@@ -141,7 +141,7 @@ describe("TableTalkService", () => {
     });
     service.handleEvent(event("large_hand_scored"), baseContext("occasional"));
     expect(emissions).toHaveLength(1);
-    expect(emissions[0].dynamic).toBe(true);
+    expect(emissions[0].text).toBeTruthy();
     expect(emissions[0].event).toEqual(event("large_hand_scored"));
   });
 
@@ -157,7 +157,6 @@ describe("TableTalkService", () => {
     service.handleEvent(event("go_declared"), baseContext("chatty"));
 
     expect(emissions[0].text).toBe("Go.");
-    expect(emissions[0].dynamic).toBe(false);
   });
 
   it("lets the crib owner announce first crib possession", () => {
@@ -174,7 +173,6 @@ describe("TableTalkService", () => {
     expect(emissions).toHaveLength(1);
     expect(emissions[0].characterName).toBe("Mabel");
     expect(emissions[0].text).toBe("My crib.");
-    expect(emissions[0].dynamic).toBe(false);
   });
 
   it("does not let an AI claim first crib when the human won it", () => {

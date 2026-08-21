@@ -136,7 +136,6 @@ export class TableTalkService {
       eventType: event.type,
       emotion: prompt.emotion,
       timestamp: this.now(),
-      dynamic: prompt.significant && event.type !== "go_declared",
       event: { ...event },
       context: {
         ...context,

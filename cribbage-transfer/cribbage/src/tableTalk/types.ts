@@ -1,5 +1,4 @@
 export type TableTalkLevel = "off" | "occasional" | "chatty";
-export type TableTalkVoiceMode = "browser" | "cloud";
 
 export type CharacterId = "mabel" | "arthur" | "clara";
 export type TableTalkEmotion =
@@ -76,7 +75,6 @@ export type CharacterDialogueEmission = {
   eventType: TableTalkEventType;
   emotion: TableTalkEmotion;
   timestamp: number;
-  dynamic: boolean;
   event: TableTalkEvent;
   context: TableTalkContext;
 };

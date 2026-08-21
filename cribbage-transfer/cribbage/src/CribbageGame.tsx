@@ -4,15 +4,10 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { buildTableTalkContext, toPublicCard } from "./tableTalk/context";
 import { TableTalkService } from "./tableTalk/service";
 import {
-  loadCloudVoiceUsageStats,
   loadTableTalkLevel,
   loadTableTalkVoiceEnabled,
-  loadTableTalkVoiceMode,
-  saveCloudVoiceUsageStats,
   saveTableTalkLevel,
   saveTableTalkVoiceEnabled,
-  saveTableTalkVoiceMode,
-  type CloudVoiceUsageStats,
 } from "./tableTalk/storage";
 import type {
   CharacterDialogueEmission,
@@ -20,11 +15,8 @@ import type {
   TableTalkContext,
   TableTalkEvent,
   TableTalkLevel,
-  TableTalkVoiceMode,
 } from "./tableTalk/types";
-import { TableTalkVoiceOutput } from "./tableTalk/voiceOutput";
-import { CloudTableTalkVoiceOutput, type CloudVoiceUsageDelta } from "./tableTalk/cloudVoiceOutput";
-import { DynamicTableTalkClient } from "./tableTalk/dynamicDialogue";
+import { CloudTableTalkVoiceOutput } from "./tableTalk/cloudVoiceOutput";
 
 type Suit = "♠" | "♥" | "♦" | "♣";
 type Card = { rank: number; suit: Suit; id: string };
@@ -39,7 +31,7 @@ type HistoryEntry =
   | { kind: "dialogue"; characterName: string; characterColor: string; text: string; scripted: boolean; category: TableTalkEvent["type"] };
 type TableTalkPlayback = {
   line: CharacterDialogueEmission;
-  phase: "intro" | "generatingText" | "generating" | "speaking" | "reading";
+  phase: "intro" | "loading" | "speaking" | "reading";
 };
 type CardPlayAnimation = {
   card: Card;
@@ -233,14 +225,6 @@ export default function Home() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [tableTalkLevel, setTableTalkLevel] = useState<TableTalkLevel>(() => loadTableTalkLevel("occasional"));
   const [tableTalkVoiceEnabled, setTableTalkVoiceEnabled] = useState(() => loadTableTalkVoiceEnabled(false));
-  const [tableTalkVoiceMode, setTableTalkVoiceMode] = useState<TableTalkVoiceMode>(() => loadTableTalkVoiceMode("browser"));
-  const [showCloudUsage, setShowCloudUsage] = useState(false);
-  const [cloudUsageSession, setCloudUsageSession] = useState<CloudVoiceUsageStats>({
-    requestCount: 0,
-    charCount: 0,
-    estimatedUsd: 0,
-  });
-  const [cloudUsageLifetime, setCloudUsageLifetime] = useState<CloudVoiceUsageStats>(() => loadCloudVoiceUsageStats());
   const [players, setPlayers] = useState<Player[]>([]);
   const [scoringHands, setScoringHands] = useState<Card[][]>([]);
   const [dealer, setDealer] = useState(1);
@@ -274,46 +258,27 @@ export default function Home() {
   const mutedRef = useRef(muted);
   const volumeRef = useRef(volume);
   const playersRef = useRef<Player[]>(players);
-  const tableTalkVoiceModeRef = useRef<TableTalkVoiceMode>(tableTalkVoiceMode);
+  const tableTalkVoiceEnabledRef = useRef(tableTalkVoiceEnabled);
   const pendingScoreByTeamRef = useRef<Record<number, number>>({});
   const scoreRaceStateRef = useRef<Record<number, { behind: boolean }>>({});
   const goPlayersRef = useRef(new Set<number>());
   const pendingGoResolutionRef = useRef<{ declarer: number; lastPegger: number | null } | null>(null);
   const cardPlayAnimatingRef = useRef(false);
   const cardPlayTimerRef = useRef<number | null>(null);
-  const tableTalkVoiceRef = useRef<TableTalkVoiceOutput | null>(null);
   const cloudTableTalkVoiceRef = useRef<CloudTableTalkVoiceOutput | null>(null);
-  const dynamicTableTalkRef = useRef<DynamicTableTalkClient | null>(null);
   const tableTalkQueueRef = useRef<CharacterDialogueEmission[]>([]);
   const tableTalkSpeakersInSequenceRef = useRef(new Set<CharacterDialogueEmission["characterId"]>());
   const tableTalkPlayingRef = useRef(false);
   const continueTableTalkRef = useRef<(() => void) | null>(null);
   const tableTalkSkippedRef = useRef(false);
-  if (!tableTalkVoiceRef.current) {
-    tableTalkVoiceRef.current = new TableTalkVoiceOutput({
-      enabled: tableTalkVoiceEnabled && !muted,
-    });
-  }
   if (!cloudTableTalkVoiceRef.current) {
     cloudTableTalkVoiceRef.current = new CloudTableTalkVoiceOutput({
-      enabled: tableTalkVoiceEnabled && !muted && tableTalkVoiceMode === "cloud",
+      enabled: tableTalkVoiceEnabled && !muted,
       onError: (message) => {
-        announce(`Cloud voice unavailable: ${message}`);
-      },
-      onStatus: (message) => {
-        announce(message);
-      },
-      onUsage: (delta) => {
-        setCloudUsageSession(current => applyCloudUsageDelta(current, delta));
-        setCloudUsageLifetime(current => {
-          const next = applyCloudUsageDelta(current, delta);
-          saveCloudVoiceUsageStats(next);
-          return next;
-        });
+        announce(`Prerecorded voice unavailable: ${message}`);
       },
     });
   }
-  if (!dynamicTableTalkRef.current) dynamicTableTalkRef.current = new DynamicTableTalkClient();
 
   function waitForTableTalk(ms: number) {
     return new Promise<void>(resolve => window.setTimeout(resolve, ms));
@@ -321,7 +286,6 @@ export default function Home() {
   function continueTableTalk() {
     if (!continueTableTalkRef.current) return;
     tableTalkSkippedRef.current = true;
-    tableTalkVoiceRef.current?.cancel();
     cloudTableTalkVoiceRef.current?.cancel();
     continueTableTalkRef.current();
   }
@@ -338,37 +302,26 @@ export default function Home() {
     tableTalkSkippedRef.current = false;
     setTableTalkBlocking(true);
     setNextTableTalkSpeaker(tableTalkQueueRef.current[0]?.characterName ?? null);
-    let line = queuedLine;
-    if (line.dynamic) {
-      setTableTalkPlayback({ line, phase: "generatingText" });
-      const recentDialogue = messageHistoryRef.current
-        .filter((entry): entry is Extract<HistoryEntry, { kind: "dialogue" }> => entry.kind === "dialogue")
-        .slice(-4)
-        .map(entry => `${entry.characterName}: ${entry.text}`);
-      const generated = await dynamicTableTalkRef.current?.generate(line, recentDialogue);
-      if (generated) line = { ...line, text: generated };
-      else line = { ...line, dynamic: false };
-      appendDialogueHistory(line);
-    } else {
-      setTableTalkPlayback({ line, phase: "intro" });
-      if (line.eventType !== "go_declared") await waitForTableTalk(350);
-    }
+    const line = queuedLine;
+    setTableTalkPlayback({ line, phase: "intro" });
+    if (line.eventType !== "go_declared") await waitForTableTalk(350);
     const continued = new Promise<void>(resolve => {
       continueTableTalkRef.current = resolve;
     });
-    setTableTalkPlayback({ line, phase: "generating" });
+    setTableTalkPlayback({ line, phase: "loading" });
     const showSpeaking = () => setTableTalkPlayback({ line, phase: "speaking" });
-    let didSpeak = false;
-    if (tableTalkVoiceModeRef.current === "cloud") {
-      const cloudSpoke = await cloudTableTalkVoiceRef.current?.speak(line, showSpeaking);
-      if (cloudSpoke) {
-        didSpeak = true;
-      } else {
-        didSpeak = (await tableTalkVoiceRef.current?.speak(line, showSpeaking)) ?? false;
-      }
-    } else {
-      didSpeak = (await tableTalkVoiceRef.current?.speak(line, showSpeaking)) ?? false;
+    const voiceEnabled = tableTalkVoiceEnabledRef.current && !mutedRef.current;
+    const didSpeak = voiceEnabled
+      ? (await cloudTableTalkVoiceRef.current?.speak(line, showSpeaking)) ?? false
+      : false;
+    if (voiceEnabled && !didSpeak) {
+      continueTableTalkRef.current = null;
+      setTableTalkPlayback(null);
+      tableTalkPlayingRef.current = false;
+      void playNextTableTalk();
+      return;
     }
+    appendDialogueHistory(line);
     if (!tableTalkSkippedRef.current) {
       setTableTalkPlayback({ line, phase: "reading" });
       const readingDelayMs = line.eventType === "go_declared" ? 0 : didSpeak ? 0 : 1800;
@@ -398,7 +351,7 @@ export default function Home() {
         characterName: line.characterName,
         characterColor: speaker?.color ?? "blue",
         text: line.text,
-        scripted: !line.dynamic,
+        scripted: true,
         category: line.eventType,
       },
     ]);
@@ -409,7 +362,6 @@ export default function Home() {
     tableTalkRef.current = new TableTalkService({
       level: tableTalkLevel,
       emit: (line: CharacterDialogueEmission) => {
-        if (!line.dynamic) appendDialogueHistory(line);
         enqueueTableTalk(line);
       },
     });
@@ -417,22 +369,11 @@ export default function Home() {
 
   const needDiscard = playerCount === 2 ? 2 : playerCount === 3 ? 1 : 1;
   const handSize = playerCount === 2 ? 6 : 5;
-  function applyCloudUsageDelta(current: CloudVoiceUsageStats, delta: CloudVoiceUsageDelta): CloudVoiceUsageStats {
-    return {
-      requestCount: current.requestCount + Math.max(0, delta.requestCount),
-      charCount: current.charCount + Math.max(0, delta.charCount),
-      estimatedUsd: current.estimatedUsd + Math.max(0, delta.estimatedUsd),
-    };
-  }
-  function formatUsd(value: number): string {
-    return `$${value.toFixed(value < 1 ? 4 : 2)}`;
-  }
   function asHistoryText(entry: HistoryEntry) {
     return entry.kind === "game" ? entry.text : `${entry.characterName}: "${entry.text}"`;
   }
-  function formatDialogueText(text: string, scripted: boolean, category: TableTalkEvent["type"]) {
-    const source = scripted ? "scripted" : "dynamic";
-    return `${text} (${source} • ${category})`;
+  function formatDialogueText(text: string, _scripted: boolean, category: TableTalkEvent["type"]) {
+    return `${text} (scripted • ${category})`;
   }
   function announce(text: string) {
     setMessageHistory(old => [...old, { kind: "game", text }]);
@@ -877,12 +818,12 @@ export default function Home() {
   }, [muted]);
 
   useEffect(() => {
-    playersRef.current = players;
-  }, [players]);
+    tableTalkVoiceEnabledRef.current = tableTalkVoiceEnabled;
+  }, [tableTalkVoiceEnabled]);
 
   useEffect(() => {
-    tableTalkVoiceModeRef.current = tableTalkVoiceMode;
-  }, [tableTalkVoiceMode]);
+    playersRef.current = players;
+  }, [players]);
 
   useEffect(() => {
     pendingScoreByTeamRef.current = {};
@@ -898,22 +839,15 @@ export default function Home() {
   }, [tableTalkLevel]);
 
   useEffect(() => {
-    tableTalkVoiceRef.current?.setEnabled(tableTalkVoiceEnabled && !muted);
-    cloudTableTalkVoiceRef.current?.setEnabled(tableTalkVoiceEnabled && !muted && tableTalkVoiceMode === "cloud");
+    cloudTableTalkVoiceRef.current?.setEnabled(tableTalkVoiceEnabled && !muted);
     saveTableTalkVoiceEnabled(tableTalkVoiceEnabled);
-  }, [tableTalkVoiceEnabled, muted, tableTalkVoiceMode]);
+  }, [tableTalkVoiceEnabled, muted]);
 
   useEffect(() => {
-    saveTableTalkVoiceMode(tableTalkVoiceMode);
-  }, [tableTalkVoiceMode]);
-
-  useEffect(() => {
-    tableTalkVoiceRef.current?.setVolume(Math.max(0, Math.min(1, volume)));
     cloudTableTalkVoiceRef.current?.setVolume(Math.max(0, Math.min(1, volume)));
   }, [volume]);
 
   useEffect(() => () => {
-    tableTalkVoiceRef.current?.cancel();
     cloudTableTalkVoiceRef.current?.cancel();
   }, []);
 
@@ -1000,39 +934,14 @@ export default function Home() {
               <button className={tableTalkVoiceEnabled ? "active" : ""} onClick={() => setTableTalkVoiceEnabled(true)}>on</button>
               <button className={!tableTalkVoiceEnabled ? "active" : ""} onClick={() => setTableTalkVoiceEnabled(false)}>off</button>
             </div>
-            <label>Voice engine</label>
-            <div className="table-talk-engine-picks">
-              <button className={tableTalkVoiceMode === "browser" ? "active" : ""} onClick={() => setTableTalkVoiceMode("browser")}>browser</button>
-              <button className={tableTalkVoiceMode === "cloud" ? "active" : ""} onClick={() => setTableTalkVoiceMode("cloud")}>cloud</button>
-            </div>
             <p className="difficulty-note">{difficulty === "easy" ? "Relaxed play with occasional computer mistakes." : difficulty === "medium" ? "Balanced opponents that make sensible choices." : "Skilled opponents that evaluate hands, cribs, and pegging replies."}</p>
             <p className="table-talk-note">
               {tableTalkLevel === "off" ? "No personality comments are shown." : tableTalkLevel === "occasional" ? "Comments appear on notable moments." : "Characters chat more often, with cooldowns to avoid spam."}
               {" "}
               {!tableTalkVoiceEnabled
                 ? "Voice is currently off."
-                : tableTalkVoiceMode === "cloud"
-                  ? "Cloud voice uses a secure server session token and server-side provider key."
-                  : "Voice uses your browser speech engine."}
+                : "Voice uses prerecorded character clips."}
             </p>
-            <button className="quiet usage-toggle" onClick={() => setShowCloudUsage(open => !open)}>
-              {showCloudUsage ? "Hide cloud voice usage" : "Cloud voice usage"}
-            </button>
-            {showCloudUsage && <div className="cloud-usage-panel">
-              <strong>Cloud Voice Usage</strong>
-              <div className="usage-grid">
-                <span>Session requests</span><b>{cloudUsageSession.requestCount}</b>
-                <span>Session characters</span><b>{cloudUsageSession.charCount}</b>
-                <span>Session est. cost</span><b>{formatUsd(cloudUsageSession.estimatedUsd)}</b>
-                <span>Lifetime requests</span><b>{cloudUsageLifetime.requestCount}</b>
-                <span>Lifetime characters</span><b>{cloudUsageLifetime.charCount}</b>
-                <span>Lifetime est. cost</span><b>{formatUsd(cloudUsageLifetime.estimatedUsd)}</b>
-              </div>
-              <div className="usage-actions">
-                <button className="quiet" onClick={() => setCloudUsageSession({ requestCount: 0, charCount: 0, estimatedUsd: 0 })}>Reset session</button>
-                <button className="quiet" onClick={() => { const reset = { requestCount: 0, charCount: 0, estimatedUsd: 0 }; setCloudUsageLifetime(reset); saveCloudVoiceUsageStats(reset); }}>Reset lifetime</button>
-              </div>
-            </div>}
             <button className="primary" onClick={startGame}>Start game</button>
             <button className="quit" onClick={()=>announce("Thanks for playing. You can close this tab whenever you’re ready.")}>Quit</button>
           </div>
@@ -1056,14 +965,13 @@ export default function Home() {
             const shownHand = phase === "counting" ? (scoringHands[i] ?? []) : p.hand;
             const isSpeaker = tableTalkPlayback?.line.characterName === p.name;
             const isNextSpeaker = nextTableTalkSpeaker === p.name;
-            const isGeneratingText = tableTalkPlayback?.phase === "generatingText";
             const isCribOwner = i === dealer;
             const cribCards = crib.slice(0, 4);
             const showCribStrip = isCribOwner && cribCards.length > 0;
             const revealCribCards = phase === "counting" && turn === -1;
             return <article className={`player ${turn === i ? "turn" : ""} ${isSpeaker ? "talking" : ""} ${isNextSpeaker ? "talking-next" : ""}`} key={p.name}>
               <header>{i > 0 ? <div className={`player-portrait ${p.color}`} aria-hidden="true">{p.name[0]}</div> : <span className={`player-token ${p.color}`} />}<h3>{p.name}</h3><AnimatedScore score={p.score} />{i > 0 && <small>AI</small>}</header>
-              {isSpeaker && <div className="player-caption" role="status" aria-live="polite"><div className="caption-status"><span>{isGeneratingText ? `${p.name} is thinking…` : tableTalkPlayback.phase === "intro" ? `${p.name} is about to speak` : tableTalkPlayback.phase === "generating" ? "Generating voice…" : tableTalkPlayback.phase === "reading" ? "Take a moment…" : `${p.name} is speaking`}</span>{(isGeneratingText || tableTalkPlayback.phase === "generating") && <div className="voice-meter" role="progressbar" aria-label={isGeneratingText ? "Generating response" : "Generating voice"}><i /></div>}</div>{!isGeneratingText && <p>“{formatDialogueText(tableTalkPlayback.line.text, !tableTalkPlayback.line.dynamic, tableTalkPlayback.line.eventType)}”</p>}{tableTalkPlayback.phase !== "intro" && !isGeneratingText && <button className="caption-continue" onClick={continueTableTalk}>Continue</button>}</div>}
+              {isSpeaker && <div className="player-caption" role="status" aria-live="polite"><div className="caption-status"><span>{tableTalkPlayback.phase === "intro" ? `${p.name} is about to speak` : tableTalkPlayback.phase === "loading" ? "Loading voice…" : tableTalkPlayback.phase === "reading" ? "Take a moment…" : `${p.name} is speaking`}</span>{tableTalkPlayback.phase === "loading" && <div className="voice-meter" role="progressbar" aria-label="Loading voice"><i /></div>}</div>{(tableTalkPlayback.phase === "speaking" || tableTalkPlayback.phase === "reading") && <p>“{formatDialogueText(tableTalkPlayback.line.text, true, tableTalkPlayback.line.eventType)}”</p>}{tableTalkPlayback.phase !== "intro" && <button className="caption-continue" onClick={continueTableTalk}>Continue</button>}</div>}
               {isNextSpeaker && !isSpeaker && <div className="next-speaker-label">Up next: {p.name}</div>}
               <div className="hand">{shownHand.map(c => <CardView key={c.id} card={c} playSource={`${i}-${c.id}`} animating={cardPlayAnimation?.playerIndex === i && cardPlayAnimation.card.id === c.id} hidden={i > 0 && phase !== "counting"} selected={selected.includes(c.id)} onClick={i === 0 && phase === "discard" ? () => toggleCard(c.id) : i === 0 && phase === "pegging" && turn === 0 && !peggingHold && !cardPlayAnimation ? () => playCard(0, c) : undefined} />)}</div>
               {showCribStrip && <div className="crib-strip" aria-label={`${p.name}'s crib`}>
