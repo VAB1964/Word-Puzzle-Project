@@ -17,6 +17,7 @@ import type {
   TableTalkLevel,
 } from "./tableTalk/types";
 import { CloudTableTalkVoiceOutput } from "./tableTalk/cloudVoiceOutput";
+import type { PlayerPreferences } from "./identity/preferences";
 
 type Suit = "♠" | "♥" | "♦" | "♣";
 type Card = { rank: number; suit: Suit; id: string };
@@ -49,6 +50,7 @@ const SUITS: Suit[] = ["♠", "♥", "♦", "♣"];
 const COLORS = ["red", "blue", "green", "purple"];
 const NAMES = ["You", "Mabel", "Arthur", "Clara"];
 const RANK = (n: number) => n === 1 ? "A" : n === 11 ? "J" : n === 12 ? "Q" : n === 13 ? "K" : String(n);
+const SUIT_NAME: Record<Suit, string> = { "♠": "spades", "♥": "hearts", "♦": "diamonds", "♣": "clubs" };
 const value = (c: Card) => Math.min(c.rank, 10);
 
 function combinations<T>(items: T[], count: number): T[][] {
@@ -147,7 +149,7 @@ function CountCard({ card, tableCard = false }: { card: Card; tableCard?: boolea
 
 function CardView({ card, selected, hidden, onClick, small, playSource, animating }: { card: Card; selected?: boolean; hidden?: boolean; onClick?: () => void; small?: boolean; playSource?: string; animating?: boolean }) {
   const warm = !hidden && (card.suit === "♥" || card.suit === "♦");
-  return <button data-play-source={playSource} className={`card ${hidden ? "back" : ""} ${warm ? "warm" : ""} ${selected ? "selected" : ""} ${small ? "small" : ""} ${animating ? "playing" : ""}`} onClick={onClick} disabled={!onClick} aria-label={hidden ? "Face-down card" : `${RANK(card.rank)} of ${card.suit}`}>
+  return <button data-play-source={playSource} className={`card ${hidden ? "back" : ""} ${warm ? "warm" : ""} ${selected ? "selected" : ""} ${small ? "small" : ""} ${animating ? "playing" : ""}`} onClick={onClick} disabled={!onClick} aria-label={hidden ? "Face-down card" : `${RANK(card.rank)} of ${SUIT_NAME[card.suit]}`}>
     {!hidden && <><span>{RANK(card.rank)}</span><b>{card.suit}</b><em>{card.suit}</em></>}
   </button>;
 }
@@ -178,7 +180,7 @@ function Board({ players, playerCount }: { players: Player[]; playerCount: numbe
     { name: playerCount === 4 ? "You + Arthur" : "You", score: players[0]?.score ?? 0, color: "red" },
     { name: playerCount === 4 ? "Mabel + Clara" : "Mabel", score: players[1]?.score ?? 0, color: "blue" },
     { name: playerCount >= 3 && playerCount !== 4 ? "Arthur" : "Open lane", score: playerCount === 3 ? players[2]?.score ?? 0 : 0, color: "green" },
-  ];
+  ].slice(0, playerCount === 4 ? 2 : playerCount);
   const scores = laneInfo.map(lane => lane.score);
   const previousScoresRef = useRef(scores);
   const [scoreMoves, setScoreMoves] = useState<Record<number, { from: number; to: number; amount: number }>>({});
@@ -194,9 +196,8 @@ function Board({ players, playerCount }: { players: Player[]; playerCount: numbe
     const timer = window.setTimeout(() => setScoreMoves({}), 2000);
     return () => window.clearTimeout(timer);
   }, [scores[0], scores[1], scores[2]]);
-  return <section className="board" aria-label="Three lane cribbage board">
+  return <section className="board" aria-label={`${laneInfo.length} lane cribbage board`}>
     <div className="board-title"><span>♣</span><h1>Cribbage</h1><span>♣</span></div>
-    <div className="route-key"><strong>START</strong><span>Score travels left to right</span><b>FINISH · 121</b></div>
     {laneInfo.map((lane, idx) => {
       const active = idx < (playerCount === 4 ? 2 : playerCount);
       const move = scoreMoves[idx];
@@ -208,23 +209,21 @@ function Board({ players, playerCount }: { players: Player[]; playerCount: numbe
             const marker = active && Math.min(121, lane.score) === point;
             const inTrail = !!move && move.amount > 1 && point > move.from && point <= move.to;
             const ghost = !!move && move.amount > 1 && move.from > 0 && point === move.from;
-            return <i key={point} className={`${point % 5 === 0 ? "fifth" : ""} ${marker ? "has-peg" : ""} ${inTrail ? "score-trail" : ""} ${ghost ? "has-ghost" : ""}`} title={`${point} points`}><span />{marker && move?.amount > 1 && <b className="score-jump">+{move.amount}</b>}</i>;
+            return <i key={point} className={`${point % 5 === 0 ? "fifth" : ""} ${point === 61 || point === 91 ? "skunk-line" : ""} ${marker ? "has-peg" : ""} ${inTrail ? "score-trail" : ""} ${ghost ? "has-ghost" : ""}`} title={`${point} points`}><span />{marker && move?.amount > 1 && <b className="score-jump">+{move.amount}</b>}</i>;
           })}
         </div>
         <div className="milestones"><span>0</span><span>30</span><span>60</span><span>90</span><span>121</span></div>
       </div>;
     })}
-    <div className="start-plate">START<br/><small>0 points</small></div>
-    <div className="finish-plate">★ FINISH ★<br/><small>First to 121</small></div>
   </section>;
 }
 
-export default function Home() {
+export default function Home({ initialPreferences, onExit }: { initialPreferences?: PlayerPreferences; onExit?: () => void }) {
   const [phase, setPhase] = useState<Phase>("menu");
   const [playerCount, setPlayerCount] = useState(3);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
-  const [tableTalkLevel, setTableTalkLevel] = useState<TableTalkLevel>(() => loadTableTalkLevel("occasional"));
-  const [tableTalkVoiceEnabled, setTableTalkVoiceEnabled] = useState(() => loadTableTalkVoiceEnabled(false));
+  const [tableTalkLevel, setTableTalkLevel] = useState<TableTalkLevel>(() => initialPreferences?.tableTalk ?? loadTableTalkLevel("occasional"));
+  const [tableTalkVoiceEnabled, setTableTalkVoiceEnabled] = useState(() => initialPreferences?.voiceEnabled ?? loadTableTalkVoiceEnabled(false));
   const [players, setPlayers] = useState<Player[]>([]);
   const [scoringHands, setScoringHands] = useState<Card[][]>([]);
   const [dealer, setDealer] = useState(1);
@@ -247,8 +246,9 @@ export default function Home() {
   const [handCounts, setHandCounts] = useState<HandCount[]>([]);
   const [winner, setWinner] = useState("");
   const [openingDraws, setOpeningDraws] = useState<OpeningDraw[]>([]);
-  const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(.55);
+  const [muted, setMuted] = useState(initialPreferences ? !initialPreferences.soundEnabled : false);
+  const [volume, setVolume] = useState(initialPreferences?.volume ?? .55);
+  const [turnReminder, setTurnReminder] = useState(false);
   const deckRef = useRef<Card[]>([]);
   const messageWindowRef = useRef<HTMLDivElement>(null);
   const peggingTargetRef = useRef<HTMLDivElement>(null);
@@ -881,6 +881,16 @@ export default function Home() {
   }, [tableTalkBlocking]);
 
   useEffect(() => {
+    setTurnReminder(false);
+    if (phase !== "pegging" || turn < 0) return;
+    const reminder = window.setTimeout(() => {
+      setTurnReminder(true);
+      window.setTimeout(() => setTurnReminder(false), 2400);
+    }, 10_000);
+    return () => window.clearTimeout(reminder);
+  }, [phase, turn]);
+
+  useEffect(() => {
     const window = messageWindowRef.current;
     if (window && shouldAutoScrollRef.current) window.scrollTop = window.scrollHeight;
   }, [messageHistory]);
@@ -913,7 +923,7 @@ export default function Home() {
         <div className={`flying-card-front ${cardPlayAnimation.card.suit === "♥" || cardPlayAnimation.card.suit === "♦" ? "warm" : ""}`}><span>{RANK(cardPlayAnimation.card.rank)}</span><b>{cardPlayAnimation.card.suit}</b><em>{cardPlayAnimation.card.suit}</em></div>
       </div></div>}
       <section className="play-area">
-        <div className="status-bar"><span className="phase-tag">{phase === "menu" ? "Welcome" : phase}</span><div className="history-column"><strong className="history-title">Pegging history</strong><div className="message-window" onScroll={onHistoryScroll} ref={messageWindowRef} role="log" aria-live="polite" aria-label="Game and pegging history">{messageHistory.map((entry, i) => <p className={`${entry.kind === "dialogue" ? `dialogue ${entry.characterColor}` : ""} ${i === messageHistory.length - 1 ? "latest" : ""}`} key={`${i}-${asHistoryText(entry)}`}>{entry.kind === "dialogue" ? <><span className="speaker">{entry.characterName}:</span> “{formatDialogueText(entry.text, entry.scripted, entry.category)}”</> : entry.text}</p>)}</div></div><div className="sound-controls"><button className="quiet sound-toggle" onClick={() => { setMuted(value => !value); if (muted) setTimeout(() => sound("click"), 0); }} aria-pressed={muted}>{muted ? "Sound off" : "Sound on"}</button><label>Volume<input aria-label="Sound volume" type="range" min="0" max="1" step="0.05" value={volume} onChange={event => setVolume(Number(event.target.value))} /></label><button className="quiet" onClick={() => setPhase("menu")}>Menu</button><a className="quiet home-link" href="https://vabgames.com" onClick={() => sound("click")}>Back to VABGames.com</a></div></div>
+        <div className="status-bar"><span className="phase-tag">{phase === "menu" ? "Welcome" : phase}</span><div className="history-column"><strong className="history-title">Pegging history</strong><div className="message-window" onScroll={onHistoryScroll} ref={messageWindowRef} role="log" aria-live="polite" aria-label="Game and pegging history">{messageHistory.map((entry, i) => <p className={`${entry.kind === "dialogue" ? `dialogue ${entry.characterColor}` : ""} ${i === messageHistory.length - 1 ? "latest" : ""}`} key={`${i}-${asHistoryText(entry)}`}>{entry.kind === "dialogue" ? <><span className="speaker">{entry.characterName}:</span> “{formatDialogueText(entry.text, entry.scripted, entry.category)}”</> : entry.text}</p>)}</div></div><div className="sound-controls"><button className="quiet sound-toggle" onClick={() => { setMuted(value => !value); if (muted) setTimeout(() => sound("click"), 0); }} aria-pressed={muted}>{muted ? "Sound off" : "Sound on"}</button><label>Volume<input aria-label="Sound volume" type="range" min="0" max="1" step="0.05" value={volume} onChange={event => setVolume(Number(event.target.value))} /></label><button className="quiet" onClick={onExit ?? (() => setPhase("menu"))}>Mode select</button><a className="quiet home-link" href="https://vabgames.com" onClick={() => sound("click")}>Back to VABGames.com</a></div></div>
         {phase === "menu" ? <div className="menu-panel">
           <div><span className="eyebrow">A classic card-room game</span><h2>Pull up a chair.</h2><p>Play against up to three computer opponents. Four-player games use traditional partnerships.</p></div>
           <div className="menu-controls">
@@ -969,7 +979,7 @@ export default function Home() {
             const cribCards = crib.slice(0, 4);
             const showCribStrip = isCribOwner && cribCards.length > 0;
             const revealCribCards = phase === "counting" && turn === -1;
-            return <article className={`player ${turn === i ? "turn" : ""} ${isSpeaker ? "talking" : ""} ${isNextSpeaker ? "talking-next" : ""}`} key={p.name}>
+            return <article className={`player seat-${i} ${turn === i ? "turn" : ""} ${turn === i && turnReminder ? "turn-reminder" : ""} ${isSpeaker ? "talking" : ""} ${isNextSpeaker ? "talking-next" : ""}`} aria-label={`${p.name}, score ${p.score}${turn === i ? ", active player" : ""}`} key={p.name}>
               <header>{i > 0 ? <div className={`player-portrait ${p.color}`} aria-hidden="true">{p.name[0]}</div> : <span className={`player-token ${p.color}`} />}<h3>{p.name}</h3><AnimatedScore score={p.score} />{i > 0 && <small>AI</small>}</header>
               {isSpeaker && <div className="player-caption" role="status" aria-live="polite"><div className="caption-status"><span>{tableTalkPlayback.phase === "intro" ? `${p.name} is about to speak` : tableTalkPlayback.phase === "loading" ? "Loading voice…" : tableTalkPlayback.phase === "reading" ? "Take a moment…" : `${p.name} is speaking`}</span>{tableTalkPlayback.phase === "loading" && <div className="voice-meter" role="progressbar" aria-label="Loading voice"><i /></div>}</div>{(tableTalkPlayback.phase === "speaking" || tableTalkPlayback.phase === "reading") && <p>“{formatDialogueText(tableTalkPlayback.line.text, true, tableTalkPlayback.line.eventType)}”</p>}{tableTalkPlayback.phase !== "intro" && <button className="caption-continue" onClick={continueTableTalk}>Continue</button>}</div>}
               {isNextSpeaker && !isSpeaker && <div className="next-speaker-label">Up next: {p.name}</div>}
