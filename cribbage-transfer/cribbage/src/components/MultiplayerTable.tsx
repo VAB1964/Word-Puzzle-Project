@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { configureGameAudio, playGameSound, unlockGameAudio } from "../audio/gameAudio";
 import { playScriptedDialogue } from "../audio/scriptedDialogue";
 import { AVATARS } from "../identity/preferences";
@@ -140,12 +140,17 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
   const players = playersFrom(view).sort((a, b) => (a.seat ?? 99) - (b.seat ?? 99));
   const me = players.find(player => player.id === playerId);
   const [selected, setSelected] = useState<string[]>([]);
-  const [countingEntryReady, setCountingEntryReady] = useState(true);
+  const [countingHoldElapsed, setCountingHoldElapsed] = useState(true);
   const previousPresentationPhase = useRef(phase);
   const lastPeggingPile = useRef<Card[]>([]);
   const lastPeggingCount = useRef(0);
   const [history, setHistory] = useState<Array<{ key: string; text: string; dialogue: boolean }>>([]);
-  const [playNotices, setPlayNotices] = useState<Array<{ id: string; kind: "play" | "go" | "last"; name: string; isAI: boolean; card: string; reason: string; points: number; score: number; count: number }>>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [playNotices, setPlayNotices] = useState<Array<{ id: string; playerId: string; kind: "play" | "go" | "last"; name: string; isAI: boolean; card: string; reason: string; points: number; score: number; count: number }>>([]);
+  const [noticeVisible, setNoticeVisible] = useState(false);
+  const [flyingCard, setFlyingCard] = useState<{ card: Card; left: number; top: number; dx: number; dy: number; faceDown: boolean } | null>(null);
+  const [hiddenPlayedCards, setHiddenPlayedCards] = useState<Set<string>>(() => new Set());
+  const pileTargetRef = useRef<HTMLDivElement>(null);
   const seen = useRef(new Set<string>());
   const playNoticeSeen = useRef(new Set<string>());
   const playNoticesInitialized = useRef(false);
@@ -162,8 +167,16 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     lastPeggingPile.current = authoritativePile;
     lastPeggingCount.current = authoritativeRunningCount;
   }
-  const holdingFinalPeg = phase === "counting" && (!countingEntryReady || previousPresentationPhase.current === "pegging");
+  const enteringCounting = phase === "counting" && previousPresentationPhase.current === "pegging";
+  if (enteringCounting && authoritativePile.length >= lastPeggingPile.current.length) {
+    lastPeggingPile.current = authoritativePile;
+    if (authoritativeRunningCount > 0) lastPeggingCount.current = authoritativeRunningCount;
+  }
+  const countingEntryReady = !enteringCounting && countingHoldElapsed && playNotices.length === 0 && !flyingCard;
+  const holdingFinalPeg = phase === "counting" && !countingEntryReady;
   const runningCount = holdingFinalPeg ? lastPeggingCount.current : phase === "counting" ? 0 : authoritativeRunningCount;
+  const [presentedRunningCount, setPresentedRunningCount] = useState(authoritativeRunningCount);
+  const displayRunningCount = holdingFinalPeg ? lastPeggingCount.current : phase === "counting" ? 0 : presentedRunningCount;
   const turnSeat = number(state.turnSeat, -1);
   const dealerSeat = number(state.dealerSeat, -1);
   const needed = number(state.discardCount ?? state.requiredDiscards, players.length === 2 ? 2 : 1);
@@ -175,6 +188,7 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
   const host = players.find(player => player.id === hostId);
   const cut = cards(state.starterCard ? [state.starterCard] : state.cutCard ? [state.cutCard] : state.starter ? [state.starter] : [])[0];
   const pile = holdingFinalPeg ? lastPeggingPile.current : phase === "counting" ? [] : authoritativePile;
+  const visiblePile = pile.filter(card => !hiddenPlayedCards.has(card.id));
   const ledger = object(view.sessionLedger ?? state.sessionLedger ?? view.ledger);
   const winner = text(state.winnerName ?? state.winnerTeamName ?? state.winnerTeamId);
   const cutCards = object(state.cutCards);
@@ -188,17 +202,21 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     }) : [];
     return [...dialogue, ...(message?.events ?? []), ...(message?.event ? [message.event] : [])];
   }, [message, players, view.dialogue]);
+  const hasIncomingPegPlay = Array.isArray(view.dialogue) && view.dialogue.some(value => {
+    const item = object(value);
+    return item?.type === "PEG_PLAY" && !playNoticeSeen.current.has(text(item.id));
+  });
 
   useEffect(() => setSelected(ids => ids.filter(id => hand.some(card => card.id === id))), [view.revision]); // authoritative hand clears accepted choices
   useEffect(() => {
     const previous = previousPresentationPhase.current;
     previousPresentationPhase.current = phase;
     if (phase === "counting" && previous === "pegging") {
-      setCountingEntryReady(false);
-      const timer = window.setTimeout(() => setCountingEntryReady(true), 3000);
+      setCountingHoldElapsed(false);
+      const timer = window.setTimeout(() => setCountingHoldElapsed(true), 3000);
       return () => window.clearTimeout(timer);
     }
-    if (phase !== "counting") setCountingEntryReady(true);
+    if (phase !== "counting") setCountingHoldElapsed(true);
   }, [phase]);
   useEffect(() => {
     const additions: Array<{ key: string; text: string; dialogue: boolean }> = [];
@@ -213,7 +231,7 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     }
     if (additions.length) setHistory(old => [...old, ...additions].slice(-80));
   }, [events, view.revision]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialogue = Array.isArray(view.dialogue) ? view.dialogue : [];
     if (!playNoticesInitialized.current) {
       for (const value of dialogue) {
@@ -231,32 +249,85 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
       playNoticeSeen.current.add(id);
       const details = object(item.data);
       const player = players.find(candidate => candidate.id === item.playerId);
-      return [{ id, kind: item.type === "PEG_GO" ? "go" as const : item.type === "PEG_LAST" ? "last" as const : "play" as const, name: player?.name ?? "Player", isAI: player?.isAI === true,
+      return [{ id, playerId: text(item.playerId), kind: item.type === "PEG_GO" ? "go" as const : item.type === "PEG_LAST" ? "last" as const : "play" as const, name: player?.name ?? "Player", isAI: player?.isAI === true,
         card: text(details?.card), reason: text(details?.reason, "no points"),
         points: number(details?.points), score: number(details?.score), count: number(details?.runningCount) }];
     });
-    if (additions.length) setPlayNotices(current => [...current, ...additions]);
+    if (additions.length) {
+      setHiddenPlayedCards(current => {
+        const next = new Set(current);
+        for (const notice of additions) {
+          if (notice.kind !== "play") continue;
+          const card = parseCard(notice.card);
+          if (card) next.add(card.id);
+        }
+        return next;
+      });
+      setPlayNotices(current => [...current, ...additions]);
+    }
   }, [view.dialogue, view.revision]);
+  useEffect(() => {
+    const pileIds = new Set(pile.map(card => card.id));
+    setHiddenPlayedCards(current => {
+      const next = new Set([...current].filter(id => pileIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [phase, authoritativeRunningCount]);
+  useEffect(() => {
+    if (phase !== "pegging" || (!hasIncomingPegPlay && hiddenPlayedCards.size === 0)) setPresentedRunningCount(authoritativeRunningCount);
+  }, [phase, authoritativeRunningCount, hiddenPlayedCards.size, hasIncomingPegPlay]);
   useEffect(() => {
     if (!playNotices.length) return;
     const notice = playNotices[0];
-    if (notice.isAI && preferences.soundEnabled) {
-      const key = notice.kind === "go" ? "go_declared"
-        : notice.kind === "last" ? "self_last_card"
-        : notice.reason.includes("makes 31") ? "self_thirty_one"
-          : notice.reason.includes("makes 15") ? "self_fifteen"
-            : notice.reason.includes("four of a kind") ? "self_double_pair_royal"
-              : notice.reason.includes("three of a kind") ? "self_pair_royal"
-                : notice.reason.includes("pairs") ? "self_pair"
-                  : notice.reason.includes("run") ? "self_pegging_run" : null;
-      if (key) {
-        const characterIds = ["mabel", "arthur", "clara"] as const;
-        const characterId = characterIds[Math.max(0, players.findIndex(player => player.name === notice.name)) % characterIds.length]!;
-        void playScriptedDialogue(characterId, key, preferences.volume);
+    setNoticeVisible(false);
+    setFlyingCard(null);
+    let dismissTimer = 0;
+    const presentationTimer = window.setTimeout(() => {
+      setNoticeVisible(true);
+      if (notice.kind === "play") {
+        const card = parseCard(notice.card);
+        const source = document.querySelector<HTMLElement>(`[data-mp-player="${notice.playerId}"]`);
+        const target = pileTargetRef.current;
+        if (card && source && target) {
+          const sourceRect = source.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          const left = sourceRect.left + sourceRect.width / 2 - 28;
+          const top = sourceRect.top + sourceRect.height / 2 - 40;
+          const destinationLeft = targetRect.left + visiblePile.length * 36;
+          const destinationTop = targetRect.top + 7;
+          setFlyingCard({ card, left, top, dx: destinationLeft - left, dy: destinationTop - top, faceDown: notice.playerId !== playerId });
+          window.setTimeout(() => {
+            setFlyingCard(null);
+            setPresentedRunningCount(notice.count);
+            setHiddenPlayedCards(current => {
+              const next = new Set(current);
+              next.delete(card.id);
+              return next;
+            });
+          }, 1150);
+        }
       }
-    }
-    const timer = window.setTimeout(() => setPlayNotices(current => current.slice(1)), 2600);
-    return () => window.clearTimeout(timer);
+      if (notice.isAI && preferences.soundEnabled) {
+        const key = notice.kind === "go" ? "go_declared"
+          : notice.kind === "last" ? "self_last_card"
+          : notice.reason.includes("makes 31") ? "self_thirty_one"
+            : notice.reason.includes("makes 15") ? "self_fifteen"
+              : notice.reason.includes("four of a kind") ? "self_double_pair_royal"
+                : notice.reason.includes("three of a kind") ? "self_pair_royal"
+                  : notice.reason.includes("pairs") ? "self_pair"
+                    : notice.reason.includes("run") ? "self_pegging_run" : null;
+        if (key) {
+          const characterIds = ["mabel", "arthur", "clara"] as const;
+          const characterId = characterIds[Math.max(0, players.findIndex(player => player.name === notice.name)) % characterIds.length]!;
+          void playScriptedDialogue(characterId, key, preferences.volume);
+        }
+      }
+      dismissTimer = window.setTimeout(() => setPlayNotices(current => current.slice(1)), 2600);
+    }, notice.isAI ? 700 : 80);
+    return () => {
+      window.clearTimeout(presentationTimer);
+      window.clearTimeout(dismissTimer);
+    };
   }, [playNotices[0]?.id]);
 
   const toggle = (id: string) => setSelected(old => {
@@ -281,6 +352,14 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     : phase === "pegging" && active
       ? `${active.id === playerId ? "Your" : `${active.name}'s`} turn. ${active.id === playerId ? "Play a card or say Go." : "Waiting for their play."}`
       : active ? `${active.id === playerId ? "Your" : `${active.name}'s`} turn.` : titlePhase(phase);
+  const activeNotice = noticeVisible ? playNotices[0] : undefined;
+  const noticeContent = activeNotice ? activeNotice.kind === "go"
+    ? <><strong>{activeNotice.name} says Go!</strong><small>Running count: {activeNotice.count}</small></>
+    : activeNotice.kind === "last"
+      ? <><strong>{activeNotice.name} pegs 1 for last card</strong><small>Score: {activeNotice.score}</small></>
+      : <><strong>{activeNotice.name} played <CardNotation value={activeNotice.card} /></strong><span><CardNotation value={activeNotice.reason} /> · {activeNotice.points} point{activeNotice.points === 1 ? "" : "s"}</span><small>Running count: {activeNotice.count} · Score: {activeNotice.score}</small></>
+    : null;
+  const cribCount = number(state.cribCount);
   const scoreLanes = players.length === 4
     ? (["gold", "green"] as const).map(teamId => ({
       id: teamId,
@@ -417,29 +496,20 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
   return <main className="mp-table">
     <header className="mp-board">
       <div><span className="eyebrow">Private table · {titlePhase(phase)}</span><h1>Cribbage</h1></div>
-      <div className={`mp-connection ${connection}`}>{connection === "connected" ? "Live" : "Reconnecting…"}</div>
+      <div className="mp-game-actions"><div className={`mp-connection ${connection}`}>{connection === "connected" ? "Live" : "Reconnecting…"}</div><button className="quiet" onClick={() => setShowHistory(true)}>History</button><button className="quiet" onClick={onLeave}>Leave table</button></div>
       <CribbageBoard lanes={scoreLanes} moves={scoreMoves} />
     </header>
     {countPegging && <div className={`mp-count-pegging ${countPegging.color}`} role="status" aria-live="assertive">
       <strong>{countPegging.name} pegs {countPegging.points}</strong>
       <span>Score: {countPegging.score}</span>
     </div>}
-    {playNotices[0] && <div className="mp-play-notice" role="status" aria-live="polite">
-      {playNotices[0].kind === "go" ? <><strong>{playNotices[0].name} says Go!</strong><small>Running count: {playNotices[0].count}</small></>
-        : playNotices[0].kind === "last" ? <><strong>{playNotices[0].name} pegs 1 for last card</strong><small>Score: {playNotices[0].score}</small></> : <>
-        <strong>{playNotices[0].name} played <CardNotation value={playNotices[0].card} /></strong>
-        <span><CardNotation value={playNotices[0].reason} /> · {playNotices[0].points} point{playNotices[0].points === 1 ? "" : "s"}</span>
-        <small>Running count: {playNotices[0].count} · Score: {playNotices[0].score}</small>
-      </>}
+    {flyingCard && <div className="mp-flying-card" style={{ left: flyingCard.left, top: flyingCard.top, "--mp-fly-x": `${flyingCard.dx}px`, "--mp-fly-y": `${flyingCard.dy}px` } as CSSProperties} aria-hidden="true">
+      <div className={`mp-flying-card-inner ${flyingCard.faceDown ? "starts-down" : ""}`}>
+        <span className="mp-card back" />
+        <PlayingCard card={flyingCard.card} disabled />
+      </div>
     </div>}
-
-    <section className="mp-tabletop">
-      <div className="mp-opponents">{opponentsInTurnOrder.map(player => <article key={player.id} className={`mp-player ${player.seat === turnSeat ? "active" : ""}`}>
-        <span className="mp-avatar">{AVATARS.find(avatar => avatar.id === player.avatarId)?.glyph ?? "●"}</span>
-        <div><strong>{player.name}{player.seat === dealerSeat ? " · Dealer" : ""}</strong><small>{player.connected === false ? "Disconnected" : player.isAI ? "Computer" : player.seat === turnSeat ? "Playing" : "Waiting"}</small></div>
-        <div className="mp-hidden-hand">{Array.from({ length: player.handCount ?? 0 }, (_, index) => <PlayingCard hidden key={index} />)}</div>
-      </article>)}</div>
-
+    <section className="mp-tabletop" style={{ gridTemplateColumns: `repeat(${players.length},minmax(0,1fr))` }}>
       <div className="mp-center">
         {(phase === "cut" || showCutResult) && cutCards && Object.keys(cutCards).length > 0 && <div className={`mp-cut-reveal ${showCutResult ? "complete" : ""}`}>
           <strong>{showCutResult ? `${dealerPlayer?.name ?? "Low card"} cut low and deals` : "Low card deals"}</strong>
@@ -448,8 +518,8 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
             return <article className={showCutResult && player.seat === dealerSeat ? "dealer-cut" : ""} key={player.id}><span>{player.name}{showCutResult && player.seat === dealerSeat ? " · Dealer" : ""}</span>{card ? <PlayingCard card={card} disabled /> : <span className="mp-card back" />}</article>;
           })}</div>
         </div>}
-        <div><small>Running count</small><strong className="mp-count">{runningCount}</strong></div>
-        <div><small>Played</small><div className="mp-pile">{pile.map(card => <PlayingCard card={card} key={card.id} disabled />)}</div></div>
+        <div><small>Running count</small><strong className="mp-count">{displayRunningCount}</strong></div>
+        <div><small>Played</small><div className="mp-pile" ref={pileTargetRef}>{visiblePile.map(card => <PlayingCard card={card} key={card.id} disabled />)}</div></div>
         <div><small>Starter</small>{cut ? <PlayingCard card={cut} disabled /> : <span className="mp-card-slot" />}</div>
         <div className="mp-prompt"><strong>{turnMessage}</strong>
           {phase === "cut" && !object(state.cutCards)?.[playerId] && <button className="primary" onClick={() => { unlockGameAudio(); playGameSound("shuffle"); send("CUT_CARD", {}); }}>Cut card</button>}
@@ -462,19 +532,26 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
         </div>
       </div>
 
-      {["result", "complete", "session_summary", "summary"].includes(phase) && <section className="mp-result"><h2>{winner ? `${winner} wins` : titlePhase(phase)}</h2>
-        {ledger && <><p>{number(ledger.gameCount ?? ledger.games)} games recorded · friendly recordkeeping only</p><div className="mp-ledger">{Array.isArray(ledger.entries) ? ledger.entries.map((entry, index) => <span key={index}>{text(object(entry)?.label ?? object(entry)?.playerName, `Entry ${index + 1}`)} <b>{number(object(entry)?.amount ?? object(entry)?.total)}¢</b></span>) : null}</div></>}
-      </section>}
-
-      <article className={`mp-player local ${myTurn ? "active" : ""}`}>
+      <article data-mp-player={playerId} className={`mp-player local ${myTurn ? "active" : ""}`}>
+        {activeNotice?.playerId === playerId && <div className="mp-player-notice" role="status" aria-live="polite">{noticeContent}</div>}
         <span className="mp-avatar">{AVATARS.find(avatar => avatar.id === me?.avatarId)?.glyph ?? "●"}</span>
         <div><strong>{me?.name ?? "You"}{me?.seat === dealerSeat ? " · Dealer" : ""}</strong><small>{myTurn ? "Your turn" : "Your hand"}</small></div>
         <div className="mp-local-hand">{hand.map(card => <PlayingCard card={card} key={card.id} selected={selected.includes(card.id)} disabled={phase !== "discard" && !(phase === "pegging" && myTurn && legalIds.has(card.id))} onClick={() => toggle(card.id)} />)}</div>
+        {me?.seat === dealerSeat && cribCount > 0 && <div className="mp-crib-strip"><strong>Your crib</strong><div>{Array.from({ length: cribCount }, (_, index) => <PlayingCard hidden key={index} />)}</div></div>}
       </article>
+      <div className="mp-opponents">{opponentsInTurnOrder.map(player => <article data-mp-player={player.id} key={player.id} className={`mp-player ${player.seat === turnSeat ? "active" : ""}`}>
+        {activeNotice?.playerId === player.id && <div className="mp-player-notice" role="status" aria-live="polite">{noticeContent}</div>}
+        <span className="mp-avatar">{AVATARS.find(avatar => avatar.id === player.avatarId)?.glyph ?? "●"}</span>
+        <div><strong>{player.name}{player.seat === dealerSeat ? " · Dealer" : ""}</strong><small>{player.connected === false ? "Disconnected" : player.isAI ? "Computer" : player.seat === turnSeat ? "Playing" : "Waiting"}</small></div>
+        <div className="mp-hidden-hand">{Array.from({ length: player.handCount ?? 0 }, (_, index) => <PlayingCard hidden key={index} />)}</div>
+        {player.seat === dealerSeat && cribCount > 0 && <div className="mp-crib-strip"><strong>{player.name}'s crib</strong><div>{Array.from({ length: cribCount }, (_, index) => <PlayingCard hidden key={index} />)}</div></div>}
+      </article>)}</div>
+
+      {["result", "complete", "session_summary", "summary"].includes(phase) && <section className="mp-result"><h2>{winner ? `${winner} wins` : titlePhase(phase)}</h2>
+        {ledger && <><p>{number(ledger.gameCount ?? ledger.games)} games recorded · friendly recordkeeping only</p><div className="mp-ledger">{Array.isArray(ledger.entries) ? ledger.entries.map((entry, index) => <span key={index}>{text(object(entry)?.label ?? object(entry)?.playerName, `Entry ${index + 1}`)} <b>{number(object(entry)?.amount ?? object(entry)?.total)}¢</b></span>) : null}</div></>}
+      </section>}
     </section>
 
-    <footer className="mp-footer"><div role="log" aria-live="polite">{history.length ? history.map(item => <p className={item.dialogue ? "dialogue" : ""} key={item.key}>{item.text}</p>) : <p>Waiting for the deal…</p>}</div>
-      <button className="quiet" onClick={onLeave}>Leave table</button></footer>
     {connection !== "connected" && <div className="mp-reconnect" role="status"><strong>Reconnecting to the table…</strong><span>Your table is preserved.</span></div>}
     {host?.connected === false && <div className="mp-host-warning">Host disconnected. Host controls resume when they reconnect.</div>}
     {isHost && typeof state.pausedForPlayerId === "string" && <div className="mp-host-warning"><strong>Player disconnected</strong>
@@ -488,5 +565,8 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
       canContinue={aiReviewReady} waiting={alreadyAcknowledged}
       onContinue={() => send("ACK_COUNT", { eventId: state.pendingEventId })}
     />}
+    {showHistory && <div className="mp-history-modal" role="dialog" aria-modal="true" aria-labelledby="mp-history-title" onClick={() => setShowHistory(false)}>
+      <section onClick={event => event.stopPropagation()}><header><h2 id="mp-history-title">Game history</h2><button className="quiet" onClick={() => setShowHistory(false)} aria-label="Close history">Close</button></header><div role="log">{history.length ? history.map(item => <p className={item.dialogue ? "dialogue" : ""} key={item.key}>{item.text}</p>) : <p>Waiting for the deal…</p>}</div></section>
+    </div>}
   </main>;
 }
