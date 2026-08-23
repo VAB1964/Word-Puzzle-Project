@@ -2,8 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { configureGameAudio, playGameSound, unlockGameAudio } from "../audio/gameAudio";
 import { playScriptedDialogue } from "../audio/scriptedDialogue";
-import { AVATARS } from "../identity/preferences";
-import type { PlayerPreferences } from "../identity/preferences";
+import { avatarById, type PlayerPreferences } from "../identity/preferences";
 import { cardValue, isCard, type Card } from "../rules/cards";
 import { scoreHand } from "../rules/handScoring";
 import type { MultiplayerSnapshot, RoomMessage } from "../controllers/MultiplayerController";
@@ -19,6 +18,11 @@ type Props = {
   view: MultiplayerSnapshot; playerId: string; preferences: PlayerPreferences; connection: ConnectionState; message?: RoomMessage;
   send: (type: CommandType, payload: unknown) => void; onLeave: () => void;
 };
+
+function AvatarMark({ id, fallback = "●" }: { id?: string; fallback?: string }) {
+  const avatar = avatarById(id);
+  return avatar ? <img src={avatar.src} alt="" /> : fallback;
+}
 
 const object = (value: unknown): Record<string, unknown> | null => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 const number = (value: unknown, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -534,14 +538,14 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
 
       <article data-mp-player={playerId} className={`mp-player local ${myTurn ? "active" : ""}`}>
         {activeNotice?.playerId === playerId && <div className="mp-player-notice" role="status" aria-live="polite">{noticeContent}</div>}
-        <span className="mp-avatar">{AVATARS.find(avatar => avatar.id === me?.avatarId)?.glyph ?? "●"}</span>
+        <span className="mp-avatar"><AvatarMark id={me?.avatarId} /></span>
         <div><strong>{me?.name ?? "You"}{me?.seat === dealerSeat ? " · Dealer" : ""}</strong><small>{myTurn ? "Your turn" : "Your hand"}</small></div>
         <div className="mp-local-hand">{hand.map(card => <PlayingCard card={card} key={card.id} selected={selected.includes(card.id)} disabled={phase !== "discard" && !(phase === "pegging" && myTurn && legalIds.has(card.id))} onClick={() => toggle(card.id)} />)}</div>
         {me?.seat === dealerSeat && cribCount > 0 && <div className="mp-crib-strip"><strong>Your crib</strong><div>{Array.from({ length: cribCount }, (_, index) => <PlayingCard hidden key={index} />)}</div></div>}
       </article>
       <div className="mp-opponents">{opponentsInTurnOrder.map(player => <article data-mp-player={player.id} key={player.id} className={`mp-player ${player.seat === turnSeat ? "active" : ""}`}>
         {activeNotice?.playerId === player.id && <div className="mp-player-notice" role="status" aria-live="polite">{noticeContent}</div>}
-        <span className="mp-avatar">{AVATARS.find(avatar => avatar.id === player.avatarId)?.glyph ?? "●"}</span>
+        <span className="mp-avatar"><AvatarMark id={player.avatarId} /></span>
         <div><strong>{player.name}{player.seat === dealerSeat ? " · Dealer" : ""}</strong><small>{player.connected === false ? "Disconnected" : player.isAI ? "Computer" : player.seat === turnSeat ? "Playing" : "Waiting"}</small></div>
         <div className="mp-hidden-hand">{Array.from({ length: player.handCount ?? 0 }, (_, index) => <PlayingCard hidden key={index} />)}</div>
         {player.seat === dealerSeat && cribCount > 0 && <div className="mp-crib-strip"><strong>{player.name}'s crib</strong><div>{Array.from({ length: cribCount }, (_, index) => <PlayingCard hidden key={index} />)}</div></div>}

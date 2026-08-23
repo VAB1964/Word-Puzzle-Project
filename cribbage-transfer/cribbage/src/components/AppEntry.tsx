@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CribbageGame from "../CribbageGame";
 import { configureGameAudio, unlockGameAudio } from "../audio/gameAudio";
 import { MultiplayerController, type MultiplayerSnapshot, type RoomMessage } from "../controllers/MultiplayerController";
-import { AVATARS, loadPreferences, savePreferences, type PlayerPreferences } from "../identity/preferences";
+import { AVATARS, avatarById, loadPreferences, savePreferences, type PlayerPreferences } from "../identity/preferences";
 import type { ConnectionState } from "../multiplayer/protocol";
 import MultiplayerTable from "./MultiplayerTable";
 
@@ -21,7 +21,7 @@ function Identity({ value, onConfirm, onBack }: { value: PlayerPreferences; onCo
     <span className="eyebrow">Your chair at the table</span><h2>Player identity</h2>
     <label>Display name<input maxLength={24} autoComplete="nickname" value={draft.displayName} onChange={event => setDraft({ ...draft, displayName: event.target.value })} /></label>
     <fieldset><legend>Choose an avatar</legend><div className="avatar-grid">
-      {AVATARS.map(avatar => <button key={avatar.id} className={draft.avatarId === avatar.id ? "selected" : ""} aria-pressed={draft.avatarId === avatar.id} aria-label={avatar.label} onClick={() => setDraft({ ...draft, avatarId: avatar.id })}><span>{avatar.glyph}</span><small>{avatar.label}</small></button>)}
+      {AVATARS.map(avatar => <button key={avatar.id} className={draft.avatarId === avatar.id ? "selected" : ""} aria-pressed={draft.avatarId === avatar.id} aria-label={avatar.label} onClick={() => setDraft({ ...draft, avatarId: avatar.id })}><img src={avatar.src} alt="" /><small>{avatar.label}</small></button>)}
     </div></fieldset>
     <div className="preference-grid">
       <label><input type="checkbox" checked={draft.soundEnabled} onChange={event => setDraft({ ...draft, soundEnabled: event.target.checked })} /> Sound</label>
@@ -111,11 +111,11 @@ function Lobby({ code, preferences, create, onLeave }: { code: string; preferenc
     {error && <p role="alert" className="error-message">{error}</p>}
     <div className="invite-card"><input readOnly aria-label="Invite link" value={invite} /><button onClick={() => void navigator.clipboard?.writeText(invite)}>Copy link</button>{navigator.share && <button onClick={() => void navigator.share({ title: "Cribbage room", url: invite })}>Share</button>}</div>
     <div className="seat-grid">{seats.map((player, index) => {
-      const avatar = AVATARS.find(item => item.id === player?.avatarId);
+      const avatar = avatarById(player?.avatarId);
       const displayTeam = seatCount === 4
         ? (player?.teamId === "green" || index % 2 ? "green" : "red")
         : index === 2 ? "blue" : index === 1 ? "green" : "red";
-      return <article className={`lobby-seat team-${displayTeam}`} key={index}><span className="seat-avatar">{avatar?.glyph ?? "○"}</span><div><strong>{player?.name ?? "Open seat"}{player?.id === view?.hostPlayerId ? " ♛" : ""}</strong><small>{player ? (player.isAI ? "AI" : player.connected ? "Occupied" : "Reconnecting") : "Open"} · Team {displayTeam[0].toUpperCase() + displayTeam.slice(1)} · {player?.ready ? "Ready" : "Not ready"}</small></div></article>;
+      return <article className={`lobby-seat team-${displayTeam}`} key={index}><span className="seat-avatar">{avatar ? <img src={avatar.src} alt="" /> : "○"}</span><div><strong>{player?.name ?? "Open seat"}{player?.id === view?.hostPlayerId ? " ♛" : ""}</strong><small>{player ? (player.isAI ? "AI" : player.connected ? "Occupied" : "Reconnecting") : "Open"} · Team {displayTeam[0].toUpperCase() + displayTeam.slice(1)} · {player?.ready ? "Ready" : "Not ready"}</small></div></article>;
     })}</div>
     <div className="host-setup"><h3>Host setup</h3><label>Seats<select disabled={!isHost} value={seatCount} onChange={event => send("UPDATE_SETUP", { seatCount: Number(event.target.value) })}><option>2</option><option>3</option><option>4</option></select></label><label>Add AI<select disabled={!isHost} defaultValue="" onChange={event => { const openSeat = seats.findIndex(player => !player); if (openSeat >= 0 && event.target.value) send("ADD_AI", { seat: openSeat, difficulty: event.target.value }); event.target.value = ""; }}><option value="">Choose difficulty</option><option value="medium">Medium</option><option value="easy">Easy</option><option value="hard">Hard</option></select></label><label>Table talk<select defaultValue={preferences.tableTalk}><option>off</option><option>occasional</option><option>chatty</option></select></label><label><input type="checkbox" disabled={!isHost} checked={stakes} onChange={event => { const enabled = event.target.checked; setStakes(enabled); send("UPDATE_LEDGER", { enabled, baseStakeCents: gameAmount, perHoleCents: perHole }); }} /> Session Ledger</label>{stakes && <><label>Game amount (cents)<input type="number" min="0" max="2000" value={gameAmount} onChange={event => { const value = Number(event.target.value); setGameAmount(value); send("UPDATE_LEDGER", { enabled: true, baseStakeCents: value, perHoleCents: perHole }); }} /></label><label>Per hole<select value={perHole} onChange={event => { const value = Number(event.target.value); setPerHole(value); send("UPDATE_LEDGER", { enabled: true, baseStakeCents: gameAmount, perHoleCents: value }); }}><option>5</option><option>10</option><option>15</option><option>20</option></select> cents</label></>}</div>
     <p className="ledger-note">Session ledger: 0 games · no balance entries yet. Friendly recordkeeping only; no payments are processed.</p>
