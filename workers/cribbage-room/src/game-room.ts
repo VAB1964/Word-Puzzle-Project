@@ -380,7 +380,18 @@ export class GameRoom extends DurableObject<Env> {
           state.game.countHands = structuredClone(state.game.hands);
           state.game.phase = "pegging";
           state.game.turnSeat = nextOccupiedSeat(state, state.game.dealerSeat as number);
-          if (rankOf(starter) === "J") award(state, teamForSeat(state, state.game.dealerSeat as number), 2);
+          if (rankOf(starter) === "J") {
+            const dealerSeat = state.game.dealerSeat as number;
+            const dealer = seated(state).find((player) => player.seat === dealerSeat);
+            const dealerTeam = teamForSeat(state, dealerSeat);
+            award(state, dealerTeam, 2);
+            const score = state.game.teamScores[dealerTeam] ?? 0;
+            dialogue(state, "STARTER_JACK", dealer?.id, undefined, {
+              points: 2,
+              score,
+              message: `${dealer?.name ?? "Dealer"} scores 2 for his heels (starter jack); score ${score}.`,
+            });
+          }
         }
         runAi(state);
         return {};
@@ -846,7 +857,14 @@ function exposeCount(state: RoomState): void {
     return;
   }
   state.game.pendingEventId = item.eventId; state.game.acknowledgements = [];
-  dialogue(state, item.kind === "crib" ? "COUNT_CRIB" : "COUNT_HAND", item.playerId ?? undefined, item.eventId);
+  const player = state.players.find((candidate) => candidate.id === item.playerId);
+  const scoreBefore = state.game.teamScores[item.teamId] ?? 0;
+  const projectedScore = Math.min(121, scoreBefore + item.points);
+  dialogue(state, item.kind === "crib" ? "COUNT_CRIB" : "COUNT_HAND", item.playerId ?? undefined, item.eventId, {
+    points: item.points,
+    score: projectedScore,
+    message: `${player?.name ?? "Player"}'s ${item.kind === "crib" ? "crib" : "hand"} is worth ${item.points} point${item.points === 1 ? "" : "s"}; score ${scoreBefore} -> ${projectedScore}.`,
+  });
 }
 
 function advanceCount(state: RoomState): void {
@@ -905,7 +923,18 @@ function runAi(state: RoomState): void {
         state.game.starterCard = state.game.deck.pop()!; state.game.countHands = structuredClone(state.game.hands);
         state.game.phase = "pegging";
         state.game.turnSeat = nextOccupiedSeat(state, state.game.dealerSeat!);
-        if (rankOf(state.game.starterCard) === "J") award(state, teamForSeat(state, state.game.dealerSeat!), 2);
+        if (rankOf(state.game.starterCard) === "J") {
+          const dealerSeat = state.game.dealerSeat!;
+          const dealer = seated(state).find((player) => player.seat === dealerSeat);
+          const dealerTeam = teamForSeat(state, dealerSeat);
+          award(state, dealerTeam, 2);
+          const score = state.game.teamScores[dealerTeam] ?? 0;
+          dialogue(state, "STARTER_JACK", dealer?.id, undefined, {
+            points: 2,
+            score,
+            message: `${dealer?.name ?? "Dealer"} scores 2 for his heels (starter jack); score ${score}.`,
+          });
+        }
       }
       continue;
     }

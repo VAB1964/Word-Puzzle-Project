@@ -19,7 +19,7 @@ type Props = {
   send: (type: CommandType, payload: unknown) => void; onLeave: () => void;
 };
 type PendingPlayAnimation = {
-  noticeId: string;
+  presentationId: string;
   playerId: string;
   card: Card;
   left: number;
@@ -28,6 +28,22 @@ type PendingPlayAnimation = {
   dy: number;
   faceDown: boolean;
   status: "preparing" | "animating";
+};
+type PegPresentation = {
+  presentationId: string;
+  sourceEventId?: string;
+  type: "play" | "go" | "last" | "reset";
+  playerId: string;
+  name: string;
+  isAI: boolean;
+  card?: Card;
+  cardText?: string;
+  reason: string;
+  previousCount: number;
+  resultingCount: number;
+  points: number;
+  score?: number;
+  status: "queued" | "preparing" | "animating" | "completing";
 };
 const isPegNoticeType = (type: string) => type === "PEG_PLAY" || type === "PEG_GO" || type === "PEG_LAST";
 
@@ -162,7 +178,7 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
   const lastPeggingCount = useRef(0);
   const [history, setHistory] = useState<Array<{ key: string; text: string; dialogue: boolean }>>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [playNotices, setPlayNotices] = useState<Array<{ id: string; playerId: string; kind: "play" | "go" | "last"; name: string; isAI: boolean; card: string; reason: string; points: number; score?: number; count: number }>>([]);
+  const [pegPresentationQueue, setPegPresentationQueue] = useState<PegPresentation[]>([]);
   const [noticeVisible, setNoticeVisible] = useState(false);
   const [pendingPlayAnimation, setPendingPlayAnimation] = useState<PendingPlayAnimation | null>(null);
   const [hiddenPlayedCards, setHiddenPlayedCards] = useState<Set<string>>(() => new Set());
@@ -173,6 +189,7 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
   const seen = useRef(new Set<string>());
   const discoveredPegNoticeIdsRef = useRef(new Set<string>());
   const completedPegNoticeIdsRef = useRef(new Set<string>());
+  const completedPresentationIdsRef = useRef(new Set<string>());
   const playNoticesInitialized = useRef(false);
   const hand = cards(state.hand ?? state.localHand ?? me?.hand);
   const handCounts = object(state.handCounts);
@@ -194,7 +211,7 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     lastPeggingPile.current = authoritativePile;
     if (authoritativeRunningCount > 0) lastPeggingCount.current = authoritativeRunningCount;
   }
-  const countingEntryReady = !enteringCounting && countingHoldElapsed && playNotices.length === 0 && !pendingPlayAnimation;
+  const countingEntryReady = !enteringCounting && countingHoldElapsed && pegPresentationQueue.length === 0 && !pendingPlayAnimation;
   const holdingFinalPeg = phase === "counting" && !countingEntryReady;
   const runningCount = holdingFinalPeg ? lastPeggingCount.current : phase === "counting" ? 0 : authoritativeRunningCount;
   const [presentedRunningCount, setPresentedRunningCount] = useState(authoritativeRunningCount);
@@ -233,7 +250,7 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     if (!id) return true;
     return !completedPegNoticeIdsRef.current.has(id);
   });
-  const countPresentationLocked = hasUnprocessedPegNotice || playNotices.length > 0 || pendingPlayAnimation !== null || hiddenPlayedCards.size > 0;
+  const countPresentationLocked = hasUnprocessedPegNotice || pegPresentationQueue.length > 0 || pendingPlayAnimation !== null || hiddenPlayedCards.size > 0;
   const pendingPegPresentation = phase === "pegging" && countPresentationLocked;
   const canGo = canGoBase && !pendingPegPresentation;
   const displayedHandCount = (targetPlayerId: string) => {
@@ -247,38 +264,38 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     return Math.max(0, authoritative - overlay);
   };
 
-  function applyPresentedPegUpdate(notice: { playerId: string; kind: "play" | "go" | "last"; points: number; count: number }) {
-    setPresentedRunningCount(notice.count);
-    if (notice.kind === "play") {
+  function applyPresentedPegUpdate(presentation: PegPresentation) {
+    setPresentedRunningCount(presentation.resultingCount);
+    if (presentation.type === "play") {
       setPendingHandOverlayByPlayer(current => {
-        const existing = number(current[notice.playerId]);
+        const existing = number(current[presentation.playerId]);
         const next = Math.max(0, existing - 1);
         if (next === existing) return current;
-        return { ...current, [notice.playerId]: next };
+        return { ...current, [presentation.playerId]: next };
       });
       setHiddenHandSlotByPlayer(current => {
-        const existing = number(current[notice.playerId]);
+        const existing = number(current[presentation.playerId]);
         if (existing <= 0) return current;
-        return { ...current, [notice.playerId]: existing - 1 };
+        return { ...current, [presentation.playerId]: existing - 1 };
       });
     }
-    if (notice.points > 0 && notice.kind !== "go") {
-      const laneId = laneIdForPlayer(notice.playerId);
+    if (presentation.points > 0 && presentation.type !== "go") {
+      const laneId = laneIdForPlayer(presentation.playerId);
       if (!laneId) return;
       setPendingScoreOverlayByLane(current => {
         const existing = number(current[laneId]);
-        const next = Math.max(0, existing - notice.points);
+        const next = Math.max(0, existing - presentation.points);
         if (next === existing) return current;
         return { ...current, [laneId]: next };
       });
     }
   }
-  function markPegNoticeCompleted(noticeId: string) {
-    completedPegNoticeIdsRef.current.add(noticeId);
+  function markPegNoticeCompleted(eventId: string) {
+    completedPegNoticeIdsRef.current.add(eventId);
   }
-
-  function requestCardPlayAnimation(notice: { id: string; playerId: string }, card: Card) {
-    const playerRoot = document.querySelector<HTMLElement>(`[data-mp-player="${notice.playerId}"]`);
+  function requestCardPlayAnimation(presentation: PegPresentation) {
+    if (!presentation.card) return false;
+    const playerRoot = document.querySelector<HTMLElement>(`[data-mp-player="${presentation.playerId}"]`);
     const source = playerRoot?.querySelector<HTMLElement>(".mp-hidden-hand, .mp-local-hand") ?? playerRoot;
     const target = pileTargetRef.current;
     if (!source || !target) return false;
@@ -289,14 +306,14 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     const destinationLeft = targetRect.left + visiblePile.length * 36;
     const destinationTop = targetRect.top + 7;
     setPendingPlayAnimation({
-      noticeId: notice.id,
-      playerId: notice.playerId,
-      card,
+      presentationId: presentation.presentationId,
+      playerId: presentation.playerId,
+      card: presentation.card,
       left,
       top,
       dx: destinationLeft - left,
       dy: destinationTop - top,
-      faceDown: notice.playerId !== playerId,
+      faceDown: presentation.playerId !== playerId,
       status: "preparing",
     });
     return true;
@@ -316,12 +333,20 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
   useEffect(() => {
     const additions: Array<{ key: string; text: string; dialogue: boolean }> = [];
     for (const event of events) {
+      if (event.type === "COUNT_HAND" || event.type === "COUNT_CRIB") continue;
       const key = eventKey(event, view.revision);
       if (seen.current.has(key)) continue;
       seen.current.add(key);
       const speaker = text(event.data.speakerName ?? event.data.playerName);
       const body = text(event.data.text ?? event.data.message ?? event.data.summary, event.type.replaceAll("_", " ").toLowerCase());
-      const diagnostic = event.type === "PEG_PLAY" || event.type === "PEG_GO" || event.type === "PEG_LAST" || event.type === "COUNT_AWARDED";
+      const diagnostic =
+        event.type === "PEG_PLAY" ||
+        event.type === "PEG_GO" ||
+        event.type === "PEG_LAST" ||
+        event.type === "COUNT_HAND" ||
+        event.type === "COUNT_CRIB" ||
+        event.type === "COUNT_AWARDED" ||
+        event.type === "STARTER_JACK";
       additions.push({ key, text: diagnostic ? body : speaker ? `${speaker}: “${body}”` : body, dialogue: !diagnostic && Boolean(speaker || event.type.includes("DIALOGUE")) });
     }
     if (additions.length) setHistory(old => [...old, ...additions].slice(-80));
@@ -341,25 +366,77 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
       playNoticesInitialized.current = true;
       return;
     }
-    const additions = dialogue.flatMap(value => {
+    const queuedCountTail = pegPresentationQueue.length
+      ? pegPresentationQueue[pegPresentationQueue.length - 1]!.resultingCount
+      : presentedRunningCount;
+    let planningCount = queuedCountTail;
+    const additions: PegPresentation[] = [];
+    for (const value of dialogue) {
       const item = object(value);
-      if (!item || !isPegNoticeType(text(item.type))) return [];
+      if (!item || !isPegNoticeType(text(item.type))) continue;
       const id = text(item.id);
-      if (!id || discoveredPegNoticeIdsRef.current.has(id)) return [];
+      if (!id || discoveredPegNoticeIdsRef.current.has(id)) continue;
       const details = object(item.data);
-      const kind = item.type === "PEG_GO" ? "go" as const : item.type === "PEG_LAST" ? "last" as const : "play" as const;
+      const type = item.type === "PEG_GO" ? "go" as const : item.type === "PEG_LAST" ? "last" as const : "play" as const;
+      const resultingCount = number(details?.runningCount);
+      const cardText = text(details?.card);
+      const parsedCard = type === "play" ? parseCard(cardText) ?? undefined : undefined;
+      if (planningCount > 0 && resultingCount < planningCount) {
+        additions.push({
+          presentationId: `${id}:reset-before`,
+          type: "reset",
+          playerId: text(item.playerId),
+          name: "Table",
+          isAI: false,
+          reason: "reset",
+          previousCount: planningCount,
+          resultingCount: 0,
+          points: 0,
+          status: "queued",
+        });
+        planningCount = 0;
+      }
       discoveredPegNoticeIdsRef.current.add(id);
       const player = players.find(candidate => candidate.id === item.playerId);
       const score = typeof details?.score === "number" && Number.isFinite(details.score) ? details.score : undefined;
-      return [{ id, playerId: text(item.playerId), kind, name: player?.name ?? "Player", isAI: player?.isAI === true,
-        card: text(details?.card), reason: text(details?.reason, "no points"),
-        points: number(details?.points), score, count: number(details?.runningCount) }];
-    });
+      additions.push({
+        presentationId: id,
+        sourceEventId: id,
+        type,
+        playerId: text(item.playerId),
+        name: player?.name ?? "Player",
+        isAI: player?.isAI === true,
+        card: parsedCard,
+        cardText,
+        reason: text(details?.reason, "no points"),
+        previousCount: planningCount,
+        resultingCount,
+        points: number(details?.points),
+        score,
+        status: "queued",
+      });
+      planningCount = resultingCount;
+      if (type === "play" && resultingCount === 31) {
+        additions.push({
+          presentationId: `${id}:reset-after`,
+          type: "reset",
+          playerId: text(item.playerId),
+          name: "Table",
+          isAI: false,
+          reason: "31 reset",
+          previousCount: 31,
+          resultingCount: 0,
+          points: 0,
+          status: "queued",
+        });
+        planningCount = 0;
+      }
+    }
     if (additions.length) {
       setPendingHandOverlayByPlayer(current => {
         const next = { ...current };
         for (const notice of additions) {
-          if (notice.kind !== "play") continue;
+          if (notice.type !== "play") continue;
           next[notice.playerId] = number(next[notice.playerId]) + 1;
         }
         return next;
@@ -367,7 +444,7 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
       setPendingScoreOverlayByLane(current => {
         const next = { ...current };
         for (const notice of additions) {
-          if (notice.kind === "go" || notice.points <= 0) continue;
+          if (!notice.sourceEventId || notice.type === "go" || notice.points <= 0) continue;
           const laneId = laneIdForPlayer(notice.playerId);
           if (!laneId) continue;
           next[laneId] = number(next[laneId]) + notice.points;
@@ -377,15 +454,14 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
       setHiddenPlayedCards(current => {
         const next = new Set(current);
         for (const notice of additions) {
-          if (notice.kind !== "play") continue;
-          const card = parseCard(notice.card);
-          if (card) next.add(card.id);
+          if (notice.type !== "play" || !notice.card) continue;
+          next.add(notice.card.id);
         }
         return next;
       });
-      setPlayNotices(current => [...current, ...additions]);
+      setPegPresentationQueue(current => [...current, ...additions]);
     }
-  }, [view.dialogue, view.revision, players]);
+  }, [view.dialogue, view.revision, players, pegPresentationQueue, presentedRunningCount]);
   useEffect(() => {
     const pileIds = new Set(pile.map(card => card.id));
     setHiddenPlayedCards(current => {
@@ -393,7 +469,7 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
       return next.size === current.size ? current : next;
     });
   }, [phase, authoritativeRunningCount]);
-  const canClearStaleHiddenCards = !hasUnprocessedPegNotice && playNotices.length === 0 && pendingPlayAnimation === null;
+  const canClearStaleHiddenCards = !hasUnprocessedPegNotice && pegPresentationQueue.length === 0 && pendingPlayAnimation === null;
   useEffect(() => {
     if (!canClearStaleHiddenCards) return;
     setHiddenPlayedCards(current => (current.size ? new Set() : current));
@@ -411,86 +487,91 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     if (!pendingPlayAnimation || pendingPlayAnimation.status !== "preparing") return;
     const frame = window.requestAnimationFrame(() => {
       setPendingPlayAnimation(current => {
-        if (!current || current.noticeId !== pendingPlayAnimation.noticeId || current.status !== "preparing") return current;
+        if (!current || current.presentationId !== pendingPlayAnimation.presentationId || current.status !== "preparing") return current;
         if (!preferences.reducedAnimation) {
           setHiddenHandSlotByPlayer(slots => ({ ...slots, [current.playerId]: number(slots[current.playerId]) + 1 }));
         }
+        setPegPresentationQueue(queue => queue.length && queue[0]!.presentationId === current.presentationId
+          ? [{ ...queue[0]!, status: "animating" }, ...queue.slice(1)]
+          : queue);
         return { ...current, status: "animating" };
       });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [pendingPlayAnimation, preferences.reducedAnimation]);
+  function completePresentation(presentationId: string) {
+    if (completedPresentationIdsRef.current.has(presentationId)) return;
+    setPegPresentationQueue(queue => {
+      if (!queue.length || queue[0]!.presentationId !== presentationId) return queue;
+      const current = queue[0]!;
+      completedPresentationIdsRef.current.add(presentationId);
+      applyPresentedPegUpdate(current);
+      if (current.type === "play" && current.card) {
+        setHiddenPlayedCards(hidden => {
+          const next = new Set(hidden);
+          next.delete(current.card!.id);
+          return next;
+        });
+      }
+      if (current.sourceEventId) markPegNoticeCompleted(current.sourceEventId);
+      setPendingPlayAnimation(animation => animation?.presentationId === presentationId ? null : animation);
+      return queue.slice(1);
+    });
+  }
   useEffect(() => {
-    if (!pendingPlayAnimation || pendingPlayAnimation.status !== "animating") return;
-    const notice = playNotices[0];
-    if (!notice || notice.id !== pendingPlayAnimation.noticeId) return;
-    if (preferences.reducedAnimation) {
-      applyPresentedPegUpdate(notice);
-      markPegNoticeCompleted(notice.id);
-      setPendingPlayAnimation(null);
+    if (!pegPresentationQueue.length) {
+      setNoticeVisible(false);
       return;
     }
+    const current = pegPresentationQueue[0]!;
+    setNoticeVisible(current.type !== "reset");
+    if (current.status !== "queued") return;
+    if (current.type === "play" && current.card && !preferences.reducedAnimation) {
+      const animationReady = requestCardPlayAnimation(current);
+      setPegPresentationQueue(queue => queue.length && queue[0]!.presentationId === current.presentationId
+        ? [{ ...queue[0]!, status: animationReady ? "preparing" : "completing" }, ...queue.slice(1)]
+        : queue);
+      return;
+    }
+    setPegPresentationQueue(queue => queue.length && queue[0]!.presentationId === current.presentationId
+      ? [{ ...queue[0]!, status: "completing" }, ...queue.slice(1)]
+      : queue);
+  }, [pegPresentationQueue, preferences.reducedAnimation]);
+  useEffect(() => {
+    if (!pendingPlayAnimation || pendingPlayAnimation.status !== "animating") return;
+    const current = pegPresentationQueue[0];
+    if (!current || current.presentationId !== pendingPlayAnimation.presentationId) return;
     const timer = window.setTimeout(() => {
-      applyPresentedPegUpdate(notice);
-      setHiddenPlayedCards(current => {
-        const next = new Set(current);
-        next.delete(pendingPlayAnimation.card.id);
-        return next;
-      });
-      markPegNoticeCompleted(notice.id);
-      setPendingPlayAnimation(null);
+      setPegPresentationQueue(queue => queue.length && queue[0]!.presentationId === current.presentationId
+        ? [{ ...queue[0]!, status: "completing" }, ...queue.slice(1)]
+        : queue);
     }, 1150);
     return () => window.clearTimeout(timer);
-  }, [pendingPlayAnimation, playNotices, preferences.reducedAnimation]);
+  }, [pendingPlayAnimation, pegPresentationQueue]);
   useEffect(() => {
-    if (!playNotices.length) return;
-    const notice = playNotices[0];
-    setNoticeVisible(false);
-    setPendingPlayAnimation(null);
-    let dismissTimer = 0;
-    const presentationTimer = window.setTimeout(() => {
-      setNoticeVisible(true);
-      if (notice.kind === "play") {
-        const card = parseCard(notice.card);
-        if (card && !preferences.reducedAnimation && requestCardPlayAnimation(notice, card)) {
-          // The commit runs after animation completion.
-        } else {
-          applyPresentedPegUpdate(notice);
-          markPegNoticeCompleted(notice.id);
-          if (card) {
-            setHiddenPlayedCards(current => {
-              const next = new Set(current);
-              next.delete(card.id);
-              return next;
-            });
-          }
-        }
-      } else {
-        applyPresentedPegUpdate(notice);
-        markPegNoticeCompleted(notice.id);
+    if (!pegPresentationQueue.length) return;
+    const current = pegPresentationQueue[0]!;
+    if (current.status !== "completing") return;
+    if (current.type !== "reset" && current.isAI && preferences.soundEnabled) {
+      const key = current.type === "go" ? "go_declared"
+        : current.type === "last" ? "self_last_card"
+        : current.reason.includes("makes 31") ? "self_thirty_one"
+          : current.reason.includes("makes 15") ? "self_fifteen"
+            : current.reason.includes("four of a kind") ? "self_double_pair_royal"
+              : current.reason.includes("three of a kind") ? "self_pair_royal"
+                : current.reason.includes("pairs") ? "self_pair"
+                  : current.reason.includes("run") ? "self_pegging_run" : null;
+      if (key) {
+        const characterIds = ["mabel", "arthur", "clara"] as const;
+        const characterId = characterIds[Math.max(0, players.findIndex(player => player.name === current.name)) % characterIds.length]!;
+        void playScriptedDialogue(characterId, key, preferences.volume);
       }
-      if (notice.isAI && preferences.soundEnabled) {
-        const key = notice.kind === "go" ? "go_declared"
-          : notice.kind === "last" ? "self_last_card"
-          : notice.reason.includes("makes 31") ? "self_thirty_one"
-            : notice.reason.includes("makes 15") ? "self_fifteen"
-              : notice.reason.includes("four of a kind") ? "self_double_pair_royal"
-                : notice.reason.includes("three of a kind") ? "self_pair_royal"
-                  : notice.reason.includes("pairs") ? "self_pair"
-                    : notice.reason.includes("run") ? "self_pegging_run" : null;
-        if (key) {
-          const characterIds = ["mabel", "arthur", "clara"] as const;
-          const characterId = characterIds[Math.max(0, players.findIndex(player => player.name === notice.name)) % characterIds.length]!;
-          void playScriptedDialogue(characterId, key, preferences.volume);
-        }
-      }
-      dismissTimer = window.setTimeout(() => setPlayNotices(current => current.slice(1)), notice.kind === "play" && !preferences.reducedAnimation ? 2200 : 1200);
-    }, preferences.reducedAnimation ? 0 : 40);
+    }
+    const frame = window.requestAnimationFrame(() => completePresentation(current.presentationId));
     return () => {
-      window.clearTimeout(presentationTimer);
-      window.clearTimeout(dismissTimer);
+      window.cancelAnimationFrame(frame);
     };
-  }, [playNotices[0]?.id, preferences.reducedAnimation, preferences.soundEnabled, preferences.volume]);
+  }, [pegPresentationQueue, preferences.soundEnabled, preferences.volume, players]);
 
   const toggle = (id: string) => setSelected(old => {
     if (old.includes(id)) return old.filter(item => item !== id);
@@ -514,18 +595,20 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
     : phase === "pegging" && active
       ? `${active.id === playerId ? "Your" : `${active.name}'s`} turn. ${active.id === playerId ? (legalIds.size ? "Play a card." : "Say Go.") : "Waiting for their play."}`
       : active ? `${active.id === playerId ? "Your" : `${active.name}'s`} turn.` : titlePhase(phase);
-  const activeNotice = noticeVisible ? playNotices[0] : undefined;
+  const activeNotice = noticeVisible ? pegPresentationQueue[0] : undefined;
   const flyingCard = pendingPlayAnimation?.status === "animating" ? pendingPlayAnimation : null;
   const activeNoticeScore = activeNotice ? (() => {
     if (typeof activeNotice.score === "number") return activeNotice.score;
     const laneId = laneIdForPlayer(activeNotice.playerId);
     return laneId ? displayedScoreForLane(laneId) : 0;
   })() : 0;
-  const noticeContent = activeNotice ? activeNotice.kind === "go"
-    ? <><strong>{activeNotice.name} says Go!</strong><small>Running count: {activeNotice.count}</small></>
-    : activeNotice.kind === "last"
+  const noticeContent = activeNotice ? activeNotice.type === "go"
+    ? <><strong>{activeNotice.name} says Go!</strong><small>Running count: {activeNotice.resultingCount}</small></>
+    : activeNotice.type === "last"
       ? <><strong>{activeNotice.name} pegs 1 for last card</strong><small>Score: {activeNoticeScore}</small></>
-      : <><strong>{activeNotice.name} played <CardNotation value={activeNotice.card} /></strong><span><CardNotation value={activeNotice.reason} /> · {activeNotice.points} point{activeNotice.points === 1 ? "" : "s"}</span><small>Running count: {activeNotice.count} · Score: {activeNoticeScore}</small></>
+      : activeNotice.type === "reset"
+        ? <><strong>Count resets</strong><small>Running count: 0</small></>
+        : <><strong>{activeNotice.name} played <CardNotation value={activeNotice.cardText ?? ""} /></strong><span><CardNotation value={activeNotice.reason} /> · {activeNotice.points} point{activeNotice.points === 1 ? "" : "s"}</span><small>Running count: {activeNotice.resultingCount} · Score: {activeNoticeScore}</small></>
     : null;
   const cribCount = number(state.cribCount);
   const scoreLanes = players.length === 4
