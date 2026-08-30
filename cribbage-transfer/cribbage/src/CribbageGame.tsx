@@ -207,9 +207,10 @@ function Board({ players, playerCount }: { players: Player[]; playerCount: numbe
           {Array.from({ length: 121 }, (_, i) => {
             const point = i + 1;
             const marker = active && Math.min(121, lane.score) === point;
+            const alreadyPegged = active && point < Math.min(121, lane.score);
             const inTrail = !!move && move.amount > 1 && point > move.from && point <= move.to;
             const ghost = !!move && move.amount > 1 && move.from > 0 && point === move.from;
-            return <i key={point} className={`${point % 5 === 0 ? "fifth" : ""} ${point === 61 || point === 91 ? "skunk-line" : ""} ${marker ? "has-peg" : ""} ${inTrail ? "score-trail" : ""} ${ghost ? "has-ghost" : ""}`} title={`${point} points`}><span />{marker && move?.amount > 1 && <b className="score-jump">+{move.amount}</b>}</i>;
+            return <i key={point} className={`${point % 5 === 0 ? "fifth" : ""} ${point === 61 || point === 91 ? "skunk-line" : ""} ${alreadyPegged ? "already-pegged" : ""} ${marker ? "has-peg" : ""} ${inTrail ? "score-trail" : ""} ${ghost ? "has-ghost" : ""}`} title={`${point} points${alreadyPegged ? " — already pegged" : ""}`}><span />{marker && move?.amount > 1 && <b className="score-jump">+{move.amount}</b>}</i>;
           })}
         </div>
         <div className="milestones"><span>0</span><span>30</span><span>60</span><span>90</span><span>121</span></div>

@@ -128,8 +128,9 @@ function CribbageBoard({ lanes, moves }: {
           {Array.from({ length: 5 }, (_, offset) => {
             const hole = groupIndex * 5 + offset + 1;
             const move = moves[lane.id];
+            const alreadyPegged = hole < Math.min(121, lane.score);
             const inTrail = Boolean(move && hole > move.from && hole <= move.to);
-            return <i key={hole} className={`${hole === lane.score ? `pegged ${lane.color}` : ""} ${inTrail ? `score-trail ${lane.color}` : ""} ${move?.from === hole ? "has-ghost" : ""}`}>
+            return <i key={hole} className={`${alreadyPegged ? "already-pegged" : ""} ${hole === lane.score ? `pegged ${lane.color}` : ""} ${inTrail ? `score-trail ${lane.color}` : ""} ${move?.from === hole ? "has-ghost" : ""}`}>
               <span />{hole === lane.score && move?.amount ? <b className="mp-score-jump">+{move.amount}</b> : null}
             </i>;
           })}
