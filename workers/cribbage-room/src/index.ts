@@ -12,18 +12,20 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
       const url = new URL(request.url);
-      const pathname = url.pathname.replace(/^\/api\/cribbage(?=\/|$)/, "") || "/";
-      if (pathname === "/health" && request.method === "GET") {
+      const requestPath = url.pathname;
+      const apiPath = requestPath.replace(/^\/api\/cribbage(?=\/|$)/, "") || "/";
+      const normalizedApiPath = apiPath === "/" ? "/" : apiPath.replace(/\/+$/, "");
+      if (normalizedApiPath === "/health" && request.method === "GET") {
         return json({ ok: true, service: "cribbage-room", protocolVersion: 1 });
       }
-      if (pathname === "/rooms" && request.method === "POST") {
+      if (normalizedApiPath === "/rooms" && request.method === "POST") {
         if ((Number(request.headers.get("content-length")) || 0) > 1024) {
           return json({ error: { code: "PAYLOAD_TOO_LARGE", message: "Request exceeds 1 KiB." } }, 413);
         }
         const roomId = await createUniqueRoom(env);
         return json({ roomId }, 201);
       }
-      const match = /^\/rooms\/([^/]+)\/ws$/.exec(pathname);
+      const match = /^\/rooms\/([^/]+)\/ws\/?$/.exec(normalizedApiPath);
       if (match) {
         if (request.method !== "GET") return json({ error: { code: "METHOD_NOT_ALLOWED" } }, 405);
         const roomId = match[1]?.toUpperCase() ?? "";
@@ -33,8 +35,10 @@ export default {
         }
         return env.GAME_ROOMS.getByName(roomId).fetch(request);
       }
-      if (pathname.startsWith("/api/cribbage/")) return json({ error: { code: "NOT_FOUND" } }, 404);
-      if (/^\/cribbage\/room\/[A-HJ-NP-Z2-9]{6}\/?$/.test(pathname)) {
+      if (requestPath === "/api/cribbage" || requestPath.startsWith("/api/cribbage/")) {
+        return json({ error: { code: "NOT_FOUND" } }, 404);
+      }
+      if (/^\/cribbage\/room\/[A-HJ-NP-Z2-9]{6}\/?$/.test(requestPath)) {
         return env.ASSETS.fetch(new Request(new URL("/cribbage/", url), request));
       }
       return env.ASSETS.fetch(request);
