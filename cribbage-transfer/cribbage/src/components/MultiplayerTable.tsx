@@ -229,6 +229,32 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
   const pile = holdingFinalPeg ? lastPeggingPile.current : phase === "counting" ? [] : authoritativePile;
   const visiblePile = pile.filter(card => !hiddenPlayedCards.has(card.id));
   const ledger = object(view.sessionLedger ?? state.sessionLedger ?? view.ledger);
+  const ledgerEntries = Array.isArray(ledger?.entries) ? ledger.entries.flatMap((entry) => {
+    const record = object(entry);
+    return record ? [record] : [];
+  }) : [];
+  const ledgerTotalsByPlayer = ledgerEntries.reduce<Record<string, number>>((totals, entry) => {
+    const perPlayer = object(entry.perPlayerCents);
+    if (!perPlayer) return totals;
+    for (const [playerId, amount] of Object.entries(perPlayer)) {
+      const cents = number(amount);
+      totals[playerId] = (totals[playerId] ?? 0) + cents;
+    }
+    return totals;
+  }, {});
+  const ledgerPlayerNames = ledgerEntries.reduce<Record<string, string>>((names, entry) => {
+    const playerRows = Array.isArray(entry.players) ? entry.players : [];
+    for (const rawPlayer of playerRows) {
+      const player = object(rawPlayer);
+      const id = text(player?.playerId);
+      if (!id) continue;
+      names[id] = text(player?.name, names[id] ?? "Player");
+    }
+    return names;
+  }, {});
+  const formatCents = (cents: number) => `${cents < 0 ? "-" : "+"}$${Math.abs(cents / 100).toFixed(2)}`;
+  const moneyClass = (cents: number) => cents < 0 ? "mp-money-negative" : cents > 0 ? "mp-money-positive" : "mp-money-neutral";
+  const isResultPhase = ["result", "complete", "session_summary", "summary"].includes(phase);
   const winnerId = text(state.winnerTeamId);
   const winnerFromPlayers = players.find(player => player.id === winnerId || player.teamId === winnerId)?.name ?? "";
   const winner = text(state.winnerName ?? state.winnerTeamName ?? winnerFromPlayers);
@@ -778,8 +804,6 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
           {phase === "pegging" && myTurn && selected.length === 1 && <button className="primary" disabled={!legalIds.has(selected[0]) || pendingPegPresentation} onClick={() => send("PLAY_CARD", { card: encodeCard(hand.find(card => card.id === selected[0])!) })}>Play card</button>}
           {canGo && <button className="primary" onClick={() => send("SAY_GO", {})}>Say Go</button>}
           {phase === "dealcomplete" && isHost && <button className="primary" onClick={() => send("NEXT_DEAL", { eventId: state.pendingEventId })}>Next deal</button>}
-          {phase === "complete" && <button className="primary" onClick={() => send(isHost ? "REMATCH" : "REQUEST_REMATCH", {})}>Rematch</button>}
-          {["session_summary", "summary"].includes(phase) && <button className="primary" onClick={() => send("REQUEST_REMATCH", {})}>Rematch</button>}
         </div>
       </div>
 
@@ -803,10 +827,39 @@ export default function MultiplayerTable({ view, playerId, preferences, connecti
         {player.seat === dealerSeat && cribCount > 0 && <div className="mp-crib-strip"><strong>{player.name}'s crib</strong><div>{Array.from({ length: cribCount }, (_, index) => <PlayingCard hidden key={index} />)}</div></div>}
       </article>)}</div>
 
-      {["result", "complete", "session_summary", "summary"].includes(phase) && <section className="mp-result"><h2>{winner ? `${winner} wins` : titlePhase(phase)}</h2>
-        {ledger && <><p>{number(ledger.gameCount ?? ledger.games)} games recorded · friendly recordkeeping only</p><div className="mp-ledger">{Array.isArray(ledger.entries) ? ledger.entries.map((entry, index) => <span key={index}>{text(object(entry)?.label ?? object(entry)?.playerName, `Entry ${index + 1}`)} <b>{number(object(entry)?.amount ?? object(entry)?.total)}¢</b></span>) : null}</div></>}
-      </section>}
     </section>
+
+    {isResultPhase && <div className="mp-result-modal" role="dialog" aria-modal="true" aria-labelledby="mp-result-title">
+      <section>
+        <h2 id="mp-result-title">{winner ? `${winner} Wins` : "Game Complete"}</h2>
+        <div className="mp-result-actions">
+          <button className="primary" onClick={() => send(isHost ? "REMATCH" : "REQUEST_REMATCH", {})}>Rematch</button>
+          <button className="quiet" onClick={onLeave}>Quit</button>
+        </div>
+        {ledger && <>
+          <h3>Current Balance</h3>
+          <div className="mp-ledger mp-result-balance">{players.map(player => {
+            const total = ledgerTotalsByPlayer[player.id] ?? 0;
+            return <span key={player.id}>{player.name} <b className={moneyClass(total)}>{formatCents(total)}</b></span>;
+          })}</div>
+          <div className="mp-result-games">
+            {ledgerEntries.map((entry, index) => {
+              const perPlayer = object(entry.perPlayerCents) ?? {};
+              const resultLabel = text(entry.result, "normal");
+              const multiplier = number(entry.multiplier, 1);
+              const gameNumber = number(entry.gameNumber, index + 1);
+              return <p key={`${gameNumber}-${index}`}><strong>Game {gameNumber}</strong> ({resultLabel} x{multiplier})
+                {Object.entries(perPlayer).map(([playerId, cents], detailIndex) => {
+                  const amount = number(cents);
+                  const name = ledgerPlayerNames[playerId] ?? players.find(player => player.id === playerId)?.name ?? "Player";
+                  return <span key={`${gameNumber}-${playerId}`}>{detailIndex === 0 ? " " : " · "}{name} <b className={moneyClass(amount)}>{formatCents(amount)}</b></span>;
+                })}
+              </p>;
+            })}
+          </div>
+        </>}
+      </section>
+    </div>}
 
     {connection !== "connected" && <div className="mp-reconnect" role="status"><strong>Reconnecting to the table…</strong><span>Your table is preserved.</span></div>}
     {host?.connected === false && <div className="mp-host-warning">Host disconnected. Host controls resume when they reconnect.</div>}

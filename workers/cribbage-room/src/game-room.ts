@@ -45,7 +45,7 @@ export class GameRoom extends DurableObject<Env> {
     this.state = {
       roomId, revision: 0, status: "lobby", createdAt: now, hostPlayerId: "",
       seatCount: 2, settingsVersion: 0, players: [], game: initialGame(),
-      ledger: { enabled: false, baseStakeCents: 0, perHoleCents: 5, entries: [] },
+      ledger: { enabled: true, baseStakeCents: 100, perHoleCents: 5, entries: [] },
       rematchRequests: [], dialogue: [], lastActivityAt: now, expiresAt: now + ACTIVE_EXPIRY_MS,
     };
     this.persist(this.state);
@@ -171,7 +171,7 @@ export class GameRoom extends DurableObject<Env> {
     ).toArray()[0];
     if (!row) return null;
     const state = JSON.parse(row.state_json) as RoomState;
-    state.ledger ??= { enabled: false, baseStakeCents: 0, perHoleCents: 5, entries: [] };
+    state.ledger ??= { enabled: true, baseStakeCents: 100, perHoleCents: 5, entries: [] };
     state.ledger.perHoleCents ??= 5;
     state.rematchRequests ??= []; state.dialogue ??= []; state.lastActivityAt ??= Date.now();
     state.expiresAt ??= state.lastActivityAt + ACTIVE_EXPIRY_MS;

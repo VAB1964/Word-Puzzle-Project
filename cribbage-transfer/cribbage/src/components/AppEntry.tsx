@@ -37,6 +37,14 @@ function Identity({ value, onConfirm, onBack }: { value: PlayerPreferences; onCo
 type RoomPlayer = { id: string; name: string; avatarId: string; status?: string; seat: number | null; teamId: "gold" | "green" | null; connected: boolean; ready: boolean; isAI: boolean };
 type RoomView = MultiplayerSnapshot & { hostPlayerId: string; seatCount: number; players: RoomPlayer[] };
 const credentialKey = (code: string) => `cribbage.room.${code}.credential.v1`;
+const formatCurrency = (cents: number) => `$${Math.abs(cents / 100).toFixed(2)}`;
+const parseCurrencyToCents = (value: string) => {
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  if (!cleaned) return null;
+  const dollars = Number(cleaned);
+  if (!Number.isFinite(dollars)) return null;
+  return Math.max(0, Math.min(2000, Math.round(dollars * 100)));
+};
 
 function Lobby({ code, preferences, create, onLeave }: { code: string; preferences: PlayerPreferences; create: boolean; onLeave: () => void }) {
   const [ready, setReady] = useState(false);
@@ -48,9 +56,12 @@ function Lobby({ code, preferences, create, onLeave }: { code: string; preferenc
   const controllerRef = useRef<MultiplayerController | null>(null);
   const credentialRef = useRef<{ playerId: string; reconnectToken: string } | null>(null);
   const firstConnection = useRef(create);
-  const [stakes, setStakes] = useState(false);
-  const [gameAmount, setGameAmount] = useState(100);
-  const [perHole, setPerHole] = useState(5);
+  const [stakeDraft, setStakeDraft] = useState<{ enabled: boolean; baseStakeCents: number; perHoleCents: 5 | 10 | 15 | 20 }>({
+    enabled: true,
+    baseStakeCents: 100,
+    perHoleCents: 5,
+  });
+  const [gameAmountInput, setGameAmountInput] = useState("$1.00");
   const invite = `${location.origin}/cribbage/room/${code}`;
   useEffect(() => {
     try { credentialRef.current = JSON.parse(localStorage.getItem(credentialKey(code)) ?? "null") as typeof credentialRef.current; } catch { credentialRef.current = null; }
@@ -97,6 +108,20 @@ function Lobby({ code, preferences, create, onLeave }: { code: string; preferenc
     controller.connect();
     return () => controller.disconnect();
   }, [code, preferences.avatarId, preferences.displayName]);
+  useEffect(() => {
+    const ledger = view?.ledger as { enabled?: unknown; baseStakeCents?: unknown; perHoleCents?: unknown } | undefined;
+    if (!ledger) return;
+    const nextPerHole = [5, 10, 15, 20].includes(Number(ledger.perHoleCents))
+      ? Number(ledger.perHoleCents) as 5 | 10 | 15 | 20
+      : 5;
+    const nextBaseStakeCents = Number.isFinite(Number(ledger.baseStakeCents)) ? Number(ledger.baseStakeCents) : 100;
+    setStakeDraft({
+      enabled: ledger.enabled !== false,
+      baseStakeCents: nextBaseStakeCents,
+      perHoleCents: nextPerHole,
+    });
+    setGameAmountInput(formatCurrency(nextBaseStakeCents));
+  }, [view?.ledger]);
   const send = (type: Parameters<MultiplayerController["send"]>[0], payload: unknown) => {
     try { controllerRef.current?.send(type, payload); setError(""); } catch (sendError) { setError(sendError instanceof Error ? sendError.message : "Command failed."); }
   };
@@ -105,6 +130,24 @@ function Lobby({ code, preferences, create, onLeave }: { code: string; preferenc
   const playerId = localPlayerId ?? credentialRef.current?.playerId;
   const isHost = Boolean(view && playerId === view.hostPlayerId);
   const phase = String(view?.phase ?? (view?.game && typeof view.game === "object" ? (view.game as { phase?: unknown }).phase : "lobby")).toLowerCase();
+  const ledger = (view?.ledger ?? null) as { enabled?: unknown; baseStakeCents?: unknown; perHoleCents?: unknown; entries?: unknown } | null;
+  const ledgerEntries = Array.isArray(ledger?.entries) ? ledger.entries : [];
+  const ledgerLocked = ledgerEntries.length > 0;
+  const ledgerTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const rawEntry of ledgerEntries) {
+      if (!rawEntry || typeof rawEntry !== "object") continue;
+      const entry = rawEntry as { perPlayerCents?: unknown };
+      if (!entry.perPlayerCents || typeof entry.perPlayerCents !== "object") continue;
+      for (const [id, amount] of Object.entries(entry.perPlayerCents as Record<string, unknown>)) {
+        const parsed = Number(amount);
+        if (!Number.isFinite(parsed)) continue;
+        totals[id] = (totals[id] ?? 0) + parsed;
+      }
+    }
+    return totals;
+  }, [ledgerEntries]);
+  const money = (cents: number) => `${cents < 0 ? "-" : "+"}${formatCurrency(cents)}`;
   if (view && playerId && !["", "lobby", "waiting", "setup"].includes(phase)) return <MultiplayerTable view={view} playerId={playerId} preferences={preferences} connection={connectionState} message={lastMessage} send={send} onLeave={() => { send("LEAVE_ROOM", {}); onLeave(); }} />;
   return <section className="lobby entry-card">
     <header><div><span className="eyebrow">Private room · {connectionState === "connected" ? "Connected" : connectionState === "reconnecting" ? "Reconnecting…" : "Connecting…"}</span><h2>Waiting room</h2></div><div className="room-code"><small>Room code</small><strong>{code}</strong></div></header>
@@ -117,8 +160,8 @@ function Lobby({ code, preferences, create, onLeave }: { code: string; preferenc
         : index === 2 ? "blue" : index === 1 ? "green" : "red";
       return <article className={`lobby-seat team-${displayTeam}`} key={index}><span className="seat-avatar">{avatar ? <img src={avatar.src} alt="" /> : "○"}</span><div><strong>{player?.name ?? "Open seat"}{player?.id === view?.hostPlayerId ? " ♛" : ""}</strong><small>{player ? (player.isAI ? "AI" : player.connected ? "Occupied" : "Reconnecting") : "Open"} · Team {displayTeam[0].toUpperCase() + displayTeam.slice(1)} · {player?.ready ? "Ready" : "Not ready"}</small></div></article>;
     })}</div>
-    <div className="host-setup"><h3>Host setup</h3><label>Seats<select disabled={!isHost} value={seatCount} onChange={event => send("UPDATE_SETUP", { seatCount: Number(event.target.value) })}><option>2</option><option>3</option><option>4</option></select></label><label>Add AI<select disabled={!isHost} defaultValue="" onChange={event => { const openSeat = seats.findIndex(player => !player); if (openSeat >= 0 && event.target.value) send("ADD_AI", { seat: openSeat, difficulty: event.target.value }); event.target.value = ""; }}><option value="">Choose difficulty</option><option value="medium">Medium</option><option value="easy">Easy</option><option value="hard">Hard</option></select></label><label>Table talk<select defaultValue={preferences.tableTalk}><option>off</option><option>occasional</option><option>chatty</option></select></label><label><input type="checkbox" disabled={!isHost} checked={stakes} onChange={event => { const enabled = event.target.checked; setStakes(enabled); send("UPDATE_LEDGER", { enabled, baseStakeCents: gameAmount, perHoleCents: perHole }); }} /> Session Ledger</label>{stakes && <><label>Game amount (cents)<input type="number" min="0" max="2000" value={gameAmount} onChange={event => { const value = Number(event.target.value); setGameAmount(value); send("UPDATE_LEDGER", { enabled: true, baseStakeCents: value, perHoleCents: perHole }); }} /></label><label>Per hole<select value={perHole} onChange={event => { const value = Number(event.target.value); setPerHole(value); send("UPDATE_LEDGER", { enabled: true, baseStakeCents: gameAmount, perHoleCents: value }); }}><option>5</option><option>10</option><option>15</option><option>20</option></select> cents</label></>}</div>
-    <p className="ledger-note">Session ledger: 0 games · no balance entries yet. Friendly recordkeeping only; no payments are processed.</p>
+    <div className="host-setup"><h3>Host setup</h3><label>Seats<select disabled={!isHost} value={seatCount} onChange={event => send("UPDATE_SETUP", { seatCount: Number(event.target.value) })}><option>2</option><option>3</option><option>4</option></select></label><label>Add AI<select disabled={!isHost} defaultValue="" onChange={event => { const openSeat = seats.findIndex(player => !player); if (openSeat >= 0 && event.target.value) send("ADD_AI", { seat: openSeat, difficulty: event.target.value }); event.target.value = ""; }}><option value="">Choose difficulty</option><option value="medium">Medium</option><option value="easy">Easy</option><option value="hard">Hard</option></select></label><label>Table talk<select defaultValue={preferences.tableTalk}><option>off</option><option>occasional</option><option>chatty</option></select></label><label><input type="checkbox" disabled={!isHost || ledgerLocked} checked={stakeDraft.enabled} onChange={event => { const enabled = event.target.checked; setStakeDraft(current => ({ ...current, enabled })); send("UPDATE_LEDGER", { enabled, baseStakeCents: stakeDraft.baseStakeCents, perHoleCents: stakeDraft.perHoleCents }); }} /> Winner Reward</label>{stakeDraft.enabled && <><label>Game amount (dollars)<input type="text" inputMode="decimal" disabled={!isHost || ledgerLocked} value={gameAmountInput} onChange={event => { const value = event.target.value; setGameAmountInput(value); const parsed = parseCurrencyToCents(value); if (parsed === null) return; setStakeDraft(current => ({ ...current, baseStakeCents: parsed })); send("UPDATE_LEDGER", { enabled: true, baseStakeCents: parsed, perHoleCents: stakeDraft.perHoleCents }); }} onBlur={() => setGameAmountInput(formatCurrency(stakeDraft.baseStakeCents))} /></label><label>Per hole<select disabled={!isHost || ledgerLocked} value={stakeDraft.perHoleCents} onChange={event => { const value = Number(event.target.value) as 5 | 10 | 15 | 20; setStakeDraft(current => ({ ...current, perHoleCents: value })); send("UPDATE_LEDGER", { enabled: true, baseStakeCents: stakeDraft.baseStakeCents, perHoleCents: value }); }}><option>5</option><option>10</option><option>15</option><option>20</option></select> cents</label></>}</div>
+    <p className="ledger-note">Winner reward: {ledgerEntries.length} game{ledgerEntries.length === 1 ? "" : "s"} recorded{ledgerLocked ? " (locked for this session)" : ""} · friendly recordkeeping only; no payments are processed.{ledgerEntries.length > 0 ? ` ${view?.players.map(player => `${player.name} ${money(ledgerTotals[player.id] ?? 0)}`).join(" · ")}` : ""}</p>
     <div className="entry-actions"><button className="quiet" onClick={() => { send("LEAVE_ROOM", {}); onLeave(); }}>Leave room</button><button onClick={() => { configureGameAudio(preferences.soundEnabled, preferences.volume); unlockGameAudio(); send("SET_READY", { ready: !ready }); }}>{ready ? "Not ready" : "Ready"}</button>{isHost && <button className="primary" disabled={!ready || seats.some(player => !player)} onClick={() => { configureGameAudio(preferences.soundEnabled, preferences.volume); unlockGameAudio(); send("START_GAME", {}); }}>Start game</button>}</div>
   </section>;
 }
