@@ -168,6 +168,9 @@ const float MAX_LETTER_RADIUS_FACTOR = 0.20f;
 const float WHEEL_LETTER_FONT_SIZE_BASE_DESIGN = 16.f;
 /** Scale factor for wheel letter frames and text. Increase (e.g. 1.3f, 1.5f) to make them bigger. */
 const float WHEEL_LETTER_VISUAL_SCALE = 1.8f;
+const float WHEEL_INTERACTION_SCALE_FACTOR = 1.4f;
+const float WHEEL_FIRST_LETTER_HIT_EXTRA = 10.f;
+const float WHEEL_FIRST_LETTER_INNER_SIDE_EXTRA = 12.f;
 constexpr float WHEEL_R = 68.f;
 
 // --- Score Zone Constants ---

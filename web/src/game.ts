@@ -90,12 +90,12 @@ import {
   WORD_INFO_POPUP_PADDING_DESIGN,
   WHEEL_HIT_RADIUS_NON_SCALED_EXTRA,
   WHEEL_BG_PADDING_AROUND_LETTERS_DESIGN,
+  WHEEL_FIRST_LETTER_HIT_EXTRA,
+  WHEEL_FIRST_LETTER_INNER_SIDE_EXTRA,
+  WHEEL_INTERACTION_SCALE_FACTOR,
   WHEEL_LETTER_FONT_SIZE_BASE_DESIGN,
   WHEEL_LETTER_RING_OUTSET_DESIGN,
   WHEEL_LETTER_VISUAL_SCALE,
-  WHEEL_TOUCH_FIRST_LETTER_HIT_EXTRA,
-  WHEEL_TOUCH_FIRST_LETTER_INNER_SIDE_EXTRA,
-  WHEEL_TOUCH_SCALE_FACTOR,
   WHEEL_R,
   WHEEL_ZONE_PADDING_DESIGN,
   WHEEL_ZONE_RECT_DESIGN
@@ -259,7 +259,7 @@ export class Game {
   private currentWheelRadius = 0;
   private currentLetterRenderRadius = 0;
   private wheelCenter: Vec2 = { x: 0, y: 0 };
-  private wheelTouchScaleActive = false;
+  private wheelInteractionScaleActive = false;
 
   private gridStartX = 0;
   private gridStartY = 0;
@@ -584,7 +584,7 @@ export class Game {
       this.touchInputActive = false;
       this.isBonusWordsPopupTouchOpen = false;
     }
-    this.updateWheelTouchScale(world, pointerType);
+    this.updateWheelInteractionScale(world);
     if (this.showExitConfirmDialog) {
       this.handleExitConfirmInput(world);
       return;
@@ -734,24 +734,20 @@ export class Game {
       }
     }
 
-    const isTouchPointer = pointerType === "touch";
-    const touchScale = isTouchPointer && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    const firstTouchLetterExtra = isTouchPointer ? WHEEL_TOUCH_FIRST_LETTER_HIT_EXTRA : 0;
-    const hitRadius = this.getWheelLetterHitRadius(touchScale, firstTouchLetterExtra);
+    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    const hitRadius = this.getWheelLetterHitRadius(interactionScale, WHEEL_FIRST_LETTER_HIT_EXTRA);
     for (let i = 0; i < this.base.length; i += 1) {
-      const pos = this.getWheelLetterPosition(i, touchScale);
+      const pos = this.getWheelLetterPosition(i, interactionScale);
       if (!pos) continue;
       let effectiveHitRadius = hitRadius;
-      if (isTouchPointer) {
-        const outwardX = pos.x - this.wheelCenter.x;
-        const outwardY = pos.y - this.wheelCenter.y;
-        const outwardLength = Math.hypot(outwardX, outwardY) || 1;
-        const worldDx = world.x - pos.x;
-        const worldDy = world.y - pos.y;
-        const radialDot = (worldDx * outwardX + worldDy * outwardY) / outwardLength;
-        if (radialDot < 0) {
-          effectiveHitRadius += WHEEL_TOUCH_FIRST_LETTER_INNER_SIDE_EXTRA;
-        }
+      const outwardX = pos.x - this.wheelCenter.x;
+      const outwardY = pos.y - this.wheelCenter.y;
+      const outwardLength = Math.hypot(outwardX, outwardY) || 1;
+      const worldDx = world.x - pos.x;
+      const worldDy = world.y - pos.y;
+      const radialDot = (worldDx * outwardX + worldDy * outwardY) / outwardLength;
+      if (radialDot < 0) {
+        effectiveHitRadius += WHEEL_FIRST_LETTER_INNER_SIDE_EXTRA;
       }
       if (distSq(world, pos) < effectiveHitRadius * effectiveHitRadius) {
         this.dragging = true;
@@ -767,7 +763,6 @@ export class Game {
     if (pointerType === "touch") {
       this.touchInputActive = true;
     }
-    this.updateWheelTouchScale(world, pointerType);
     if (this.isDraggingBonusWordsPopupTouchScroll && this.isHoveringHintPointsText) {
       const deltaY = this.bonusWordsPopupTouchLastY - world.y;
       this.bonusWordsPopupTouchLastY = world.y;
@@ -776,11 +771,11 @@ export class Game {
     }
     if (!this.dragging) return;
 
-    const touchScale = pointerType === "touch" && this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    const hitRadius = this.getWheelLetterHitRadius(touchScale);
+    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    const hitRadius = this.getWheelLetterHitRadius(interactionScale);
     const hitRadiusSq = hitRadius * hitRadius;
     for (let i = 0; i < this.base.length; i += 1) {
-      const pos = this.getWheelLetterPosition(i, touchScale);
+      const pos = this.getWheelLetterPosition(i, interactionScale);
       if (!pos) continue;
       if (distSq(world, pos) < hitRadiusSq) {
         const index = i;
@@ -804,7 +799,7 @@ export class Game {
       this.touchInputActive = false;
       this.isBonusWordsPopupTouchOpen = false;
     }
-    this.wheelTouchScaleActive = false;
+    this.wheelInteractionScaleActive = false;
     if (!this.dragging) return;
 
     this.submitCurrentGuess();
@@ -930,7 +925,7 @@ export class Game {
           this.triggerKeyboardLetterPulse(removedIndex);
         }
       }
-      this.wheelTouchScaleActive = false;
+      this.wheelInteractionScaleActive = false;
       return;
     }
 
@@ -955,7 +950,7 @@ export class Game {
     this.currentGuess += letter;
     this.path.push(index);
     this.triggerKeyboardLetterPulse(index);
-    this.wheelTouchScaleActive = false;
+    this.wheelInteractionScaleActive = false;
     this.playSound("select");
     ev.preventDefault();
   }
@@ -985,35 +980,31 @@ export class Game {
     return { x: this.wheelCenter.x + dx * scale, y: this.wheelCenter.y + dy * scale };
   }
 
-  private getWheelTouchRadius(scale = 1) {
+  private getWheelInteractionRadius(scale = 1) {
     const ringRadius = this.letterPositionRadius * scale;
     const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * scale;
     return ringRadius + visualRadius;
   }
 
-  private getWheelLetterHitRadius(touchScale = 1, additionalRadius = 0) {
-    const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * touchScale;
-    const nonScaledExtra = touchScale === 1 ? WHEEL_HIT_RADIUS_NON_SCALED_EXTRA : 0;
+  private getWheelLetterHitRadius(interactionScale = 1, additionalRadius = 0) {
+    const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * interactionScale;
+    const nonScaledExtra = interactionScale === 1 ? WHEEL_HIT_RADIUS_NON_SCALED_EXTRA : 0;
     return visualRadius + nonScaledExtra + additionalRadius;
   }
 
-  private updateWheelTouchScale(world: Vec2, pointerType: string) {
+  private updateWheelInteractionScale(world: Vec2) {
     if (!this.ready || !this.base || this.base.length === 0) {
-      this.wheelTouchScaleActive = false;
-      return;
-    }
-    if (pointerType !== "touch") {
-      this.wheelTouchScaleActive = false;
+      this.wheelInteractionScaleActive = false;
       return;
     }
     if (this.currentScreen !== GameScreen.Playing && this.currentScreen !== GameScreen.GameOver) {
-      this.wheelTouchScaleActive = false;
+      this.wheelInteractionScaleActive = false;
       return;
     }
 
-    if (this.wheelTouchScaleActive) return;
-    const radius = this.getWheelTouchRadius(1);
-    this.wheelTouchScaleActive = distSq(world, this.wheelCenter) <= radius * radius;
+    if (this.wheelInteractionScaleActive) return;
+    const radius = this.getWheelInteractionRadius(1);
+    this.wheelInteractionScaleActive = distSq(world, this.wheelCenter) <= radius * radius;
   }
 
   private handleMainMenuInput(world: Vec2) {
@@ -1686,7 +1677,7 @@ export class Game {
     const scrambleSize = SCRAMBLE_BTN_HEIGHT;
     this.scrambleButton = {
       x: this.wheelCenter.x - scrambleSize / 2,
-      y: Math.min(REF_H - 58, this.wheelCenter.y + this.visualBgRadius * WHEEL_TOUCH_SCALE_FACTOR + 8),
+      y: Math.min(REF_H - 58, this.wheelCenter.y + this.visualBgRadius * WHEEL_INTERACTION_SCALE_FACTOR + 8),
       width: scrambleSize,
       height: scrambleSize
     };
@@ -2361,13 +2352,13 @@ export class Game {
 
   private renderPath(ctx: CanvasRenderingContext2D) {
     if (!this.dragging || this.path.length === 0) return;
-    const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
     ctx.strokeStyle = colorToCss(this.currentTheme.dragLine);
-    ctx.lineWidth = 5 * touchScale;
+    ctx.lineWidth = 5 * interactionScale;
     ctx.lineCap = "round";
     ctx.beginPath();
     for (let i = 0; i < this.path.length; i += 1) {
-      const pos = this.getWheelLetterPosition(this.path[i], touchScale);
+      const pos = this.getWheelLetterPosition(this.path[i], interactionScale);
       if (!pos) continue;
       if (i === 0) ctx.moveTo(pos.x, pos.y);
       else ctx.lineTo(pos.x, pos.y);
@@ -2378,17 +2369,17 @@ export class Game {
 
   private renderWheel(ctx: CanvasRenderingContext2D) {
     if (!this.base) return;
-    const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * touchScale;
+    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * interactionScale;
     const fontScaleRatio = clamp(
       (this.currentLetterRenderRadius / LETTER_R_BASE_DESIGN) * WHEEL_LETTER_VISUAL_SCALE,
       0.5,
       2
     );
-    const fontSize = Math.max(8, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN * fontScaleRatio * touchScale);
+    const fontSize = Math.max(8, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN * fontScaleRatio * interactionScale);
 
     for (let i = 0; i < this.base.length; i += 1) {
-      const pos = this.getWheelLetterPosition(i, touchScale);
+      const pos = this.getWheelLetterPosition(i, interactionScale);
       if (!pos) continue;
       let letterScale = 1;
       const pulseTimer = this.keyboardLetterPulseTimers[i] ?? 0;
@@ -2422,9 +2413,9 @@ export class Game {
 
       if (DEBUG_DRAW_WHEEL_HIT_AREAS) {
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, this.getWheelLetterHitRadius(touchScale), 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y, this.getWheelLetterHitRadius(interactionScale), 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(0, 255, 0, 0.75)";
-        ctx.lineWidth = Math.max(1, 1.5 * touchScale);
+        ctx.lineWidth = Math.max(1, 1.5 * interactionScale);
         ctx.stroke();
       }
     }
@@ -2493,8 +2484,8 @@ export class Game {
   private renderGuessDisplay(ctx: CanvasRenderingContext2D) {
     if (!this.currentGuess) return;
     const n = this.currentGuess.length;
-    const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    const wheelTop = this.wheelCenter.y - this.visualBgRadius * touchScale;
+    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    const wheelTop = this.wheelCenter.y - this.visualBgRadius * interactionScale;
     const boardBottom = GRID_ZONE_RECT_DESIGN.y + GRID_ZONE_RECT_DESIGN.height + 20;
     const availableHeight = Math.max(16, wheelTop - boardBottom - 12);
     const guessTileSize = Math.min(TILE_SIZE * this.currentGridLayoutScale * 1.25, availableHeight);
@@ -3536,7 +3527,7 @@ export class Game {
     this.dragging = false;
     this.path = [];
     this.currentGuess = "";
-    this.wheelTouchScaleActive = false;
+    this.wheelInteractionScaleActive = false;
   }
 
   private getCriteriaForCurrentPuzzle() {
@@ -3597,9 +3588,9 @@ export class Game {
     panel(hints.x - 15, hints.y - 16, hints.width + 30, hints.height + 32);
     const score = SCORE_ZONE_RECT_DESIGN;
     panel(score.x - 3, score.y - 22, score.width + 6, score.height + 44);
-    const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
     ctx.beginPath();
-    ctx.arc(this.wheelCenter.x, this.wheelCenter.y, this.visualBgRadius * touchScale, 0, Math.PI * 2);
+    ctx.arc(this.wheelCenter.x, this.wheelCenter.y, this.visualBgRadius * interactionScale, 0, Math.PI * 2);
     ctx.fillStyle = colorToCss(this.currentTheme.wheelBg);
     ctx.fill();
     ctx.strokeStyle = colorToCss(this.currentTheme.wheelOutline);

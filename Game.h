@@ -171,6 +171,7 @@ private:
 
     std::vector<sf::Vector2f> m_wheelLetterRenderPos;
     float m_currentLetterRenderRadius;
+    bool m_wheelInteractionScaleActive = false;
     bool m_firstFrame = true;
     bool m_dragging;
     bool m_isAwaitingLetterHintTarget = false;
@@ -358,6 +359,9 @@ private:
     void m_updateAnims(float dt);
     void m_updateScoreAnims(float dt);
     sf::Vector2f m_tilePos(int wordIdx, int charIdx);
+    sf::Vector2f m_getWheelLetterPosition(std::size_t index, float scale = 1.f) const;
+    float m_getWheelLetterHitRadius(float scale = 1.f, float additionalRadius = 0.f) const;
+    void m_updateWheelInteractionScale(const sf::Vector2f& pointerPosition);
     void m_clearDragState();
     void m_clearPendingLetterHintTarget();
     bool m_isValidLetterHintTargetTile(int wordIdx, int charIdx) const;

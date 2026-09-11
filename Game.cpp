@@ -2178,10 +2178,41 @@ sf::Vector2f Game::m_tilePos(int wordIdx, int charIdx) {
 }
 // ***** END OF COMPLETE Game::m_tilePos FUNCTION *****
 
+sf::Vector2f Game::m_getWheelLetterPosition(std::size_t index, float scale) const {
+    if (index >= m_wheelLetterRenderPos.size()) {
+        return sf::Vector2f(m_wheelX, m_wheelY);
+    }
+
+    const sf::Vector2f basePosition = m_wheelLetterRenderPos[index];
+    if (scale == 1.f) {
+        return basePosition;
+    }
+
+    const sf::Vector2f wheelCenter(m_wheelX, m_wheelY);
+    return wheelCenter + (basePosition - wheelCenter) * scale;
+}
+
+float Game::m_getWheelLetterHitRadius(float scale, float additionalRadius) const {
+    return m_currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * scale + additionalRadius;
+}
+
+void Game::m_updateWheelInteractionScale(const sf::Vector2f& pointerPosition) {
+    if (m_base.empty() || m_wheelInteractionScaleActive) {
+        return;
+    }
+
+    const float visualRadius = m_currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE;
+    const float interactionRadius = m_letterPositionRadius + visualRadius;
+    const sf::Vector2f wheelCenter(m_wheelX, m_wheelY);
+    m_wheelInteractionScaleActive =
+        distSq(pointerPosition, wheelCenter) <= interactionRadius * interactionRadius;
+}
+
 void Game::m_clearDragState() {
     m_dragging = false;
     m_path.clear();
     m_currentGuess.clear();
+    m_wheelInteractionScaleActive = false;
 }
 
 void Game::m_clearPendingLetterHintTarget() {
@@ -2647,14 +2678,37 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
             }
             if (hintButtonClicked) return;
 
-            // Letter Wheel Click (from original)
+            m_updateWheelInteractionScale(mp);
+            const float interactionScale =
+                m_wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1.f;
+            const float firstLetterHitRadius =
+                m_getWheelLetterHitRadius(interactionScale, WHEEL_FIRST_LETTER_HIT_EXTRA);
+
             for (std::size_t i = 0; i < m_base.size(); ++i) {
-                if (i < m_wheelLetterRenderPos.size() && distSq(mp, m_wheelLetterRenderPos[i]) < m_currentLetterRenderRadius * m_currentLetterRenderRadius) {
+                if (i >= m_wheelLetterRenderPos.size()) {
+                    continue;
+                }
+
+                const sf::Vector2f letterPosition = m_getWheelLetterPosition(i, interactionScale);
+                const sf::Vector2f outward = letterPosition - sf::Vector2f(m_wheelX, m_wheelY);
+                const float outwardLength = std::sqrt(outward.x * outward.x + outward.y * outward.y);
+                float effectiveHitRadius = firstLetterHitRadius;
+                if (outwardLength > 0.01f) {
+                    const sf::Vector2f pointerOffset = mp - letterPosition;
+                    const float radialDot =
+                        (pointerOffset.x * outward.x + pointerOffset.y * outward.y) / outwardLength;
+                    if (radialDot < 0.f) {
+                        effectiveHitRadius += WHEEL_FIRST_LETTER_INNER_SIDE_EXTRA;
+                    }
+                }
+
+                if (distSq(mp, letterPosition) < effectiveHitRadius * effectiveHitRadius) {
                     m_dragging = true;
                     m_path.clear();
                     m_path.push_back(static_cast<int>(i));
                     m_currentGuess += static_cast<char>(std::toupper(m_base[i]));
                     if (m_selectSound) m_selectSound->play();
+                    return;
                 }
             }
             // If no wheel letter was clicked, and no button was clicked, this click did nothing relevant.
@@ -2668,6 +2722,10 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
     else if (const auto* mm = event.getIf<sf::Event::MouseMoved>()) {
         if (m_dragging) {
             sf::Vector2f mp = m_window.mapPixelToCoords(mm->position);
+            const float interactionScale =
+                m_wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1.f;
+            const float hitRadius = m_getWheelLetterHitRadius(interactionScale);
+            const float hitRadiusSquared = hitRadius * hitRadius;
             // No need for actionTaken flag here if we only process the first hovered letter.
             // However, the original logic allowed adding a letter if not in path, or backtracking.
             // Let's keep the structure that allows for adding/removing if mouse hovers over a letter.
@@ -2680,8 +2738,8 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                     break;
                 }
 
-                // Check if mouse is inside the visual circle for letter 'i'
-                if (distSq(mp, m_wheelLetterRenderPos[i]) < m_currentLetterRenderRadius * m_currentLetterRenderRadius) {
+                const sf::Vector2f letterPosition = m_getWheelLetterPosition(i, interactionScale);
+                if (distSq(mp, letterPosition) < hitRadiusSquared) {
 
                     int letterIndexInMPath = static_cast<int>(i); // The index 'i' directly corresponds to m_base
 
@@ -2729,6 +2787,9 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 
 // --- Mouse Button Released ---
     else if (const auto* mb = event.getIf<sf::Event::MouseButtonReleased>()) {
+        if (mb->button == sf::Mouse::Button::Left) {
+            m_wheelInteractionScaleActive = false;
+        }
         if (m_dragging && mb->button == sf::Mouse::Button::Left) {
 
             const int MIN_GUESS_LENGTH = 3; // Minimum letters required for a valid word attempt
@@ -3199,15 +3260,17 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
     // --- Draw Path Lines ---
     if (m_dragging && !m_path.empty() && !m_wheelLetterRenderPos.empty()) {
-        const float halfThickness = scaledPathThickness / 2.0f;
+        const float interactionScale =
+            m_wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1.f;
+        const float halfThickness = scaledPathThickness * interactionScale / 2.0f;
         const sf::Color pathColor = m_currentTheme.gridLetter;
 
         if (m_path.size() >= 2) {
             sf::VertexArray finalPathStrip(sf::PrimitiveType::TriangleStrip);
             for (size_t i = 0; i < m_path.size() - 1; ++i) {
                 if (static_cast<size_t>(m_path[i]) < m_wheelLetterRenderPos.size() && static_cast<size_t>(m_path[i + 1]) < m_wheelLetterRenderPos.size()) {
-                    sf::Vector2f p1 = m_wheelLetterRenderPos[m_path[i]];
-                    sf::Vector2f p2 = m_wheelLetterRenderPos[m_path[i + 1]];
+                    sf::Vector2f p1 = m_getWheelLetterPosition(m_path[i], interactionScale);
+                    sf::Vector2f p2 = m_getWheelLetterPosition(m_path[i + 1], interactionScale);
                     sf::Vector2f direction = p2 - p1;
                     float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
                     if (length < 0.1f) continue;
@@ -3222,7 +3285,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
             if (finalPathStrip.getVertexCount() > 0) m_window.draw(finalPathStrip);
         }
         if (static_cast<size_t>(m_path.back()) < m_wheelLetterRenderPos.size()) {
-            sf::Vector2f p1 = m_wheelLetterRenderPos[m_path.back()];
+            sf::Vector2f p1 = m_getWheelLetterPosition(m_path.back(), interactionScale);
             sf::Vector2f p2 = mousePos;
             sf::Vector2f direction = p2 - p1;
             float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
@@ -3241,7 +3304,10 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
     // --- Draw Wheel Letters ---
     if (!m_base.empty() && !m_wheelLetterRenderPos.empty()) {
-        const float visualRadius = m_currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE;
+        const float interactionScale =
+            m_wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1.f;
+        const float visualRadius =
+            m_currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * interactionScale;
         float fontScaleRatio = 1.f;
         if (LETTER_R_BASE_DESIGN > 0.1f && m_currentLetterRenderRadius > 0.1f) {
             fontScaleRatio = m_currentLetterRenderRadius / LETTER_R_BASE_DESIGN;
@@ -3249,14 +3315,14 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         fontScaleRatio *= WHEEL_LETTER_VISUAL_SCALE;
         fontScaleRatio = std::clamp(fontScaleRatio, 0.5f, 2.0f);
         unsigned int actualScaledWheelLetterFontSize = static_cast<unsigned int>(
-            std::max(8.0f, S(this, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN) * fontScaleRatio)
+            std::max(8.0f, S(this, WHEEL_LETTER_FONT_SIZE_BASE_DESIGN) * fontScaleRatio * interactionScale)
             );
         sf::Text chTxt_wheel(m_font, "", actualScaledWheelLetterFontSize);
 
         for (std::size_t i = 0; i < m_base.size(); ++i) {
             if (i >= m_wheelLetterRenderPos.size()) continue;
             bool isHilited = std::find(m_path.begin(), m_path.end(), static_cast<int>(i)) != m_path.end();
-            sf::Vector2f renderPos_wheel = m_wheelLetterRenderPos[i];
+            sf::Vector2f renderPos_wheel = m_getWheelLetterPosition(i, interactionScale);
 
             if (m_circularLetterFrameTex.getSize().x > 0) {
                 sf::Sprite letterFrameSpr(m_circularLetterFrameTex);
@@ -3322,7 +3388,9 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
         const std::size_t n = m_currentGuess.length();
         const float totalWidth = (n > 0) ? (n * guessTileSize + (n - 1) * guessPad) : 0.f;
-        const float wheelVisualTopY = m_wheelY - m_visualBgRadius;
+        const float interactionScale =
+            m_wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1.f;
+        const float wheelVisualTopY = m_wheelY - m_visualBgRadius * interactionScale;
         const float guessRowTopY = wheelVisualTopY - guessTileSize - guessDisplayGap_design - guessDisplayOffsetY_design;
 
         const unsigned int guessLetterFontSize = static_cast<unsigned int>(std::max(8.0f, guessTileSize * GUESS_LETTER_FONT_SCALE));
