@@ -13,8 +13,6 @@ import {
   CROSSWORD_MEDIUM_MAX_SOLUTIONS,
   EASY_MAX_SOLUTIONS,
   EASY_PUZZLE_COUNT,
-  GUESS_DISPLAY_GAP,
-  GUESS_DISPLAY_OFFSET_Y,
   GRID_COLUMN_DIVIDER_ROWS,
   GRID_COLUMN_DIVIDER_WIDTH,
   GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK,
@@ -77,8 +75,6 @@ import {
   SCORE_ZONE_RECT_DESIGN,
   SCORE_ZONE_VALUE_FONT_SIZE,
   SCRAMBLE_BTN_HEIGHT,
-  SCRAMBLE_BTN_OFFSET_X,
-  SCRAMBLE_BTN_OFFSET_Y,
   TILE_PAD,
   TILE_SIZE,
   TOP_BAR_PADDING_X_DESIGN,
@@ -140,17 +136,11 @@ import { applyView, createViewTransform, screenToWorld, type ViewTransform } fro
 import { VoiceCommentary } from "./core/voiceCommentary";
 
 const HINT_LABELS = ["Letter", "Random", "Full Word", "1st of Each"];
-const HINT_LABEL_FONT_BASE = 75;
-const HINT_LABEL_X_REL = 0.33;
-const HINT_LABEL_Y_REL = 0.5;
-const HINT_LIGHT_CENTER_X_REL = 0.15;
-const HINT_LIGHT_CENTER_Y_REL = 0.46;
-const HINT_LIGHT_DIAMETER_REL = 0.55;
-const HINT_FRAME_VERTICAL_SPACING = 2;
+const HINT_FRAME_VERTICAL_SPACING = 7;
 const HINT_FRAME_MIN_HEIGHT = 20;
 const HINT_ZONE_SIDE_PADDING = 4;
 const HINT_ZONE_BOTTOM_PADDING = 5;
-const HINT_ZONE_BONUS_TEXT_SIZE = 20;
+const HINT_ZONE_BONUS_TEXT_SIZE = 17;
 const HINT_ZONE_BONUS_TEXT_PADDING_TOP = 5;
 const HINT_ZONE_BONUS_TEXT_GAP = 5;
 const HINT_COSTS = [
@@ -181,8 +171,8 @@ const GEM_HINT_POINTS_BY_RARITY: Record<number, number> = {
 };
 const KEYBOARD_LETTER_PULSE_DURATION_SEC = 0.16;
 const KEYBOARD_LETTER_PULSE_SCALE_MAX = 1.1;
-const UI_ORANGE: Color = { r: 255, g: 190, b: 70, a: 255 };
-const UI_WHITE: Color = { r: 255, g: 255, b: 255, a: 255 };
+const UI_INK: Color = { r: 53, g: 39, b: 26, a: 255 };
+const UI_TEXT: Color = UI_INK;
 
 export class Game {
   private width = 0;
@@ -406,7 +396,7 @@ export class Game {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = "#2b2018";
     ctx.fillRect(0, 0, this.width, this.height);
 
     if (this.loadingError) {
@@ -471,13 +461,7 @@ export class Game {
   private async loadImages() {
     const imageMap: Record<string, string> = {
       menuBackground: Assets.menuBackground,
-      menuButton: Assets.menuButton,
       mainBackground: Assets.mainBackground,
-      hintFrame: Assets.hintFrame,
-      hintIndicator: Assets.hintIndicator,
-      scrambleButton: Assets.scrambleButton,
-      gridButton: Assets.gridButton,
-      circularLetterFrame: Assets.circularLetterFrame,
       sapphire: Assets.sapphire,
       ruby: Assets.ruby,
       diamond: Assets.diamond
@@ -1701,8 +1685,8 @@ export class Game {
 
     const scrambleSize = SCRAMBLE_BTN_HEIGHT;
     this.scrambleButton = {
-      x: this.wheelCenter.x + SCRAMBLE_BTN_OFFSET_X,
-      y: this.wheelCenter.y + SCRAMBLE_BTN_OFFSET_Y - scrambleSize / 2,
+      x: this.wheelCenter.x - scrambleSize / 2,
+      y: Math.min(REF_H - 58, this.wheelCenter.y + this.visualBgRadius * WHEEL_TOUCH_SCALE_FACTOR + 8),
       width: scrambleSize,
       height: scrambleSize
     };
@@ -1865,7 +1849,7 @@ export class Game {
       ctx,
       "Are you sure?",
       { x: panel.x + panel.width / 2, y: panel.y + 50 },
-      UI_WHITE,
+      UI_TEXT,
       this.font(28, true)
     );
 
@@ -1876,7 +1860,7 @@ export class Game {
       rectContains(this.exitConfirmYesButton, this.mousePos)
         ? this.currentTheme.menuButtonHover
         : this.currentTheme.menuButtonNormal,
-      UI_WHITE
+      UI_TEXT
     );
     this.drawButton(
       ctx,
@@ -1885,7 +1869,7 @@ export class Game {
       rectContains(this.exitConfirmNoButton, this.mousePos)
         ? this.currentTheme.menuButtonHover
         : this.currentTheme.menuButtonNormal,
-      UI_WHITE
+      UI_TEXT
     );
   }
 
@@ -1906,7 +1890,7 @@ export class Game {
       ctx,
       "Rules",
       { x: panel.x + panel.width / 2, y: panel.y + 50 },
-      UI_WHITE,
+      UI_TEXT,
       this.font(30, true)
     );
 
@@ -1926,7 +1910,7 @@ export class Game {
     const textPaddingX = 60;
     const textTop = panel.y + 95;
     const textMaxWidth = panel.width - textPaddingX * 2;
-    ctx.fillStyle = colorToCss(UI_WHITE);
+    ctx.fillStyle = colorToCss(UI_TEXT);
     ctx.font = this.font(18, false);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
@@ -1979,7 +1963,7 @@ export class Game {
       rectContains(this.rulesCloseButton, this.mousePos)
         ? this.currentTheme.menuButtonHover
         : this.currentTheme.menuButtonNormal,
-      UI_WHITE
+      UI_TEXT
     );
   }
 
@@ -2003,12 +1987,12 @@ export class Game {
     ctx.restore();
 
     // Draw Final Score Prominently (matching PC version)
-    const finalScoreText = `Final Score: ${this.currentScore}`;
+    const finalScoreText = `Final Score: ${this.currentScore.toLocaleString("en-US")}`;
     drawCenteredText(
       ctx,
       finalScoreText,
       { x: REF_W / 2, y: REF_H * 0.3 },
-      { r: 255, g: 255, b: 0, a: 255 }, // Yellow color like PC version
+      { r: 255, g: 242, b: 213, a: 255 },
       this.font(48, true)
     );
 
@@ -2034,11 +2018,12 @@ export class Game {
       this.continueButton,
       "Continue",
       hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal,
-      UI_WHITE
+      UI_TEXT
     );
   }
 
   private renderGameScreen(ctx: CanvasRenderingContext2D) {
+    this.renderLibraryPanels(ctx);
     this.renderTopBar(ctx);
     this.renderScoreZone(ctx);
     this.renderGrid(ctx);
@@ -2088,7 +2073,7 @@ export class Game {
         ctx,
         title,
         { x: REF_W / 2, y: popupY + 24 + titleHeight / 2 },
-        UI_WHITE,
+        UI_TEXT,
         titleFont
       );
 
@@ -2105,7 +2090,7 @@ export class Game {
         this.continueButton,
         "Continue",
         hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal,
-        UI_WHITE
+        UI_TEXT
       );
     }
   }
@@ -2139,7 +2124,7 @@ export class Game {
     const cy = btn.y + btn.height / 2;
     const s = btn.width * 0.32;
 
-    ctx.strokeStyle = enabled ? colorToCss({ r: 255, g: 255, b: 255 }) : colorToCss({ r: 180, g: 180, b: 180 });
+    ctx.strokeStyle = enabled ? "#35271a" : "#827562";
     ctx.fillStyle = ctx.strokeStyle;
     ctx.lineWidth = 1.5;
     ctx.lineCap = "round";
@@ -2243,20 +2228,20 @@ export class Game {
 
     drawCenteredText(
       ctx,
-      "Score:",
+      "Score",
       { x: centerX, y: scoreLineY - scoreBlockLift },
-      UI_ORANGE,
+      UI_INK,
       this.font(SCORE_ZONE_LABEL_FONT_SIZE, true)
     );
 
     ctx.save();
     ctx.translate(centerX, scoreValueY - scoreBlockLift);
     ctx.scale(scaleFactor, scaleFactor);
-    ctx.fillStyle = colorToCss(UI_ORANGE);
+    ctx.fillStyle = colorToCss(UI_INK);
     ctx.font = this.font(SCORE_ZONE_VALUE_FONT_SIZE, true);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(`${this.currentScore}`, 0, 0);
+    ctx.fillText(this.currentScore.toLocaleString("en-US"), 0, 0);
     ctx.restore();
 
     if (this.isInSession) {
@@ -2264,21 +2249,21 @@ export class Game {
         this.puzzlesPerSession > 0 ? (this.currentPuzzleIndex + 1) / this.puzzlesPerSession : 0;
 
       drawRoundedRect(ctx, meterX, meterY, meterWidth, meterHeight, 4, { r: 50, g: 50, b: 50, a: 150 }, this.currentTheme.scoreTextLabel, 1);
-      ctx.fillStyle = colorToCss(UI_ORANGE);
+      ctx.fillStyle = "#70894f";
       ctx.fillRect(meterX, meterY, meterWidth * progressRatio, meterHeight);
 
-      const meterText = `${this.currentPuzzleIndex + 1}/${this.puzzlesPerSession}`;
+      const meterText = `Puzzle ${this.currentPuzzleIndex + 1} of ${this.puzzlesPerSession}`;
       const meterTextX = meterX + meterWidth / 2;
       const meterTextY = meterY - 8;
       ctx.save();
       ctx.font = this.font(12, true);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.shadowColor = "rgba(0,0,0,0.9)";
+      ctx.shadowColor = "transparent";
       ctx.shadowBlur = 2;
       ctx.shadowOffsetX = 1;
       ctx.shadowOffsetY = 1;
-      ctx.fillStyle = colorToCss(UI_ORANGE);
+      ctx.fillStyle = colorToCss(UI_INK);
       ctx.fillText(meterText, meterTextX, meterTextY);
       ctx.restore();
 
@@ -2286,7 +2271,7 @@ export class Game {
         ctx,
         `Hint Points: ${this.hintPoints}`,
         { x: centerX, y: hintY },
-        UI_ORANGE,
+        UI_INK,
         this.font(SCORE_ZONE_BONUS_FONT_SIZE * 1.6, true)
       );
     } else {
@@ -2294,7 +2279,7 @@ export class Game {
         ctx,
         `Hint Points: ${this.hintPoints}`,
         { x: centerX, y: hintY },
-        UI_ORANGE,
+        UI_INK,
         this.font(SCORE_ZONE_BONUS_FONT_SIZE * 1.6, true)
       );
     }
@@ -2304,7 +2289,7 @@ export class Game {
     if (this.sorted.length === 0) return;
     const tileSize = TILE_SIZE * this.currentGridLayoutScale;
     const tilePad = TILE_PAD * this.currentGridLayoutScale;
-    const buttonImage = this.images.gridButton;
+
 
     for (let w = 0; w < this.sorted.length; w += 1) {
       for (let c = 0; c < this.sorted[w].text.length; c += 1) {
@@ -2323,13 +2308,9 @@ export class Game {
         const renderTileSize = tileSize * tileScale;
         const renderX = pos.x + (tileSize - renderTileSize) / 2;
         const renderY = pos.y + (tileSize - renderTileSize) / 2;
-        if (buttonImage) {
-          ctx.drawImage(buttonImage, renderX, renderY, renderTileSize, renderTileSize);
-        } else {
-          drawRoundedRect(ctx, renderX, renderY, renderTileSize, renderTileSize, 4, this.currentTheme.gridEmptyTile);
-        }
-
         const isFilled = this.grid[w]?.[c] !== "_";
+        this.drawLibraryTile(ctx, renderX, renderY, renderTileSize, isFilled, selectableHintTarget);
+
         if (!isFilled) {
           const rarity = this.sorted[w].rarity;
           const gem = rarity === 2 ? this.images.sapphire : rarity === 3 ? this.images.ruby : rarity === 4 ? this.images.diamond : null;
@@ -2357,8 +2338,8 @@ export class Game {
         ctx.save();
         ctx.translate(pos.x + tileSize / 2, pos.y + tileSize / 2);
         ctx.scale(scale, scale);
-        ctx.fillStyle = colorToCss(UI_ORANGE);
-        ctx.font = this.font(Math.max(8, 20 * this.currentGridLayoutScale), true);
+        ctx.fillStyle = colorToCss(UI_INK);
+        ctx.font = this.font(Math.max(8, 24 * this.currentGridLayoutScale), true);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(this.grid[w][c], 0, 0);
@@ -2381,7 +2362,7 @@ export class Game {
   private renderPath(ctx: CanvasRenderingContext2D) {
     if (!this.dragging || this.path.length === 0) return;
     const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
-    ctx.strokeStyle = colorToCss(UI_ORANGE);
+    ctx.strokeStyle = colorToCss(this.currentTheme.dragLine);
     ctx.lineWidth = 5 * touchScale;
     ctx.lineCap = "round";
     ctx.beginPath();
@@ -2397,7 +2378,6 @@ export class Game {
 
   private renderWheel(ctx: CanvasRenderingContext2D) {
     if (!this.base) return;
-    const frame = this.images.circularLetterFrame;
     const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
     const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * touchScale;
     const fontScaleRatio = clamp(
@@ -2421,20 +2401,19 @@ export class Game {
       ctx.translate(pos.x, pos.y);
       ctx.scale(letterScale, letterScale);
 
-      if (frame) {
-        const diameter = visualRadius * 2;
-        ctx.drawImage(frame, -diameter / 2, -diameter / 2, diameter, diameter);
-      } else {
-        ctx.beginPath();
-        ctx.arc(0, 0, visualRadius, 0, Math.PI * 2);
-        ctx.fillStyle = colorToCss(this.currentTheme.letterCircleNormal);
-        ctx.fill();
-        ctx.strokeStyle = colorToCss(this.currentTheme.wheelOutline);
-        ctx.lineWidth = 2 * touchScale;
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = colorToCss(UI_ORANGE);
+      const selected = this.path.includes(i);
+      ctx.shadowColor = "rgba(30,20,10,0.3)";
+      ctx.shadowBlur = 3;
+      ctx.shadowOffsetY = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, visualRadius, 0, Math.PI * 2);
+      ctx.fillStyle = colorToCss(selected ? this.currentTheme.letterCircleHighlight : this.currentTheme.letterCircleNormal);
+      ctx.fill();
+      ctx.shadowColor = "transparent";
+      ctx.strokeStyle = selected ? "#c7d7ad" : "#b59b6d";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = colorToCss(selected ? this.currentTheme.letterTextHighlight : this.currentTheme.letterTextNormal);
       ctx.font = this.font(fontSize, true);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -2450,15 +2429,26 @@ export class Game {
       }
     }
 
-    if (this.images.scrambleButton) {
-      ctx.drawImage(
-        this.images.scrambleButton,
-        this.scrambleButton.x,
-        this.scrambleButton.y,
-        this.scrambleButton.width,
-        this.scrambleButton.height
-      );
+    const b = this.scrambleButton;
+    this.drawButton(ctx, b, "", rectContains(b, this.mousePos) ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal);
+    ctx.save();
+    ctx.translate(b.x + b.width / 2, b.y + b.height / 2);
+    ctx.strokeStyle = colorToCss(UI_INK);
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    for (const sign of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(-10, sign * 7);
+      ctx.lineTo(-4, sign * 7);
+      ctx.lineTo(4, -sign * 7);
+      ctx.lineTo(10, -sign * 7);
+      ctx.moveTo(6, -sign * 7 - 4);
+      ctx.lineTo(10, -sign * 7);
+      ctx.lineTo(6, -sign * 7 + 4);
+      ctx.stroke();
     }
+    ctx.restore();
+    drawCenteredText(ctx, "Scramble", { x: b.x + b.width / 2, y: b.y + b.height + 12 }, {r:255,g:243,b:216}, this.font(12, true));
   }
 
   private renderLetterAnims(ctx: CanvasRenderingContext2D) {
@@ -2470,7 +2460,7 @@ export class Game {
       const x = lerp(anim.start.x, anim.end.x, eased);
       const y = lerp(anim.start.y, anim.end.y, eased);
       const alpha = t > 0.7 ? (1 - t) / 0.3 : 1;
-      ctx.fillStyle = `rgba(255, 190, 70, ${alpha})`;
+      ctx.fillStyle = `rgba(53, 39, 26, ${alpha})`;
       ctx.font = this.font(fontSize, true);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -2503,23 +2493,21 @@ export class Game {
   private renderGuessDisplay(ctx: CanvasRenderingContext2D) {
     if (!this.currentGuess) return;
     const n = this.currentGuess.length;
-    const guessTileSize = TILE_SIZE * this.currentGridLayoutScale * 1.25;
-    const guessPad = TILE_PAD * this.currentGridLayoutScale;
-    const totalWidth = n * guessTileSize + (n - 1) * guessPad;
     const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
     const wheelTop = this.wheelCenter.y - this.visualBgRadius * touchScale;
-    const guessRowTop = wheelTop - guessTileSize - GUESS_DISPLAY_GAP - GUESS_DISPLAY_OFFSET_Y;
+    const boardBottom = GRID_ZONE_RECT_DESIGN.y + GRID_ZONE_RECT_DESIGN.height + 20;
+    const availableHeight = Math.max(16, wheelTop - boardBottom - 12);
+    const guessTileSize = Math.min(TILE_SIZE * this.currentGridLayoutScale * 1.25, availableHeight);
+    const guessPad = TILE_PAD * this.currentGridLayoutScale;
+    const totalWidth = n * guessTileSize + (n - 1) * guessPad;
+    const guessRowTop = boardBottom + 4 + (availableHeight - guessTileSize) / 2;
     const startX = this.wheelCenter.x - totalWidth / 2;
-    const buttonImage = this.images.gridButton;
+
 
     for (let i = 0; i < n; i += 1) {
       const x = startX + i * (guessTileSize + guessPad);
-      if (buttonImage) {
-        ctx.drawImage(buttonImage, x, guessRowTop, guessTileSize, guessTileSize);
-      } else {
-        drawRoundedRect(ctx, x, guessRowTop, guessTileSize, guessTileSize, 4, this.currentTheme.gridEmptyTile);
-      }
-      ctx.fillStyle = colorToCss(UI_ORANGE);
+      this.drawLibraryTile(ctx, x, guessRowTop, guessTileSize, false, true);
+      ctx.fillStyle = colorToCss(UI_INK);
       ctx.font = this.font(Math.max(8, guessTileSize * 0.65), true);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -2532,7 +2520,7 @@ export class Game {
     const totalBonus = this.calculateTotalPossibleBonusWords();
     const bonusText = `Bonus Words: ${this.foundBonusWords.size}/${totalBonus}`;
     ctx.font = this.font(HINT_ZONE_BONUS_TEXT_SIZE, true);
-    ctx.fillStyle = colorToCss(UI_ORANGE);
+    ctx.fillStyle = colorToCss(UI_INK);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     const textWidth = ctx.measureText(bonusText).width;
@@ -2549,52 +2537,31 @@ export class Game {
     for (let i = 0; i < this.hintClickableRegions.length; i += 1) {
       const rect = this.hintClickableRegions[i];
       const hover = this.hoveredHintIndex === i;
-      const baseColor = hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal;
-      const frameImage = this.images.hintFrame;
-      const frameTexW = frameImage?.naturalWidth || frameImage?.width || rect.width;
-      const frameTexH = frameImage?.naturalHeight || frameImage?.height || rect.height;
-      const panelScale = frameTexW > 0 ? rect.width / frameTexW : 1;
-      if (this.images.hintFrame) {
-        ctx.drawImage(this.images.hintFrame, rect.x, rect.y, rect.width, rect.height);
-        if (this.hintFrameClickAnimTimers[i] > 0) {
-          ctx.fillStyle = "rgba(0,255,0,0.2)";
-          ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-        }
-      } else {
-        drawRoundedRect(ctx, rect.x, rect.y, rect.width, rect.height, 6, baseColor);
-      }
-
-      const label = HINT_LABELS[i];
-      const cost = HINT_COSTS[i];
-      const labelFontSize = Math.max(8, HINT_LABEL_FONT_BASE * panelScale);
-      ctx.fillStyle = colorToCss(UI_ORANGE);
-      ctx.font = this.font(labelFontSize, true);
-      ctx.textAlign = "left";
+      const affordable = this.hintPoints >= HINT_COSTS[i];
+      const flashing = this.hintFrameClickAnimTimers[i] > 0;
+      this.drawButton(ctx, rect, "", hover || flashing ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal);
+      const dotX = rect.x + 17;
+      const midY = rect.y + rect.height / 2;
+      ctx.beginPath();
+      ctx.arc(dotX, midY, 5, 0, Math.PI * 2);
+      ctx.fillStyle = affordable ? "#648346" : "#a69b88";
+      ctx.fill();
+      ctx.strokeStyle = affordable ? "#3e5b2f" : "#817563";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.font = this.font(Math.min(17, rect.height * 0.37), true);
+      ctx.fillStyle = affordable ? "#35271a" : "#746956";
       ctx.textBaseline = "middle";
-      const labelX = rect.x + frameTexW * HINT_LABEL_X_REL * panelScale;
-      const labelY = rect.y + frameTexH * HINT_LABEL_Y_REL * panelScale;
-      ctx.fillText(label, labelX, labelY);
-
-      if (this.images.hintIndicator) {
-        const lightSize = frameTexH * HINT_LIGHT_DIAMETER_REL * panelScale;
-        const lightX = rect.x + frameTexW * HINT_LIGHT_CENTER_X_REL * panelScale;
-        const lightY = rect.y + frameTexH * HINT_LIGHT_CENTER_Y_REL * panelScale;
-        ctx.globalAlpha = this.hintPoints >= cost ? 1 : 0.3;
-        ctx.drawImage(
-          this.images.hintIndicator,
-          lightX - lightSize / 2,
-          lightY - lightSize / 2,
-          lightSize,
-          lightSize
-        );
-        ctx.globalAlpha = 1;
-      }
+      ctx.textAlign = "left";
+      ctx.fillText(HINT_LABELS[i], rect.x + 31, midY);
+      ctx.textAlign = "right";
+      ctx.fillText(String(HINT_COSTS[i]), rect.x + rect.width - 12, midY);
     }
 
     if (this.hoveredHintIndex >= 0) {
       const rect = this.hintClickableRegions[this.hoveredHintIndex];
       const popupX = rect.x + rect.width + 10;
-      const popupY = rect.y;
+      const popupY = Math.min(rect.y, REF_H - HINT_POPUP_HEIGHT_DESIGN - 10);
       if (this.images.menuBackground) {
         ctx.drawImage(
           this.images.menuBackground,
@@ -2659,7 +2626,7 @@ export class Game {
         layout.descLines = layout.descLines.slice(0, maxLines);
       }
 
-      ctx.fillStyle = colorToCss(UI_WHITE);
+      ctx.fillStyle = colorToCss(UI_TEXT);
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
 
@@ -2826,7 +2793,7 @@ export class Game {
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.font = this.font(layout.titleFontSize, true);
-    ctx.fillStyle = colorToCss(UI_WHITE);
+    ctx.fillStyle = colorToCss(UI_TEXT);
 
     let currentMajorX = contentStartX;
     for (const group of layout.layouts) {
@@ -2878,7 +2845,7 @@ export class Game {
       for (const column of group.columns) {
         let y = scrollY;
         for (let i = 0; i < column.length; i += 1) {
-          ctx.fillStyle = colorToCss(UI_WHITE);
+          ctx.fillStyle = colorToCss(UI_TEXT);
           const centerX = currentMinorX + group.wordColumnWidth / 2;
           ctx.fillText(column[i].text, centerX, y);
           y += layout.wordFontSize;
@@ -3018,7 +2985,7 @@ export class Game {
     for (let i = 0; i < measured.length; i += 1) {
       const block = measured[i];
       ctx.font = this.font(block.fontSize, block.bold);
-      ctx.fillStyle = colorToCss(UI_WHITE);
+      ctx.fillStyle = colorToCss(UI_TEXT);
       let lineY = textY;
       for (const line of block.lines) {
         ctx.fillText(line, textX, lineY);
@@ -3118,8 +3085,8 @@ export class Game {
       ctx,
       title,
       { x: panelX + panelWidth / 2, y: panelY + 34 },
-      UI_WHITE,
-      this.font(24, true)
+      UI_TEXT,
+      "bold 28px Georgia, serif"
     );
 
     for (const button of buttons) {
@@ -3145,13 +3112,14 @@ export class Game {
     rect: Rect,
     label: string,
     color: Color,
-    textColor: Color = UI_WHITE
+    textColor: Color = UI_TEXT
   ) {
-    if (this.images.menuButton) {
-      ctx.drawImage(this.images.menuButton, rect.x, rect.y, rect.width, rect.height);
-    } else {
-      drawRoundedRect(ctx, rect.x, rect.y, rect.width, rect.height, 8, color);
-    }
+    ctx.save();
+    ctx.shadowColor = "rgba(39,26,15,0.22)";
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetY = 2;
+    drawRoundedRect(ctx, rect.x, rect.y, rect.width, rect.height, 8, color, {r:177,g:154,b:112}, 1);
+    ctx.restore();
 
     drawCenteredText(
       ctx,
@@ -3264,7 +3232,7 @@ export class Game {
       },
       lifetime,
       initialLifetime: lifetime,
-      color: { r: 255, g: 215, b: 0, a: 255 }
+      color: { r: 61, g: 94, b: 42, a: 255 }
     });
   }
 
@@ -3282,7 +3250,7 @@ export class Game {
       currentPosition: start,
       startPosition: start,
       targetPosition: target,
-      color: { r: 255, g: 255, b: 0, a: 255 },
+      color: { r: 61, g: 94, b: 42, a: 255 },
       t: 0,
       speed: 0.8
     });
@@ -3606,6 +3574,38 @@ export class Game {
     if (!sound) return;
     sound.currentTime = 0;
     sound.play().catch(() => undefined);
+  }
+
+  private drawLibraryTile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, filled: boolean, highlighted = false) {
+    ctx.save();
+    ctx.shadowColor = "rgba(70,48,23,0.18)";
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetY = 1.5;
+    drawRoundedRect(ctx, x, y, size, size, Math.min(5, size * 0.12),
+      filled ? this.currentTheme.gridFilledTile : this.currentTheme.gridEmptyTile,
+      highlighted ? {r:88,g:118,b:68} : {r:185,g:161,b:117}, highlighted ? 2 : 1);
+    ctx.restore();
+  }
+
+  private renderLibraryPanels(ctx: CanvasRenderingContext2D) {
+    const panel = (x: number, y: number, w: number, h: number) => {
+      if (this.images.menuBackground) ctx.drawImage(this.images.menuBackground, x, y, w, h);
+    };
+    const grid = GRID_ZONE_RECT_DESIGN;
+    panel(grid.x - 18, grid.y - 20, grid.width + 36, grid.height + 40);
+    const hints = HINT_ZONE_RECT_DESIGN;
+    panel(hints.x - 15, hints.y - 16, hints.width + 30, hints.height + 32);
+    const score = SCORE_ZONE_RECT_DESIGN;
+    panel(score.x - 3, score.y - 22, score.width + 6, score.height + 44);
+    const touchScale = this.wheelTouchScaleActive ? WHEEL_TOUCH_SCALE_FACTOR : 1;
+    ctx.beginPath();
+    ctx.arc(this.wheelCenter.x, this.wheelCenter.y, this.visualBgRadius * touchScale, 0, Math.PI * 2);
+    ctx.fillStyle = colorToCss(this.currentTheme.wheelBg);
+    ctx.fill();
+    ctx.strokeStyle = colorToCss(this.currentTheme.wheelOutline);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    drawCenteredText(ctx, "Word Puzzle", {x: REF_W / 2, y: 59}, {r:255,g:242,b:213}, "bold 30px Georgia, serif");
   }
 
   private drawBackground(ctx: CanvasRenderingContext2D) {

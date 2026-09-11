@@ -46,33 +46,33 @@ export const loadThemes = (): ColorTheme[] => {
   const themes: ColorTheme[] = [];
 
   const theme1: ColorTheme = {
-    winBg: c(30, 37, 51),
-    decorBase: c(45, 52, 67),
-    decorAccent1: c(208, 232, 242),
-    decorAccent2: c(155, 211, 255),
-    gridEmptyTile: c(100, 110, 120, 180),
-    gridFilledTile: c(155, 211, 255),
-    gridLetter: c(255, 190, 70),
-    wheelBg: c(45, 52, 67, 150),
-    wheelOutline: c(155, 211, 255),
-    letterCircleNormal: c(240, 240, 240, 220),
-    letterCircleHighlight: c(34, 161, 57, 230),
-    letterTextNormal: c(30, 37, 51),
-    letterTextHighlight: c(255, 255, 255),
-    dragLine: c(0, 105, 255, 200),
-    continueButton: c(100, 200, 100),
-    hudTextGuess: c(155, 211, 255),
-    hudTextFound: c(255, 100, 0),
-    hudTextSolved: c(155, 211, 255),
-    solvedOverlayBg: c(40, 50, 70, 210),
-    scoreBarBg: c(45, 52, 67, 230),
-    scoreTextLabel: c(255, 190, 70),
-    scoreTextValue: c(255, 190, 70),
-    menuBg: c(40, 50, 70, 210),
-    menuTitleText: c(208, 232, 242),
-    menuButtonNormal: c(80, 90, 110),
-    menuButtonHover: c(120, 135, 150),
-    menuButtonText: c(255, 255, 255)
+    winBg: c(43, 32, 24),
+    decorBase: c(68, 78, 53),
+    decorAccent1: c(177, 151, 101),
+    decorAccent2: c(100, 128, 79),
+    gridEmptyTile: c(252, 240, 213),
+    gridFilledTile: c(221, 229, 194),
+    gridLetter: c(53, 39, 26),
+    wheelBg: c(63, 80, 56),
+    wheelOutline: c(177, 151, 101),
+    letterCircleNormal: c(255, 243, 217),
+    letterCircleHighlight: c(88, 118, 68),
+    letterTextNormal: c(53, 39, 26),
+    letterTextHighlight: c(255, 247, 227),
+    dragLine: c(157, 188, 124),
+    continueButton: c(219, 229, 194),
+    hudTextGuess: c(53, 39, 26),
+    hudTextFound: c(56, 91, 41),
+    hudTextSolved: c(56, 91, 41),
+    solvedOverlayBg: c(247, 235, 206),
+    scoreBarBg: c(247, 235, 206),
+    scoreTextLabel: c(104, 81, 49),
+    scoreTextValue: c(53, 39, 26),
+    menuBg: c(247, 235, 206),
+    menuTitleText: c(53, 39, 26),
+    menuButtonNormal: c(248, 236, 208),
+    menuButtonHover: c(219, 231, 196),
+    menuButtonText: c(53, 39, 26)
   };
   themes.push(theme1);
 
@@ -324,5 +324,6 @@ export const loadThemes = (): ColorTheme[] => {
   };
   themes.push(theme10);
 
-  return themes;
+  // Keep the library palette consistent between puzzles. Retain legacy palettes for future themes.
+  return [theme1];
 };

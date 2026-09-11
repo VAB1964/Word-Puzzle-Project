@@ -154,7 +154,7 @@ export const WHEEL_TOUCH_SCALE_FACTOR = 1.4;
 export const WHEEL_HIT_RADIUS_NON_SCALED_EXTRA = 8.0;
 export const WHEEL_TOUCH_FIRST_LETTER_HIT_EXTRA = 10.0;
 export const WHEEL_TOUCH_FIRST_LETTER_INNER_SIDE_EXTRA = 12.0;
-export const DEBUG_DRAW_WHEEL_HIT_AREAS = true;
+export const DEBUG_DRAW_WHEEL_HIT_AREAS = false;
 export const WHEEL_R = 68.0;
 
 export const SCORE_ZONE_PADDING_X_DESIGN = 15.0;
@@ -165,7 +165,7 @@ export const SCORE_VALUE_BONUS_GAP_DESIGN = 10.0;
 export const PUZZLE_SOLVED_TITLE_FONT_SIZE_DESIGN = 18.0;
 
 export const SCORE_ZONE_LABEL_FONT_SIZE = 18;
-export const SCORE_ZONE_VALUE_FONT_SIZE = 28;
+export const SCORE_ZONE_VALUE_FONT_SIZE = 46;
 export const SCORE_ZONE_BONUS_FONT_SIZE = 10;
 
 export const GLOWING_TUBE_TEXT_COLOR: Color = { r: 255, g: 190, b: 70, a: 255 };

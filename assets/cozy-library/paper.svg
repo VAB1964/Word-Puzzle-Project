@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="500" viewBox="0 0 600 500">
+  <defs><linearGradient id="paper" x2="0" y2="1"><stop stop-color="#fff5df"/><stop offset="1" stop-color="#ecdbb8"/></linearGradient></defs>
+  <rect x="2" y="5" width="596" height="493" rx="18" fill="#24180f" fill-opacity=".3"/>
+  <rect x="2" y="2" width="596" height="492" rx="18" fill="url(#paper)" stroke="#b39a6e" stroke-width="2"/>
+  <rect x="10" y="10" width="580" height="476" rx="12" fill="none" stroke="#ccb58c"/>
+</svg>

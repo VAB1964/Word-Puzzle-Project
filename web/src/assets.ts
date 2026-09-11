@@ -1,15 +1,9 @@
 export const Assets = {
-  menuBackground: new URL("../../assets/MenuBackground.png", import.meta.url).toString(),
-  menuButton: new URL("../../assets/MenuButton.png", import.meta.url).toString(),
-  mainBackground: new URL("../../assets/BackgroundandFrame.png", import.meta.url).toString(),
-  hintFrame: new URL("../../assets/HintButtonFrame.png", import.meta.url).toString(),
-  hintIndicator: new URL("../../assets/LightOn_small.png", import.meta.url).toString(),
-  scrambleButton: new URL("../../assets/ScrambleButton.png", import.meta.url).toString(),
-  gridButton: new URL("../../assets/Button.png", import.meta.url).toString(),
-  circularLetterFrame: new URL("../../assets/CircularLetterFrame.png", import.meta.url).toString(),
-  sapphire: new URL("../../assets/emerald.png", import.meta.url).toString(),
-  ruby: new URL("../../assets/ruby.png", import.meta.url).toString(),
-  diamond: new URL("../../assets/diamond.png", import.meta.url).toString(),
+  menuBackground: new URL("../../assets/cozy-library/paper.svg", import.meta.url).toString(),
+  mainBackground: new URL("../../assets/cozy-library/desktop.png", import.meta.url).toString(),
+  sapphire: new URL("../../assets/cozy-library/emerald.svg", import.meta.url).toString(),
+  ruby: new URL("../../assets/cozy-library/ruby.svg", import.meta.url).toString(),
+  diamond: new URL("../../assets/cozy-library/diamond.svg", import.meta.url).toString(),
   fonts: {
     arialBold: new URL("../../fonts/arialbd.ttf", import.meta.url).toString()
   },
