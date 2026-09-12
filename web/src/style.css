@@ -35,12 +35,16 @@ body {
   font-weight: 600;
   letter-spacing: 0.01em;
   backdrop-filter: blur(3px);
+  box-shadow: 0.15rem 0.5rem 1rem rgba(20, 12, 6, 0.58);
+  transition: box-shadow 140ms ease, transform 140ms ease;
 }
 
 .back-to-vab:hover,
 .back-to-vab:focus-visible {
   border-color: rgba(251, 191, 36, 0.95);
   background: rgba(68, 85, 51, 0.96);
+  box-shadow: 0.2rem 0.65rem 1.2rem rgba(20, 12, 6, 0.68);
+  transform: translateY(-1px);
 }
 
 .back-to-vab:focus-visible {

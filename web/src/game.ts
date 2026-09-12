@@ -1830,11 +1830,7 @@ export class Game {
     ctx.restore();
 
     const panel = this.exitConfirmPanel;
-    if (this.images.menuBackground) {
-      ctx.drawImage(this.images.menuBackground, panel.x, panel.y, panel.width, panel.height);
-    } else {
-      drawRoundedRect(ctx, panel.x, panel.y, panel.width, panel.height, 12, this.currentTheme.menuBg);
-    }
+    this.drawElevatedPanel(ctx, panel.x, panel.y, panel.width, panel.height);
 
     drawCenteredText(
       ctx,
@@ -1871,11 +1867,7 @@ export class Game {
     ctx.restore();
 
     const panel = this.rulesPanel;
-    if (this.images.menuBackground) {
-      ctx.drawImage(this.images.menuBackground, panel.x, panel.y, panel.width, panel.height);
-    } else {
-      drawRoundedRect(ctx, panel.x, panel.y, panel.width, panel.height, 12, this.currentTheme.menuBg);
-    }
+    this.drawElevatedPanel(ctx, panel.x, panel.y, panel.width, panel.height);
 
     drawCenteredText(
       ctx,
@@ -2044,21 +2036,16 @@ export class Game {
       const popupX = REF_W / 2 - popupWidth / 2;
       const popupY = REF_H / 2 - popupHeight / 2;
 
-      if (this.images.menuBackground) {
-        ctx.drawImage(this.images.menuBackground, popupX, popupY, popupWidth, popupHeight);
-      } else {
-        drawRoundedRect(
-          ctx,
-          popupX,
-          popupY,
-          popupWidth,
-          popupHeight,
-          15,
-          this.currentTheme.solvedOverlayBg,
-          this.currentTheme.menuButtonHover,
-          1
-        );
-      }
+      this.drawElevatedPanel(
+        ctx,
+        popupX,
+        popupY,
+        popupWidth,
+        popupHeight,
+        15,
+        this.currentTheme.solvedOverlayBg,
+        this.currentTheme.menuButtonHover
+      );
 
       drawCenteredText(
         ctx,
@@ -2393,9 +2380,10 @@ export class Game {
       ctx.scale(letterScale, letterScale);
 
       const selected = this.path.includes(i);
-      ctx.shadowColor = "rgba(30,20,10,0.3)";
-      ctx.shadowBlur = 3;
-      ctx.shadowOffsetY = 2;
+      ctx.shadowColor = "rgba(30, 20, 10, 0.5)";
+      ctx.shadowBlur = 7;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 5;
       ctx.beginPath();
       ctx.arc(0, 0, visualRadius, 0, Math.PI * 2);
       ctx.fillStyle = colorToCss(selected ? this.currentTheme.letterCircleHighlight : this.currentTheme.letterCircleNormal);
@@ -2553,27 +2541,16 @@ export class Game {
       const rect = this.hintClickableRegions[this.hoveredHintIndex];
       const popupX = rect.x + rect.width + 10;
       const popupY = Math.min(rect.y, REF_H - HINT_POPUP_HEIGHT_DESIGN - 10);
-      if (this.images.menuBackground) {
-        ctx.drawImage(
-          this.images.menuBackground,
-          popupX,
-          popupY,
-          HINT_POPUP_WIDTH_DESIGN,
-          HINT_POPUP_HEIGHT_DESIGN
-        );
-      } else {
-        drawRoundedRect(
-          ctx,
-          popupX,
-          popupY,
-          HINT_POPUP_WIDTH_DESIGN,
-          HINT_POPUP_HEIGHT_DESIGN,
-          8,
-          this.currentTheme.menuBg,
-          this.currentTheme.menuButtonHover,
-          1
-        );
-      }
+      this.drawElevatedPanel(
+        ctx,
+        popupX,
+        popupY,
+        HINT_POPUP_WIDTH_DESIGN,
+        HINT_POPUP_HEIGHT_DESIGN,
+        8,
+        this.currentTheme.menuBg,
+        this.currentTheme.menuButtonHover
+      );
 
       const desc = HINT_DESCRIPTIONS[this.hoveredHintIndex];
       const padding = HINT_POPUP_PADDING_DESIGN;
@@ -2651,21 +2628,16 @@ export class Game {
     const popupWidth = popupRect.width;
     const popupHeight = popupRect.height;
 
-    if (this.images.menuBackground) {
-      ctx.drawImage(this.images.menuBackground, popupX, popupY, popupWidth, popupHeight);
-    } else {
-      drawRoundedRect(
-        ctx,
-        popupX,
-        popupY,
-        popupWidth,
-        popupHeight,
-        POPUP_CORNER_RADIUS_BASE,
-        this.currentTheme.menuBg,
-        this.currentTheme.menuButtonHover,
-        1
-      );
-    }
+    this.drawElevatedPanel(
+      ctx,
+      popupX,
+      popupY,
+      popupWidth,
+      popupHeight,
+      POPUP_CORNER_RADIUS_BASE,
+      this.currentTheme.menuBg,
+      this.currentTheme.menuButtonHover
+    );
 
     const groups = this.buildBonusWordGroups();
     if (groups.length === 0) return;
@@ -2952,21 +2924,16 @@ export class Game {
     popupY = Math.max(popupY, popupMargin);
 
     ctx.save();
-    if (this.images.menuBackground) {
-      ctx.drawImage(this.images.menuBackground, popupX, popupY, popupWidth, popupHeight);
-    } else {
-      drawRoundedRect(
-        ctx,
-        popupX,
-        popupY,
-        popupWidth,
-        popupHeight,
-        8,
-        this.currentTheme.menuBg,
-        this.currentTheme.menuButtonHover,
-        1
-      );
-    }
+    this.drawElevatedPanel(
+      ctx,
+      popupX,
+      popupY,
+      popupWidth,
+      popupHeight,
+      8,
+      this.currentTheme.menuBg,
+      this.currentTheme.menuButtonHover
+    );
 
     let textY = popupY + popupPadding;
     const textX = popupX + popupPadding;
@@ -3066,11 +3033,7 @@ export class Game {
       buttons.length * MENU_BUTTON_HEIGHT_DESIGN +
       (buttons.length - 1) * MENU_BUTTON_SPACING_DESIGN;
 
-    if (this.images.menuBackground) {
-      ctx.drawImage(this.images.menuBackground, panelX, panelY, panelWidth, panelHeight);
-    } else {
-      drawRoundedRect(ctx, panelX, panelY, panelWidth, panelHeight, 12, this.currentTheme.menuBg);
-    }
+    this.drawElevatedPanel(ctx, panelX, panelY, panelWidth, panelHeight);
 
     drawCenteredText(
       ctx,
@@ -3106,9 +3069,10 @@ export class Game {
     textColor: Color = UI_TEXT
   ) {
     ctx.save();
-    ctx.shadowColor = "rgba(39,26,15,0.22)";
-    ctx.shadowBlur = 3;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowColor = "rgba(39, 26, 15, 0.46)";
+    ctx.shadowBlur = 7;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 5;
     drawRoundedRect(ctx, rect.x, rect.y, rect.width, rect.height, 8, color, {r:177,g:154,b:112}, 1);
     ctx.restore();
 
@@ -3119,6 +3083,30 @@ export class Game {
       textColor,
       this.font(18, true)
     );
+  }
+
+  private drawElevatedPanel(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius = 12,
+    fill: Color = this.currentTheme.menuBg,
+    stroke?: Color,
+    compactShadow = false
+  ) {
+    ctx.save();
+    ctx.shadowColor = "rgba(35, 22, 11, 0.58)";
+    ctx.shadowBlur = compactShadow ? 10 : 17;
+    ctx.shadowOffsetX = compactShadow ? 2 : 3;
+    ctx.shadowOffsetY = compactShadow ? 6 : 10;
+    if (this.images.menuBackground) {
+      ctx.drawImage(this.images.menuBackground, x, y, width, height);
+    } else {
+      drawRoundedRect(ctx, x, y, width, height, radius, fill, stroke, 1);
+    }
+    ctx.restore();
   }
 
   private updateLetterAnims(dt: number) {
@@ -3569,9 +3557,10 @@ export class Game {
 
   private drawLibraryTile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, filled: boolean, highlighted = false) {
     ctx.save();
-    ctx.shadowColor = "rgba(70,48,23,0.18)";
-    ctx.shadowBlur = 2;
-    ctx.shadowOffsetY = 1.5;
+    ctx.shadowColor = "rgba(55, 35, 17, 0.38)";
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 1.5;
+    ctx.shadowOffsetY = 3.5;
     drawRoundedRect(ctx, x, y, size, size, Math.min(5, size * 0.12),
       filled ? this.currentTheme.gridFilledTile : this.currentTheme.gridEmptyTile,
       highlighted ? {r:88,g:118,b:68} : {r:185,g:161,b:117}, highlighted ? 2 : 1);
@@ -3580,7 +3569,7 @@ export class Game {
 
   private renderLibraryPanels(ctx: CanvasRenderingContext2D) {
     const panel = (x: number, y: number, w: number, h: number) => {
-      if (this.images.menuBackground) ctx.drawImage(this.images.menuBackground, x, y, w, h);
+      this.drawElevatedPanel(ctx, x, y, w, h, 12, this.currentTheme.menuBg, undefined, true);
     };
     const grid = GRID_ZONE_RECT_DESIGN;
     panel(grid.x - 18, grid.y - 20, grid.width + 36, grid.height + 40);
@@ -3589,13 +3578,20 @@ export class Game {
     const score = SCORE_ZONE_RECT_DESIGN;
     panel(score.x - 3, score.y - 22, score.width + 6, score.height + 44);
     const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    ctx.save();
+    ctx.shadowColor = "rgba(28, 18, 9, 0.62)";
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 9;
     ctx.beginPath();
     ctx.arc(this.wheelCenter.x, this.wheelCenter.y, this.visualBgRadius * interactionScale, 0, Math.PI * 2);
     ctx.fillStyle = colorToCss(this.currentTheme.wheelBg);
     ctx.fill();
+    ctx.shadowColor = "transparent";
     ctx.strokeStyle = colorToCss(this.currentTheme.wheelOutline);
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.restore();
     drawCenteredText(ctx, "Word Puzzle", {x: REF_W / 2, y: 59}, {r:255,g:242,b:213}, "bold 30px Georgia, serif");
   }
 
