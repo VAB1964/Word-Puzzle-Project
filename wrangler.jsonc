@@ -53,6 +53,16 @@
     },
     "production": {
       "name": "word-puzzle-multiplayer",
+      "routes": [
+        {
+          "pattern": "vabgames.com/api/wordpuzzle/*",
+          "zone_name": "vabgames.com"
+        },
+        {
+          "pattern": "vabgames.com/wordpuzzle/room/*",
+          "zone_name": "vabgames.com"
+        }
+      ],
       "durable_objects": {
         "bindings": [
           {
