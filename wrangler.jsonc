@@ -1,0 +1,73 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "word-puzzle-multiplayer",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-09-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "WORD_PUZZLE_ROOMS",
+        "class_name": "WordPuzzleRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["WordPuzzleRoom"]
+    }
+  ],
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.csv"],
+      "fallthrough": true
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGIN": "http://localhost:5173,http://127.0.0.1:5173"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "env": {
+    "staging": {
+      "name": "word-puzzle-multiplayer-staging",
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "WORD_PUZZLE_ROOMS",
+            "class_name": "WordPuzzleRoom"
+          }
+        ]
+      },
+      "vars": {
+        "ALLOWED_ORIGIN": ""
+      },
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 1
+      }
+    },
+    "production": {
+      "name": "word-puzzle-multiplayer",
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "WORD_PUZZLE_ROOMS",
+            "class_name": "WordPuzzleRoom"
+          }
+        ]
+      },
+      "vars": {
+        "ALLOWED_ORIGIN": ""
+      },
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 0.25
+      }
+    }
+  }
+}

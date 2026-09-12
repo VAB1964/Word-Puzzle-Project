@@ -372,3 +372,5 @@ NewDirectory/*.json
 web/dist/
 web/.wrangler/
 web/dist/
+.wrangler/
+*.cpuprofile

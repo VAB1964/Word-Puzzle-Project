@@ -1,0 +1,20 @@
+{
+  "name": "word-puzzle-multiplayer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm --prefix web run build",
+    "typecheck": "tsc -p worker/tsconfig.json && tsc -p web/tsconfig.json",
+    "test": "vitest run",
+    "worker:dev": "wrangler dev --port 8790 --env-file worker/dev.env",
+    "worker:types": "wrangler types --env-file worker/dev.env",
+    "worker:dry-run": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260911.1",
+    "@types/node": "latest",
+    "typescript": "latest",
+    "vitest": "latest",
+    "wrangler": "4.131.1"
+  }
+}

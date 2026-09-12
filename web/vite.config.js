@@ -15,6 +15,15 @@ export default defineConfig({
   server: {
     fs: {
       allow: [".."]
+    },
+    proxy: {
+      "/api/wordpuzzle": {
+        target: "http://127.0.0.1:8790",
+        ws: true
+      },
+      "/wordpuzzle/room": {
+        target: "http://127.0.0.1:8790"
+      }
     }
   }
 });
