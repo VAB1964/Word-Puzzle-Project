@@ -2884,14 +2884,16 @@ export class Game {
         fontSize: bodyFontSize,
         bold: false,
         color: { r: 190, g: 200, b: 210, a: 255 }
-      },
-      {
-        text: `Sentence: ${info.sentence ? info.sentence : "N/A"}`,
+      }
+    ];
+    if (info.sentence) {
+      blocks.push({
+        text: `Sentence: ${info.sentence}`,
         fontSize: bodyFontSize,
         bold: false,
         color: { r: 190, g: 200, b: 210, a: 255 }
-      }
-    ];
+      });
+    }
 
     const measured = blocks.map((block) => {
       ctx.font = this.font(block.fontSize, block.bold);

@@ -3671,7 +3671,8 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         const std::string wordLine = "Word: " + info.text;
         const std::string posLine = "POS: " + (info.pos.empty() ? "N/A" : info.pos);
         const std::string defLine = "Definition: " + (info.definition.empty() ? "N/A" : info.definition);
-        const std::string sentenceLine = "Sentence: " + (info.sentence.empty() ? "N/A" : info.sentence);
+        const bool hasSentence = !info.sentence.empty();
+        const std::string sentenceLine = hasSentence ? "Sentence: " + info.sentence : "";
 
         m_popupWordText->setString(wrapTextForWidth(*m_popupWordText, wordLine, contentWidthLimit));
         m_popupPosText->setString(wrapTextForWidth(*m_popupPosText, posLine, contentWidthLimit));
@@ -3686,7 +3687,9 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         float maxTextWidth = std::max(std::max(wordBounds.size.x, posBounds.size.x),
             std::max(defBounds.size.x, sentBounds.size.x));
         float popupWidth = std::min(popupMaxWidth, maxTextWidth + popupPadding * 2.f);
-        float popupHeight = wordBounds.size.y + posBounds.size.y + defBounds.size.y + sentBounds.size.y + lineSpacing * 3.f + popupPadding * 2.f;
+        float popupHeight = wordBounds.size.y + posBounds.size.y + defBounds.size.y
+            + (hasSentence ? sentBounds.size.y + lineSpacing : 0.f)
+            + lineSpacing * 2.f + popupPadding * 2.f;
 
         const float popupOffset = S(this, WORD_INFO_POPUP_OFFSET_FROM_MOUSE_DESIGN);
         const float popupScreenMargin = S(this, POPUP_SCREEN_MARGIN_DESIGN);
@@ -3726,7 +3729,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         placeText(*m_popupWordText, wordBounds);
         placeText(*m_popupPosText, posBounds);
         placeText(*m_popupDefinitionText, defBounds);
-        placeText(*m_popupSentenceText, sentBounds);
+        if (hasSentence) placeText(*m_popupSentenceText, sentBounds);
 
         if (m_genericPopupBgSpr && m_menuBgTexture.getSize().x > 0)
             m_window.draw(*m_genericPopupBgSpr);
@@ -3735,7 +3738,7 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         m_window.draw(*m_popupWordText);
         m_window.draw(*m_popupPosText);
         m_window.draw(*m_popupDefinitionText);
-        m_window.draw(*m_popupSentenceText);
+        if (hasSentence) m_window.draw(*m_popupSentenceText);
     }
 
     // --- Scramble Button (Bottom near wheel) ---
