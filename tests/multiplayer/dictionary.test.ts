@@ -37,6 +37,23 @@ describe("published dictionary", () => {
     expect(readFileSync(new URL("../../Standalone/words_processed.csv", import.meta.url), "utf8")).toBe(csv);
   });
 
+  it("uses American size-60 vocabulary plus individually approved larger-level words", () => {
+    const base = new Set(readFileSync(new URL("../../data/esdb/american-60.txt", import.meta.url), "utf8").trim().split(/\r?\n/));
+    const editorial = JSON.parse(readFileSync(new URL("../../tools/esdb_editorial.json", import.meta.url), "utf8"));
+    const approved = new Set(Object.keys(editorial.larger_level_approvals));
+    const words = new Map(data.map((word) => [word.text, word]));
+    expect(data.every((word) => base.has(word.text) || approved.has(word.text))).toBe(true);
+    for (const word of ["color", "center", "honor", "theater", "aisle", "aisles", "awesome", "accepts", "acted"]) {
+      expect(words.has(word), word).toBe(true);
+    }
+    for (const word of ["colour", "centre", "honour", "theatre", "india", "york", "english", "french"]) {
+      expect(words.has(word), word).toBe(false);
+    }
+    for (const word of approved) expect(words.get(word)?.rarity, word).toBe(4);
+    const pending = readFileSync(new URL("../../docs/esdb-audit/pending-definitions.csv", import.meta.url), "utf8").trim().split(/\r?\n/).slice(1);
+    expect(pending.every((row) => !words.has(row.split(",")[0]))).toBe(true);
+  });
+
   for (const mode of ["Casual", "Crossword"] as const) {
     for (const difficulty of ["Easy", "Medium", "Hard"] as const) {
       it(`generates a five-puzzle ${difficulty} ${mode} session`, () => {

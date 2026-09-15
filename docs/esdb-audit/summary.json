@@ -1,0 +1,31 @@
+{
+  "baseline_words": 18242,
+  "size60_candidates": 28324,
+  "playable_words": 22017,
+  "size60_playable": 22005,
+  "larger_level_approved": 12,
+  "pending_size60": 6319,
+  "retained_words": 13408,
+  "added_words": 8609,
+  "removed_words": 4834,
+  "definition_sources": {
+    "cleaned-dictionary": 13408,
+    "editorial": 26,
+    "esdb-inflection": 8583
+  },
+  "rarity_counts": {
+    "1": 1418,
+    "2": 4821,
+    "3": 10456,
+    "4": 5322
+  },
+  "removed_easiest_words": [
+    "bam",
+    "english",
+    "french",
+    "india",
+    "june",
+    "york"
+  ],
+  "baseline_commit": "88c958927f986cff82f19222d8d7482567b908d3"
+}

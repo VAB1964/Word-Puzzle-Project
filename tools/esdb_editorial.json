@@ -1,0 +1,237 @@
+{
+  "description": "Reviewed ESDB vocabulary decisions. Size levels are not game difficulty. New headword ratings below are provisional editorial choices; established ratings are preserved. New definitions and examples are original contributions under CC BY-SA 4.0, alongside the existing dictionary.",
+  "larger_level_approvals": {
+    "abiotic": {
+      "level": 70,
+      "reason": "Useful scientific adjective for nonliving things; retains existing tier 4."
+    },
+    "agaric": {
+      "level": 70,
+      "reason": "Established fungal term with a visual definition; retains tier 4."
+    },
+    "albedo": {
+      "level": 70,
+      "reason": "Distinct scientific concept with an explanatory definition; retains tier 4."
+    },
+    "allium": {
+      "level": 70,
+      "reason": "Botanical term explained with familiar onions and garlic; retains tier 4."
+    },
+    "anomie": {
+      "level": 70,
+      "reason": "Established social-science term with a clear definition; retains tier 4."
+    },
+    "aril": {
+      "level": 70,
+      "reason": "Specific botanical term with recognizable fruit examples; retains tier 4."
+    },
+    "bireme": {
+      "level": 70,
+      "reason": "Historical vessel with a concrete definition; retains tier 4."
+    },
+    "gnosis": {
+      "level": 70,
+      "reason": "Established philosophical term; retains existing tier 4."
+    },
+    "tmesis": {
+      "level": 70,
+      "reason": "Distinct language term suitable for advanced word puzzles; retains tier 4."
+    },
+    "xebec": {
+      "level": 70,
+      "reason": "Historical sailing vessel with a descriptive definition; retains tier 4."
+    },
+    "xeric": {
+      "level": 70,
+      "reason": "Concise ecological adjective with a clear meaning; retains tier 4."
+    },
+    "zeugma": {
+      "level": 70,
+      "reason": "Established rhetorical term useful to advanced word players; retains tier 4."
+    }
+  },
+  "new_definitions": {
+    "acreage": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "An area of land measured in acres.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "aerate": {
+      "rarity": "3",
+      "pos": "verb",
+      "Definition": "To introduce air into a substance, such as soil or water.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "aha": {
+      "rarity": "2",
+      "pos": "intj",
+      "Definition": "An exclamation expressing sudden understanding or discovery.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "airbed": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "A mattress filled with air.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "airfare": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "The price paid for a journey by aircraft.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "airflow": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "The movement of air through or around something.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "airplay": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "The broadcasting of recorded music on the radio.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "airshow": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "A public event featuring displays of aircraft and flying skills.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "aisle": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "A passage between rows of seats, shelves, or other objects.",
+      "Sentence": "She walked down the aisle to find her seat.",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "alfalfa": {
+      "rarity": "3",
+      "pos": "noun",
+      "Definition": "A plant with small purple flowers that is grown as food for livestock.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "anthill": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "A mound of earth made by ants around the entrance to their nest.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "archway": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "An entrance or passage covered by an arch.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "armada": {
+      "rarity": "3",
+      "pos": "noun",
+      "Definition": "A large fleet of ships, especially warships.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "armload": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "As much as a person can carry in their arms.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "armory": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "A place where weapons and military equipment are stored.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "ascent": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "An upward movement or climb.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "asphalt": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "A mixture containing a dark, sticky binder and mineral material, used to surface roads.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "awesome": {
+      "rarity": "2",
+      "pos": "adj",
+      "Definition": "Extremely impressive or very good.",
+      "Sentence": "The view from the mountain was awesome.",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "babysit": {
+      "rarity": "2",
+      "pos": "verb",
+      "Definition": "To look after a child while the parents or usual caregivers are away.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "every": {
+      "rarity": "2",
+      "pos": "det",
+      "Definition": "Each member of a group, without exception.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "gosh": {
+      "rarity": "2",
+      "pos": "intj",
+      "Definition": "An exclamation expressing surprise.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "huh": {
+      "rarity": "2",
+      "pos": "intj",
+      "Definition": "An exclamation expressing confusion or asking for something to be repeated.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "phew": {
+      "rarity": "2",
+      "pos": "intj",
+      "Definition": "An exclamation expressing relief.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "ugh": {
+      "rarity": "2",
+      "pos": "intj",
+      "Definition": "An exclamation expressing disgust or annoyance.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "yikes": {
+      "rarity": "2",
+      "pos": "intj",
+      "Definition": "An exclamation expressing alarm or surprise.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
+    "your": {
+      "rarity": "2",
+      "pos": "det",
+      "Definition": "Belonging to or associated with the person or people being addressed.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    }
+  }
+}

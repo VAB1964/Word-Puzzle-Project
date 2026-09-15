@@ -1,5 +1,10 @@
 # Current dictionary cleanup
 
+This document records the cleanup completed before the ESDB migration. For the
+current vocabulary policy, totals, and rebuild command, use
+[ESDB starting vocabulary](esdb-vocabulary.md). Do not use this historical cleanup
+command to rebuild the new ESDB dictionary.
+
 This change cleans the existing vocabulary. It does not switch to SCOWL, add an API,
 generate new word forms, or reassign the existing rarity/gem tiers.
 
