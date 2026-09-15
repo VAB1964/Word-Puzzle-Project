@@ -390,6 +390,8 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       at: Date.now()
     };
     this.pruneCommandResults();
+    const attachment = socket.deserializeAttachment() as SocketAttachment | null;
+    const excludedConnectionId = attachment?.connectionId;
     try {
       await this.persist(next, command.type === "replace-with-ai", true);
     } catch (error) {
@@ -398,7 +400,12 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       throw error;
     }
     await this.scheduleAlarm();
-    await this.broadcast(events);
+    try {
+      socket.send(JSON.stringify(response));
+    } catch {
+      // If this send fails, broadcast may still deliver updates to replacement sockets.
+    }
+    await this.broadcast(events, excludedConnectionId);
   }
 
   private applyCommand(
