@@ -27,6 +27,10 @@ const escapeHtml = (value: string | number) =>
 const cellKey = (row: number, col: number) => `${row},${col}`;
 const GEM_RANK: Record<string, number> = { none: 0, emerald: 1, ruby: 2, diamond: 3 };
 const GEM_BONUS: Record<string, number> = { none: 0, emerald: 5, ruby: 10, diamond: 15 };
+const safeWordGems = (word: { gems?: string[]; length: number }) =>
+  Array.isArray(word.gems) && word.gems.length > 0 ? word.gems : Array.from({ length: word.length }, () => "none");
+const gemArtwork = (gem: string) =>
+  gem === "emerald" ? Assets.sapphire : gem === "ruby" ? Assets.ruby : gem === "diamond" ? Assets.diamond : "";
 
 type GemName = "none" | "emerald" | "ruby" | "diamond";
 
@@ -258,7 +262,7 @@ export class MultiplayerController {
           }</button>
           ${host ? `<button class="mp-primary" data-action="start">Start Session</button>` : "<span>Waiting for the host to start.</span>"}
         </div>
-        <p class="mp-feedback" role="status">${escapeHtml(this.feedback)}</p>
+        ${this.renderFeedbackText(this.feedback)}
       </main>`;
   }
 
@@ -284,7 +288,7 @@ export class MultiplayerController {
           : `<main class="mp-game-layout">
               <section class="mp-board-panel mp-paper">
                 ${this.renderBoard(puzzle, snapshot)}
-                <p class="mp-feedback" role="status">${escapeHtml(this.feedback)}</p>
+                ${this.renderFeedbackText(this.feedback)}
               </section>
               <aside class="mp-controls mp-paper">
                 <div class="mp-guess">${escapeHtml(this.currentGuess()) || "Choose letters"}</div>
@@ -410,8 +414,8 @@ export class MultiplayerController {
           <small class="mp-score-breakdown">
             <span data-score-field="letters">L ${participant.score.letters}</span> ·
             <span data-score-field="emerald">E ${participant.score.emerald}</span> ·
-            <span data-score-field="diamond">D ${participant.score.diamond}</span> ·
-            <span data-score-field="ruby">R ${participant.score.ruby}</span>
+            <span data-score-field="ruby">R ${participant.score.ruby}</span> ·
+            <span data-score-field="diamond">D ${participant.score.diamond}</span>
           </small>
         </article>`;
       })
@@ -439,14 +443,20 @@ export class MultiplayerController {
           const gem = cell.refs
             .map((candidate) => {
               const word = puzzle.words.find((entry) => entry.id === candidate.wordId);
-              return word?.gems[candidate.position] ?? "none";
+              if (!word) return "none";
+              const gems = safeWordGems(word);
+              return gems[candidate.position] ?? "none";
             })
             .reduce((best, current) => (GEM_RANK[current] > GEM_RANK[best] ? current : best), "none");
           return `<button class="mp-cell ${visible ? "filled" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
             data-action="board-cell" data-word="${ref.wordId}" data-position="${ref.position}"
             data-row="${cell.row}" data-col="${cell.col}"
             aria-label="${visible ? `${visible.letter}, owned by ${owner?.name ?? "player"}` : "Unrevealed letter"}">
-            ${!visible && gem !== "none" ? `<span class="mp-cell-gem ${gem}" title="${gem} word"></span>` : ""}
+            ${
+              !visible && gem !== "none"
+                ? `<img class="mp-cell-gem" src="${escapeHtml(gemArtwork(gem))}" alt="" aria-hidden="true" title="${gem} word">`
+                : ""
+            }
             ${visible ? `<span class="mp-cell-letter">${escapeHtml(visible.letter)}</span>` : ""}
           </button>`;
         })
@@ -510,7 +520,7 @@ export class MultiplayerController {
       <main class="mp-game-layout mp-summary-layout">
         <section class="mp-board-panel mp-paper">
           ${snapshot.puzzle ? this.renderBoard(snapshot.puzzle, snapshot) : ""}
-          <p class="mp-feedback" role="status">${escapeHtml(this.feedback)}</p>
+          ${this.renderFeedbackText(this.feedback)}
         </section>
         <aside class="mp-paper mp-summary-card">
           <h1>${snapshot.puzzle?.skipped ? "Puzzle Skipped" : "Puzzle Complete"}</h1>
@@ -540,7 +550,7 @@ export class MultiplayerController {
               <b>#${rank}</b><span class="mp-color-dot"></span>
               <strong>${escapeHtml(participant.name)}</strong>
               <span>${participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human"}</span>
-              <small>L ${participant.score.letters} · E ${participant.score.emerald} · D ${participant.score.diamond} · R ${participant.score.ruby}</small>
+              <small>L ${participant.score.letters} · E ${participant.score.emerald} · R ${participant.score.ruby} · D ${participant.score.diamond}</small>
               <em>${participant.score.total}</em>
             </article>`;
           })
@@ -736,6 +746,23 @@ export class MultiplayerController {
     return this.selectedIndices.map((index) => this.wheelLetters[index]).join("");
   }
 
+  private renderFeedbackText(message: string) {
+    const withIcons = escapeHtml(message)
+      .replaceAll(
+        "💚",
+        `<img class="mp-feedback-gem" src="${escapeHtml(Assets.sapphire)}" alt="Emerald gem" aria-label="Emerald gem">`
+      )
+      .replaceAll(
+        "♦️",
+        `<img class="mp-feedback-gem" src="${escapeHtml(Assets.ruby)}" alt="Ruby gem" aria-label="Ruby gem">`
+      )
+      .replaceAll(
+        "💎",
+        `<img class="mp-feedback-gem" src="${escapeHtml(Assets.diamond)}" alt="Diamond gem" aria-label="Diamond gem">`
+      );
+    return `<p class="mp-feedback" role="status">${withIcons}</p>`;
+  }
+
   private clearGuess() {
     this.selectedIndices = [];
   }
@@ -820,7 +847,7 @@ export class MultiplayerController {
       const word = snapshot.puzzle.words.find((candidate) => candidate.id === wordId);
       if (!word) continue;
       letters += word.length;
-      for (const gem of word.gems) {
+      for (const gem of safeWordGems(word)) {
         if (gem === "emerald") emerald += GEM_BONUS.emerald;
         else if (gem === "ruby") ruby += GEM_BONUS.ruby;
         else if (gem === "diamond") diamond += GEM_BONUS.diamond;
@@ -864,8 +891,8 @@ export class MultiplayerController {
       <div class="mp-score-flight-breakdown">
         <span>L+${components.letters}</span>
         ${components.emerald > 0 ? `<span class="gem-emerald">E+${components.emerald}</span>` : ""}
-        ${components.diamond > 0 ? `<span class="gem-diamond">D+${components.diamond}</span>` : ""}
         ${components.ruby > 0 ? `<span class="gem-ruby">R+${components.ruby}</span>` : ""}
+        ${components.diamond > 0 ? `<span class="gem-diamond">D+${components.diamond}</span>` : ""}
       </div>`;
     this.animationLayer.appendChild(flight);
 
@@ -991,8 +1018,8 @@ export class MultiplayerController {
 
     flashField("letters", components.letters > 0);
     flashField("emerald", components.emerald > 0);
-    flashField("diamond", components.diamond > 0);
     flashField("ruby", components.ruby > 0);
+    flashField("diamond", components.diamond > 0);
 
     const totalRect = total.getBoundingClientRect();
     for (let i = 0; i < 8; i += 1) {

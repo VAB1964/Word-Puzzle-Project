@@ -405,6 +405,14 @@ select {
   white-space: pre-line;
 }
 
+.mp-feedback-gem {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0 0.12rem;
+  vertical-align: -0.12rem;
+  filter: drop-shadow(0 0.06rem 0.12rem rgba(45, 30, 16, 0.35));
+}
+
 .mp-connection-banner {
   position: fixed;
   top: 0;
@@ -741,27 +749,13 @@ select {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 72%;
-  height: 72%;
-  transform: translate(-50%, -50%) rotate(45deg);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  border-radius: 0.16rem;
-  box-shadow: 0 0 0 1px rgba(56, 38, 20, 0.28);
-  opacity: 0.95;
+  width: 66%;
+  height: 66%;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  filter: drop-shadow(0 0.08rem 0.18rem rgba(45, 30, 16, 0.42));
   z-index: 1;
   pointer-events: none;
-}
-
-.mp-cell-gem.emerald {
-  background: #159447;
-}
-
-.mp-cell-gem.ruby {
-  background: #ce2f3e;
-}
-
-.mp-cell-gem.diamond {
-  background: #58a9ca;
 }
 
 .mp-bonus-info {

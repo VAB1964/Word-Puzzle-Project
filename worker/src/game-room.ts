@@ -887,8 +887,8 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     return [
       `Letters: ${score.letters}`,
       `💚: ${score.emerald}`,
-      `💎: ${score.diamond}`,
-      `♦️: ${score.ruby}`
+      `♦️: ${score.ruby}`,
+      `💎: ${score.diamond}`
     ].join("\n");
   }
 
@@ -1004,6 +1004,10 @@ export class WordPuzzleRoom extends DurableObject<Env> {
 
   private snapshotFor(state: RoomState, localParticipantId: string): RoomSnapshot {
     const completed = new Set(state.runtime?.completedWordIds ?? []);
+    const normalizeWordGems = (word: { answer: string; gems?: string[] }) =>
+      Array.isArray(word.gems) && word.gems.length > 0
+        ? word.gems
+        : Array.from({ length: word.answer.length }, () => "none" as const);
     return {
       protocolVersion: MULTIPLAYER_PROTOCOL_VERSION,
       roomCode: state.code,
@@ -1030,7 +1034,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
                 id: word.id,
                 length: word.answer.length,
                 rarity: word.rarity,
-                gems: word.gems,
+                gems: normalizeWordGems(word),
                 cells: word.cells,
                 completed: completed.has(word.id)
               })),

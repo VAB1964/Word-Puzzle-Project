@@ -2,6 +2,14 @@ import "./style.css";
 import { Game } from "./game";
 import { initializeAppEntry } from "./multiplayer/entry";
 
+const CANONICAL_HOST = "vabgames.com";
+const NON_CANONICAL_HOSTS = new Set(["thevabgames.com", "www.thevabgames.com"]);
+if (NON_CANONICAL_HOSTS.has(window.location.hostname)) {
+  const redirected = new URL(window.location.href);
+  redirected.hostname = CANONICAL_HOST;
+  window.location.replace(redirected.toString());
+}
+
 const canvas = document.getElementById("gameCanvas") as HTMLCanvasElement | null;
 if (!canvas) {
   throw new Error("Missing #gameCanvas element.");
