@@ -53,6 +53,7 @@ export class MultiplayerController {
   private turnOrderPopup: { roundNumber: number; names: string[]; hideAt: number } | null = null;
   private uiTicker: number | null = null;
   private shownTurnOrderKey: string | null = null;
+  private startSessionTimeout: number | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -89,6 +90,10 @@ export class MultiplayerController {
       this.animationLayer.remove();
       this.animationLayer = null;
     }
+    if (this.startSessionTimeout !== null) {
+      window.clearTimeout(this.startSessionTimeout);
+      this.startSessionTimeout = null;
+    }
     this.client.close();
   }
 
@@ -99,6 +104,10 @@ export class MultiplayerController {
 
   setError(message: string) {
     this.feedback = message;
+    if (this.startSessionTimeout !== null) {
+      window.clearTimeout(this.startSessionTimeout);
+      this.startSessionTimeout = null;
+    }
     this.render();
   }
 
@@ -107,6 +116,10 @@ export class MultiplayerController {
     const previousSnapshot = this.snapshot;
     const puzzleChanged = snapshot.puzzle?.id !== this.snapshot?.puzzle?.id;
     this.snapshot = snapshot;
+    if (snapshot.status !== "lobby" && this.startSessionTimeout !== null) {
+      window.clearTimeout(this.startSessionTimeout);
+      this.startSessionTimeout = null;
+    }
     if (puzzleChanged) {
       this.wheelLetters = snapshot.puzzle?.baseLetters.split("") ?? [];
       this.clearGuess();
@@ -567,7 +580,32 @@ export class MultiplayerController {
     } else if (action === "toggle-ready") {
       this.client.send({ type: "set-ready", ready: !local?.ready });
     } else if (action === "start") {
-      this.client.send({ type: "start-session" });
+      const blocker = snapshot.participants.find(
+        (participant) => participant.kind === "human" && (!participant.connected || !participant.ready)
+      );
+      if (blocker) {
+        this.setError(
+          blocker.connected
+            ? `${blocker.name} is not ready yet.`
+            : `${blocker.name} is disconnected. Reconnect them or replace them with AI.`
+        );
+        this.playSound("error");
+        return;
+      }
+      if (this.client.send({ type: "start-session" })) {
+        this.feedback = "Starting session…";
+        this.render();
+        if (this.startSessionTimeout !== null) {
+          window.clearTimeout(this.startSessionTimeout);
+        }
+        this.startSessionTimeout = window.setTimeout(() => {
+          this.startSessionTimeout = null;
+          const current = this.snapshot;
+          if (!current || current.status !== "lobby") return;
+          this.client.send({ type: "request-snapshot" });
+          this.setError("Still waiting for session start confirmation. Try Start Session again if needed.");
+        }, 3000);
+      }
     } else if (action === "add-ai") {
       const level = (document.getElementById("mp-ai-level") as HTMLSelectElement)?.value as AiLevel;
       this.client.send({ type: "add-ai", level });
