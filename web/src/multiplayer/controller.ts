@@ -5,6 +5,7 @@ import type {
   PublicPuzzle,
   RoomSnapshot
 } from "../../../shared/multiplayer/types";
+import { Assets } from "../assets";
 import { MultiplayerClient } from "./client";
 
 const AI_LEVELS: AiLevel[] = ["High School", "College", "Professional"];
@@ -24,6 +25,18 @@ const escapeHtml = (value: string | number) =>
     .replace(/'/g, "&#039;");
 
 const cellKey = (row: number, col: number) => `${row},${col}`;
+const GEM_RANK: Record<string, number> = { none: 0, emerald: 1, ruby: 2, diamond: 3 };
+const GEM_BONUS: Record<string, number> = { none: 0, emerald: 5, ruby: 10, diamond: 15 };
+
+type GemName = "none" | "emerald" | "ruby" | "diamond";
+
+interface ScoreFlightComponents {
+  letters: number;
+  emerald: number;
+  ruby: number;
+  diamond: number;
+  strongestGem: GemName;
+}
 
 export class MultiplayerController {
   private snapshot: RoomSnapshot | null = null;
@@ -32,12 +45,22 @@ export class MultiplayerController {
   private selectedIndices: number[] = [];
   private wheelLetters: string[] = [];
   private awaitingLetterHint = false;
+  private showBonusList = false;
+  private sounds: Record<string, HTMLAudioElement> = {};
+  private audioUnlocked = false;
+  private processedEventSequences = new Set<number>();
+  private animationLayer: HTMLDivElement | null = null;
 
   constructor(
     private readonly root: HTMLElement,
     readonly client: MultiplayerClient,
     private readonly onLeave: () => void
   ) {
+    for (const [name, url] of Object.entries(Assets.sounds)) {
+      const audio = new Audio(url);
+      audio.preload = "auto";
+      this.sounds[name] = audio;
+    }
     root.addEventListener("click", (event) => this.handleClick(event));
     root.addEventListener("change", (event) => this.handleChange(event));
     window.addEventListener("keydown", this.handleKeyDown);
@@ -45,6 +68,10 @@ export class MultiplayerController {
 
   destroy() {
     window.removeEventListener("keydown", this.handleKeyDown);
+    if (this.animationLayer) {
+      this.animationLayer.remove();
+      this.animationLayer = null;
+    }
     this.client.close();
   }
 
@@ -59,15 +86,26 @@ export class MultiplayerController {
   }
 
   setSnapshot(snapshot: RoomSnapshot, events: PresentationEvent[]) {
+    const previousStatus = this.snapshot?.status ?? null;
+    const previousSnapshot = this.snapshot;
     const puzzleChanged = snapshot.puzzle?.id !== this.snapshot?.puzzle?.id;
     this.snapshot = snapshot;
     if (puzzleChanged) {
       this.wheelLetters = snapshot.puzzle?.baseLetters.split("") ?? [];
       this.clearGuess();
+      this.showBonusList = false;
     }
     const latest = events[events.length - 1];
     if (latest) this.feedback = latest.text;
     this.render();
+    this.ensureAnimationLayer();
+    this.processPresentationEvents(events, snapshot, previousSnapshot);
+    if (
+      previousStatus === "playing" &&
+      (snapshot.status === "puzzle-summary" || snapshot.status === "completed")
+    ) {
+      this.playSound("win");
+    }
   }
 
   private render() {
@@ -212,14 +250,16 @@ export class MultiplayerController {
                 <button data-action="skip">Request Skip</button>
               </aside>
             </main>`
-      }`;
+      }
+      ${this.renderBonusInfo(snapshot)}
+      ${this.showBonusList ? this.renderBonusListPopup(snapshot) : ""}`;
   }
 
   private renderScores(snapshot: RoomSnapshot) {
     return `<div class="mp-score-strip">${[...snapshot.participants]
       .sort((left, right) => left.seat - right.seat)
-      .map(
-        (participant) => `<article style="--player-color:${participant.color}">
+      .map((participant) => {
+        return `<article style="--player-color:${participant.color}" data-participant-id="${participant.id}">
           <div class="mp-player-identity">
             <span class="mp-color-dot"></span>
             <strong>${escapeHtml(participant.name)}</strong>
@@ -227,10 +267,15 @@ export class MultiplayerController {
               participant.kind === "ai" ? escapeHtml(participant.aiLevel ?? "AI") : "Human"
             }</span>
           </div>
-          <b>${participant.score.total}</b>
-          <small>L ${participant.score.letters} · E ${participant.score.emerald} · D ${participant.score.diamond} · R ${participant.score.ruby}</small>
-        </article>`
-      )
+          <b class="mp-score-total" data-score-field="total">${participant.score.total}</b>
+          <small class="mp-score-breakdown">
+            <span data-score-field="letters">L ${participant.score.letters}</span> ·
+            <span data-score-field="emerald">E ${participant.score.emerald}</span> ·
+            <span data-score-field="diamond">D ${participant.score.diamond}</span> ·
+            <span data-score-field="ruby">R ${participant.score.ruby}</span>
+          </small>
+        </article>`;
+      })
       .join("")}</div>`;
   }
 
@@ -252,24 +297,49 @@ export class MultiplayerController {
           const ref = cell.refs.find(
             (candidate) => !puzzle.words.find((word) => word.id === candidate.wordId)?.completed
           ) ?? cell.refs[0];
-          const gems = [
-            ...new Set(
-              cell.refs
-                .map((candidate) => puzzle.words.find((word) => word.id === candidate.wordId)?.rarity ?? 1)
-                .map((rarity) => (rarity === 2 ? "emerald" : rarity === 3 ? "ruby" : rarity === 4 ? "diamond" : ""))
-                .filter(Boolean)
-            )
-          ];
+          const gem = cell.refs
+            .map((candidate) => {
+              const word = puzzle.words.find((entry) => entry.id === candidate.wordId);
+              return word?.gems[candidate.position] ?? "none";
+            })
+            .reduce((best, current) => (GEM_RANK[current] > GEM_RANK[best] ? current : best), "none");
           return `<button class="mp-cell ${visible ? "filled" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
             data-action="board-cell" data-word="${ref.wordId}" data-position="${ref.position}"
+            data-row="${cell.row}" data-col="${cell.col}"
             aria-label="${visible ? `${visible.letter}, owned by ${owner?.name ?? "player"}` : "Unrevealed letter"}">
-            ${visible ? escapeHtml(visible.letter) : ""}
-            ${visible ? `<span class="mp-owner-mark"></span>` : ""}
-            ${gems.length > 0 ? `<span class="mp-cell-gems">${gems.map((gem) => `<i class="${gem}" title="${gem} word"></i>`).join("")}</span>` : ""}
+            ${!visible && gem !== "none" ? `<span class="mp-cell-gem ${gem}" title="${gem} word"></span>` : ""}
+            ${visible ? `<span class="mp-cell-letter">${escapeHtml(visible.letter)}</span>` : ""}
           </button>`;
         })
         .join("")}
     </div>`;
+  }
+
+  private renderBonusInfo(snapshot: RoomSnapshot) {
+    const puzzle = snapshot.puzzle;
+    const found = puzzle?.claimedBonusCount ?? 0;
+    const total = puzzle?.bonusWordCount ?? 0;
+    return `<section class="mp-bonus-info mp-paper">
+      <span>Bonus words found: <strong>${found}/${total}</strong></span>
+      <button data-action="toggle-bonus-list" ${total === 0 ? "disabled" : ""}>List</button>
+    </section>`;
+  }
+
+  private renderBonusListPopup(snapshot: RoomSnapshot) {
+    const words = snapshot.puzzle?.claimedBonusWords ?? [];
+    return `<section class="mp-bonus-popup mp-paper" role="dialog" aria-label="Bonus words list">
+      <header>
+        <h2>Bonus Words</h2>
+        <button data-action="close-bonus-list" aria-label="Close bonus list">Close</button>
+      </header>
+      ${
+        words.length > 0
+          ? `<div class="mp-bonus-word-list">${words
+              .map((word) => `<span>${escapeHtml(word.toUpperCase())}</span>`)
+              .join("")}</div>`
+          : `<p>No bonus words found yet.</p>`
+      }
+    </section>`;
   }
 
   private renderPause(snapshot: RoomSnapshot, host: boolean) {
@@ -309,7 +379,9 @@ export class MultiplayerController {
           <p>Review the completed board, then continue when you are ready.</p>
           <button class="mp-primary" data-action="continue" ${continued ? "disabled" : ""}>${continued ? "Waiting for others…" : "Continue"}</button>
         </aside>
-      </main>`;
+      </main>
+      ${this.renderBonusInfo(snapshot)}
+      ${this.showBonusList ? this.renderBonusListPopup(snapshot) : ""}`;
   }
 
   private renderResults(snapshot: RoomSnapshot, host: boolean) {
@@ -343,10 +415,12 @@ export class MultiplayerController {
   }
 
   private handleClick(event: Event) {
+    this.unlockAudio();
     const button = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
     const snapshot = this.snapshot;
     if (!button || !snapshot) return;
     const action = button.dataset.action;
+    this.playSound("click");
     const local = snapshot.participants.find((participant) => participant.id === snapshot.localParticipantId);
     if (action === "leave") return this.onLeave();
     if (action === "copy-invite") {
@@ -379,7 +453,11 @@ export class MultiplayerController {
       this.render();
     } else if (action === "submit") {
       const guess = this.currentGuess();
-      if (guess.length >= 3 && this.client.send({ type: "submit-guess", guess })) this.clearGuess();
+      if (guess.length >= 3 && this.client.send({ type: "submit-guess", guess })) {
+        this.clearGuess();
+      } else {
+        this.playSound("error");
+      }
     } else if (action === "hint") {
       const hint = button.dataset.hint as HintKind;
       if (hint === "letter") {
@@ -399,6 +477,12 @@ export class MultiplayerController {
       });
     } else if (action === "skip") {
       this.client.send({ type: snapshot.skipVote ? "accept-skip" : "request-skip" });
+    } else if (action === "toggle-bonus-list") {
+      this.showBonusList = !this.showBonusList;
+      this.render();
+    } else if (action === "close-bonus-list") {
+      this.showBonusList = false;
+      this.render();
     } else if (action === "continue") {
       this.client.send({ type: "continue" });
     } else if (action === "resume") {
@@ -433,14 +517,21 @@ export class MultiplayerController {
   }
 
   private handleKeyDown = (event: KeyboardEvent) => {
+    this.unlockAudio();
     const snapshot = this.snapshot;
     if (!snapshot || snapshot.status !== "playing" || snapshot.paused) return;
     if (event.key === "Enter") {
       const guess = this.currentGuess();
-      if (guess.length >= 3 && this.client.send({ type: "submit-guess", guess })) this.clearGuess();
+      if (guess.length >= 3 && this.client.send({ type: "submit-guess", guess })) {
+        this.playSound("click");
+        this.clearGuess();
+      } else {
+        this.playSound("error");
+      }
       return;
     }
     if (event.key === "Backspace") {
+      this.playSound("click");
       this.selectedIndices.pop();
       this.render();
       return;
@@ -451,6 +542,7 @@ export class MultiplayerController {
         letter.toUpperCase() === event.key.toUpperCase() && !this.selectedIndices.includes(candidate)
     );
     if (index >= 0) {
+      this.playSound("select");
       this.selectedIndices.push(index);
       this.render();
     }
@@ -462,5 +554,303 @@ export class MultiplayerController {
 
   private clearGuess() {
     this.selectedIndices = [];
+  }
+
+  private ensureAnimationLayer() {
+    if (this.animationLayer && document.body.contains(this.animationLayer)) return;
+    this.animationLayer = document.createElement("div");
+    this.animationLayer.className = "mp-score-fx-layer";
+    document.body.appendChild(this.animationLayer);
+  }
+
+  private processPresentationEvents(
+    events: PresentationEvent[],
+    snapshot: RoomSnapshot,
+    previousSnapshot: RoomSnapshot | null
+  ) {
+    const newCompletedWordIds = this.collectNewlyCompletedWordIds(snapshot, previousSnapshot);
+    const pendingWordIds = [...newCompletedWordIds];
+
+    for (const event of events) {
+      if (this.processedEventSequences.has(event.sequence)) continue;
+      this.processedEventSequences.add(event.sequence);
+
+      if (event.type === "word-solved") this.playSound("place");
+      else if (event.type === "bonus-claimed") this.playSound("hintUsed");
+      else if (event.type === "hint-used") this.playSound("hintUsed");
+      else if (event.type === "puzzle-skipped") this.playSound("error");
+
+      if (!event.actorId || !event.points || event.points <= 0) continue;
+      if (event.type !== "word-solved" && event.type !== "hint-used") continue;
+
+      const wordIdsForEvent =
+        event.type === "word-solved" ? pendingWordIds.splice(0, 1) : pendingWordIds.splice(0);
+      const components = this.calculateFlightComponents(snapshot, wordIdsForEvent, event.points);
+      this.spawnScoreFlight(event.actorId, event.points, components, wordIdsForEvent);
+    }
+
+    if (this.processedEventSequences.size > 500) {
+      const keep = new Set<number>();
+      const sorted = [...this.processedEventSequences].sort((left, right) => right - left);
+      sorted.slice(0, 250).forEach((seq) => keep.add(seq));
+      this.processedEventSequences = keep;
+    }
+  }
+
+  private collectNewlyCompletedWordIds(
+    snapshot: RoomSnapshot,
+    previousSnapshot: RoomSnapshot | null
+  ): string[] {
+    if (!snapshot.puzzle || !previousSnapshot?.puzzle || snapshot.puzzle.id !== previousSnapshot.puzzle.id) {
+      return [];
+    }
+    const previousMap = new Map(previousSnapshot.puzzle.words.map((word) => [word.id, word.completed]));
+    return snapshot.puzzle.words
+      .filter((word) => word.completed && !previousMap.get(word.id))
+      .map((word) => word.id);
+  }
+
+  private calculateFlightComponents(
+    snapshot: RoomSnapshot,
+    wordIds: string[],
+    fallbackTotal: number
+  ): ScoreFlightComponents {
+    if (!snapshot.puzzle || wordIds.length === 0) {
+      return { letters: fallbackTotal, emerald: 0, ruby: 0, diamond: 0, strongestGem: "none" };
+    }
+
+    let letters = 0;
+    let emerald = 0;
+    let ruby = 0;
+    let diamond = 0;
+    let strongestGem: GemName = "none";
+
+    for (const wordId of wordIds) {
+      const word = snapshot.puzzle.words.find((candidate) => candidate.id === wordId);
+      if (!word) continue;
+      letters += word.length;
+      for (const gem of word.gems) {
+        if (gem === "emerald") emerald += GEM_BONUS.emerald;
+        else if (gem === "ruby") ruby += GEM_BONUS.ruby;
+        else if (gem === "diamond") diamond += GEM_BONUS.diamond;
+        if (GEM_RANK[gem] > GEM_RANK[strongestGem]) strongestGem = gem as GemName;
+      }
+    }
+
+    const combined = letters + emerald + ruby + diamond;
+    if (combined <= 0) {
+      return { letters: fallbackTotal, emerald: 0, ruby: 0, diamond: 0, strongestGem: "none" };
+    }
+    if (combined < fallbackTotal) letters += fallbackTotal - combined;
+    return { letters, emerald, ruby, diamond, strongestGem };
+  }
+
+  private spawnScoreFlight(
+    participantId: string,
+    points: number,
+    components: ScoreFlightComponents,
+    wordIds: string[]
+  ) {
+    const snapshot = this.snapshot;
+    if (!snapshot || !this.animationLayer) return;
+
+    const source = this.resolveFlightSource(snapshot, wordIds);
+    const destination = this.resolveFlightDestination(participantId);
+    if (!destination) return;
+
+    const ownerColor =
+      snapshot.participants.find((participant) => participant.id === participantId)?.color ?? "#526b3d";
+    const strongestGem = components.strongestGem;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const travelMs = reducedMotion ? 260 : Math.max(800, Math.min(1300, 760 + Math.hypot(destination.x - source.x, destination.y - source.y) * 0.4));
+    const holdMs = reducedMotion ? 120 : 180;
+
+    const flight = document.createElement("div");
+    flight.className = `mp-score-flight gem-${strongestGem}`;
+    flight.style.setProperty("--owner-color", ownerColor);
+    flight.innerHTML = `
+      <div class="mp-score-flight-total">+${points}</div>
+      <div class="mp-score-flight-breakdown">
+        <span>L+${components.letters}</span>
+        ${components.emerald > 0 ? `<span class="gem-emerald">E+${components.emerald}</span>` : ""}
+        ${components.diamond > 0 ? `<span class="gem-diamond">D+${components.diamond}</span>` : ""}
+        ${components.ruby > 0 ? `<span class="gem-ruby">R+${components.ruby}</span>` : ""}
+      </div>`;
+    this.animationLayer.appendChild(flight);
+
+    if (reducedMotion) {
+      flight.classList.add("reduced");
+      flight.style.setProperty("--from-x", `${source.x}px`);
+      flight.style.setProperty("--from-y", `${source.y}px`);
+      window.setTimeout(() => {
+        flight.remove();
+        this.triggerScoreImpact(participantId, components, strongestGem);
+      }, travelMs);
+      return;
+    }
+
+    const dx = destination.x - source.x;
+    const dy = destination.y - source.y;
+    const control = {
+      x: source.x + dx * 0.45 + Math.max(-90, Math.min(90, dx * 0.12)),
+      y: Math.min(source.y, destination.y) - Math.max(56, Math.abs(dx) * 0.18)
+    };
+
+    const startAt = performance.now();
+    let lastTrailAt = startAt;
+    const frame = () => {
+      const elapsed = performance.now() - startAt;
+      if (elapsed < holdMs) {
+        const pop = elapsed / holdMs;
+        const scale = 0.82 + 0.32 * Math.sin(pop * Math.PI * 0.5);
+        flight.style.transform = `translate(${source.x}px, ${source.y}px) scale(${scale})`;
+        requestAnimationFrame(frame);
+        return;
+      }
+
+      const tRaw = Math.min(1, (elapsed - holdMs) / travelMs);
+      const t = tRaw * tRaw * (3 - 2 * tRaw);
+      const x = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * control.x + t * t * destination.x;
+      const y = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * control.y + t * t * destination.y;
+      const scale = 1.08 - t * 0.18;
+      flight.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+      flight.style.opacity = `${1 - t * 0.68}`;
+
+      const now = performance.now();
+      if (now - lastTrailAt > 40) {
+        lastTrailAt = now;
+        this.spawnTrailDot(x, y, ownerColor, strongestGem);
+      }
+
+      if (tRaw < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        flight.remove();
+        this.triggerScoreImpact(participantId, components, strongestGem);
+      }
+    };
+
+    requestAnimationFrame(frame);
+  }
+
+  private resolveFlightSource(snapshot: RoomSnapshot, wordIds: string[]) {
+    const board = this.root.querySelector<HTMLElement>(".mp-board");
+    if (!board || !snapshot.puzzle || wordIds.length === 0) {
+      const bounds = board?.getBoundingClientRect();
+      if (bounds) return { x: bounds.left + bounds.width * 0.5, y: bounds.top + bounds.height * 0.5 };
+      return { x: window.innerWidth * 0.5, y: window.innerHeight * 0.5 };
+    }
+
+    const centers: Array<{ x: number; y: number }> = [];
+    for (const wordId of wordIds) {
+      const word = snapshot.puzzle.words.find((entry) => entry.id === wordId);
+      if (!word) continue;
+      for (const cell of word.cells) {
+        const cellElement = this.root.querySelector<HTMLElement>(`.mp-cell[data-row="${cell.row}"][data-col="${cell.col}"]`);
+        if (!cellElement) continue;
+        const rect = cellElement.getBoundingClientRect();
+        centers.push({ x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 });
+      }
+    }
+
+    if (centers.length === 0) {
+      const bounds = board.getBoundingClientRect();
+      return { x: bounds.left + bounds.width * 0.5, y: bounds.top + bounds.height * 0.5 };
+    }
+
+    return {
+      x: centers.reduce((sum, point) => sum + point.x, 0) / centers.length,
+      y: centers.reduce((sum, point) => sum + point.y, 0) / centers.length
+    };
+  }
+
+  private resolveFlightDestination(participantId: string) {
+    const card = this.root.querySelector<HTMLElement>(`.mp-score-strip article[data-participant-id="${participantId}"]`);
+    if (!card) return null;
+    const totalEl = card.querySelector<HTMLElement>(".mp-score-total");
+    const target = (totalEl ?? card).getBoundingClientRect();
+    return { x: target.left + target.width * 0.5, y: target.top + target.height * 0.55 };
+  }
+
+  private triggerScoreImpact(participantId: string, components: ScoreFlightComponents, gem: GemName) {
+    const card = this.root.querySelector<HTMLElement>(`.mp-score-strip article[data-participant-id="${participantId}"]`);
+    if (!card) return;
+    const total = card.querySelector<HTMLElement>('[data-score-field="total"]');
+    if (!total) return;
+
+    card.classList.remove("mp-score-impact-panel");
+    total.classList.remove("mp-score-impact-total", "gem-emerald", "gem-ruby", "gem-diamond");
+    // Force restart on repeated impacts.
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    total.offsetHeight;
+    card.classList.add("mp-score-impact-panel");
+    total.classList.add("mp-score-impact-total");
+    if (gem !== "none") total.classList.add(`gem-${gem}`);
+
+    const flashField = (field: "letters" | "emerald" | "diamond" | "ruby", active: boolean) => {
+      if (!active) return;
+      const el = card.querySelector<HTMLElement>(`[data-score-field="${field}"]`);
+      if (!el) return;
+      el.classList.remove("mp-score-impact-field");
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      el.offsetHeight;
+      el.classList.add("mp-score-impact-field");
+      window.setTimeout(() => el.classList.remove("mp-score-impact-field"), 420);
+    };
+
+    flashField("letters", components.letters > 0);
+    flashField("emerald", components.emerald > 0);
+    flashField("diamond", components.diamond > 0);
+    flashField("ruby", components.ruby > 0);
+
+    const totalRect = total.getBoundingClientRect();
+    for (let i = 0; i < 8; i += 1) {
+      const angle = (Math.PI * 2 * i) / 8;
+      const x = totalRect.left + totalRect.width * 0.5 + Math.cos(angle) * 12;
+      const y = totalRect.top + totalRect.height * 0.5 + Math.sin(angle) * 7;
+      this.spawnTrailDot(x, y, getComputedStyle(card).getPropertyValue("--player-color") || "#526b3d", gem, true);
+    }
+
+    this.playSound("place");
+    window.setTimeout(() => {
+      card.classList.remove("mp-score-impact-panel");
+      total.classList.remove("mp-score-impact-total", "gem-emerald", "gem-ruby", "gem-diamond");
+    }, 460);
+  }
+
+  private spawnTrailDot(x: number, y: number, ownerColor: string, gem: GemName, burst = false) {
+    if (!this.animationLayer) return;
+    const dot = document.createElement("span");
+    dot.className = `mp-score-trail gem-${gem}${burst ? " burst" : ""}`;
+    dot.style.setProperty("--owner-color", ownerColor.trim() || "#526b3d");
+    dot.style.transform = `translate(${x}px, ${y}px)`;
+    this.animationLayer.appendChild(dot);
+    window.setTimeout(() => dot.remove(), burst ? 460 : 360);
+  }
+
+  private unlockAudio() {
+    if (this.audioUnlocked) return;
+    this.audioUnlocked = true;
+    const firstSound = this.sounds.click;
+    if (!firstSound) return;
+    firstSound.muted = true;
+    firstSound.currentTime = 0;
+    firstSound
+      .play()
+      .then(() => {
+        firstSound.pause();
+        firstSound.currentTime = 0;
+        firstSound.muted = false;
+      })
+      .catch(() => {
+        firstSound.muted = false;
+      });
+  }
+
+  private playSound(name: keyof typeof Assets.sounds) {
+    const sound = this.sounds[name];
+    if (!sound) return;
+    sound.currentTime = 0;
+    sound.play().catch(() => undefined);
   }
 }

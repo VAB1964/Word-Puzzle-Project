@@ -101,6 +101,18 @@ inline float S(const Game* g, float du) { return du * g->m_uiScale; }
 
 // --- START: Anonymous Namespace for Helper Function ---
 namespace { // Anonymous namespace for local helper
+    constexpr float GEM_TILE_FILL_RATIO = 0.92f;
+    constexpr std::uint8_t GEM_TIER_NONE = 0;
+    constexpr std::uint8_t GEM_TIER_EMERALD = 1;
+    constexpr std::uint8_t GEM_TIER_RUBY = 2;
+    constexpr std::uint8_t GEM_TIER_DIAMOND = 3;
+
+    std::uint8_t maxGemTierForRarity(int rarity) {
+        if (rarity >= 4) return GEM_TIER_DIAMOND;
+        if (rarity == 3) return GEM_TIER_RUBY;
+        return GEM_TIER_EMERALD;
+    }
+
     // Helper function to get sorted, lowercase letters of a word
     std::string getCanonicalLetters(const std::string& word) {
         std::string temp = word;
@@ -110,6 +122,30 @@ namespace { // Anonymous namespace for local helper
         // Sort alphabetically
         std::sort(temp.begin(), temp.end());
         return temp;
+    }
+
+    std::vector<std::uint8_t> generateGemTiersForWord(std::size_t wordLen, int rarity) {
+        std::vector<std::uint8_t> tiers(wordLen, GEM_TIER_NONE);
+        if (wordLen == 0) return tiers;
+
+        const int maxGemsForWord = static_cast<int>(std::min<std::size_t>(wordLen, 5));
+        if (maxGemsForWord <= 0) return tiers;
+
+        const int gemCount = randRange(0, maxGemsForWord);
+        if (gemCount <= 0) return tiers;
+
+        std::vector<int> positions(wordLen);
+        std::iota(positions.begin(), positions.end(), 0);
+        std::shuffle(positions.begin(), positions.end(), Rng());
+
+        const std::uint8_t maxTier = maxGemTierForRarity(rarity);
+        for (int i = 0; i < gemCount; ++i) {
+            const int idx = positions[static_cast<std::size_t>(i)];
+            tiers[static_cast<std::size_t>(idx)] =
+                static_cast<std::uint8_t>(randRange(static_cast<int>(GEM_TIER_EMERALD), static_cast<int>(maxTier)));
+        }
+
+        return tiers;
     }
 } // end anonymous namespace
 // --- END: Anonymous Namespace for Helper Function ---
@@ -291,8 +327,8 @@ Game::Game() :
     m_hoveredSolvedWordIndex(-1),
     m_wordInfoPopupBackground(sf::Vector2f(200.f, 100.f), 8.f, 10),
     m_scrambleTex(), m_sapphireTex(), m_rubyTex(), m_diamondTex(),
-    m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), m_errorWordBuffer(),
-    m_selectSound(nullptr), m_placeSound(nullptr), m_winSound(nullptr), m_clickSound(nullptr), m_hintUsedSound(nullptr), m_errorWordSound(nullptr),
+    m_selectBuffer(), m_placeBuffer(), m_winBuffer(), m_clickBuffer(), m_hintUsedBuffer(), m_errorWordBuffer(), m_wordCompleteBuffer(),
+    m_selectSound(nullptr), m_placeSound(nullptr), m_winSound(nullptr), m_clickSound(nullptr), m_hintUsedSound(nullptr), m_errorWordSound(nullptr), m_wordCompleteSound(nullptr),
     m_backgroundMusic(),
     m_scrambleSpr(nullptr), m_sapphireSpr(nullptr), m_rubySpr(nullptr), m_diamondSpr(nullptr), m_buttonSpr(nullptr),
     m_contTxt(nullptr), m_scoreLabelText(nullptr), m_scoreValueText(nullptr), m_hintCountTxt(nullptr),
@@ -308,6 +344,8 @@ Game::Game() :
     m_contBtn(sf::Vector2f(200.f, 50.f), 10.f, 10),
     m_solvedOverlay(sf::Vector2f(100.f, 50.f), 10.f, 10),
     m_scoreBar(sf::Vector2f(100.f, 30.f), 10.f, 10),
+    m_bonusInfoBar(sf::Vector2f(400.f, 36.f), 8.f, 10),
+    m_bonusListButtonShape(sf::Vector2f(90.f, 28.f), 8.f, 10),
     m_guessDisplay_Bg(sf::Vector2f(50.f, 30.f), 5.f, 10),
     m_debugDrawCircleMode(false),
     m_needsLayoutUpdate(false),
@@ -325,6 +363,9 @@ Game::Game() :
     m_progressMeterFill(sf::Vector2f(100.f, 20.f)),
     m_returnToMenuButtonShape(sf::Vector2f(100.f, 40.f), 8.f, 10),
     m_isHoveringHintPointsText(false),
+    m_showBonusWordsPopup(false),
+    m_bonusListButtonText(nullptr),
+    m_bonusListButtonBounds(sf::FloatRect()),
     m_bonusWordsCacheIsValid(false),
     m_bonusWordsPopupScrollOffset(0.f),
     m_bonusWordsPopupMaxScrollOffset(0.f),
@@ -335,6 +376,7 @@ Game::Game() :
     m_bonusListCompletePointsAwarded(0),
     m_bonusListCompletePopupText(m_font, "", 0),
     m_bonusListCompleteAnimatingPointsText(m_font, "", 0),
+    m_wordGemTiers(),
     m_firstFrame(true)
 {
     const sf::Vector2u desiredInitialSize{ 1000u, 800u };
@@ -367,6 +409,7 @@ Game::Game() :
     if (m_clickBuffer.getSampleCount() > 0) m_clickSound = std::make_unique<sf::Sound>(m_clickBuffer);
     if (m_hintUsedBuffer.getSampleCount() > 0) m_hintUsedSound = std::make_unique<sf::Sound>(m_hintUsedBuffer);
     if (m_errorWordBuffer.getSampleCount() > 0) m_errorWordSound = std::make_unique<sf::Sound>(m_errorWordBuffer);
+    if (m_wordCompleteBuffer.getSampleCount() > 0) m_wordCompleteSound = std::make_unique<sf::Sound>(m_wordCompleteBuffer);
 
     if (m_scrambleTex.getSize().x > 0) m_scrambleSpr = std::make_unique<sf::Sprite>(m_scrambleTex);
     if (m_sapphireTex.getSize().x > 0) m_sapphireSpr = std::make_unique<sf::Sprite>(m_sapphireTex);
@@ -391,17 +434,17 @@ Game::Game() :
     if (m_contTxt) m_contTxt->setFillColor(sf::Color::White);
     // (Gems)
     if (m_sapphireSpr && m_sapphireTex.getSize().y > 0) {
-        float desiredGemHeight = TILE_SIZE * 0.60f; float gemScale = desiredGemHeight / m_sapphireTex.getSize().y;
+        float desiredGemHeight = TILE_SIZE * GEM_TILE_FILL_RATIO; float gemScale = desiredGemHeight / m_sapphireTex.getSize().y;
         m_sapphireSpr->setScale({ gemScale, gemScale });
         m_sapphireSpr->setOrigin({ m_sapphireTex.getSize().x / 2.f, m_sapphireTex.getSize().y / 2.f });
     }
     if (m_rubySpr && m_rubyTex.getSize().y > 0) {
-        float desiredGemHeight = TILE_SIZE * 0.60f; float gemScale = desiredGemHeight / m_rubyTex.getSize().y;
+        float desiredGemHeight = TILE_SIZE * GEM_TILE_FILL_RATIO; float gemScale = desiredGemHeight / m_rubyTex.getSize().y;
         m_rubySpr->setScale({ gemScale, gemScale });
         m_rubySpr->setOrigin({ m_rubyTex.getSize().x / 2.f, m_rubyTex.getSize().y / 2.f });
     }
     if (m_diamondSpr && m_diamondTex.getSize().y > 0) {
-        float desiredGemHeight = TILE_SIZE * 0.60f; float gemScale = desiredGemHeight / m_diamondTex.getSize().y;
+        float desiredGemHeight = TILE_SIZE * GEM_TILE_FILL_RATIO; float gemScale = desiredGemHeight / m_diamondTex.getSize().y;
         m_diamondSpr->setScale({ gemScale, gemScale });
         m_diamondSpr->setOrigin({ m_diamondTex.getSize().x / 2.f, m_diamondTex.getSize().y / 2.f });
     }
@@ -559,13 +602,16 @@ void Game::m_updateScoreAnims(float dt) // No longer need to pass RenderTarget
             a.t += dt * a.speed;
             if (a.t >= 1.f) {
                 a.t = 1.f;
-                // TODO: Update score text logic here
                 return true;
             }
 
-            sf::Vector2f p = a.startPos + (a.endPos - a.startPos) * a.t;
+            float eased_t = 1.f - (1.f - a.t) * (1.f - a.t); // Ease-out
+            sf::Vector2f p = a.startPos + (a.endPos - a.startPos) * eased_t;
             a.particle.setPosition(p);
-            //m_window.draw(a.particle); // Use m_window
+
+            sf::Color c = a.particle.getFillColor();
+            c.a = static_cast<std::uint8_t>(255.f * std::max(0.f, 1.f - a.t * 0.85f));
+            a.particle.setFillColor(c);
 
             return false;
         }),
@@ -695,8 +741,10 @@ void Game::m_loadResources() {
     m_mediumButtonText = std::make_unique<sf::Text>(m_font, "Medium", 24);
     m_hardButtonText = std::make_unique<sf::Text>(m_font, "Hard", 24);
     m_returnButtonText = std::make_unique<sf::Text>(m_font, "Return", 24);
-    m_bonusWordsInHintZoneText = std::make_unique<sf::Text>(m_font, "Bonus Words: 0/0", 18.f); // Example size
+    m_bonusWordsInHintZoneText = std::make_unique<sf::Text>(m_font, "Bonus words found: 0/0", 18.f); // Bottom info bar summary
     if (m_bonusWordsInHintZoneText) m_bonusWordsInHintZoneText->setFillColor(sf::Color(230, 230, 230, 220));
+    m_bonusListButtonText = std::make_unique<sf::Text>(m_font, "List", 18);
+    if (m_bonusListButtonText) m_bonusListButtonText->setFillColor(sf::Color::White);
 
     // --- NEW: Hint Hover Pop-up Texts ---
     m_popupAvailablePointsText = std::make_unique<sf::Text>(m_font, "Points: 0", 16);
@@ -747,6 +795,10 @@ void Game::m_loadResources() {
     if (!hintUsedLoaded) { std::cerr << "Error loading hint_used sound\n"; }
     bool errorWordLoaded = m_errorWordBuffer.loadFromFile("assets/sounds/hint_used.mp3"); // This was hint_used.mp3, maybe error.wav?
     if (!errorWordLoaded) { std::cerr << "Error loading error_word sound (hint_used.mp3)\n"; }
+    bool wordCompleteLoaded = m_wordCompleteBuffer.loadFromFile("assets/sounds/Event 24.mp3");
+    if (!wordCompleteLoaded) {
+        std::cerr << "Error loading word_complete sound (assets/sounds/Event 24.mp3)\n";
+    }
 
 
     // Create Sounds (Link Buffers)
@@ -756,6 +808,7 @@ void Game::m_loadResources() {
     if (clickLoaded) { m_clickSound = std::make_unique<sf::Sound>(m_clickBuffer); }
     if (hintUsedLoaded) { m_hintUsedSound = std::make_unique<sf::Sound>(m_hintUsedBuffer); }
     if (errorWordLoaded) { m_errorWordSound = std::make_unique<sf::Sound>(m_errorWordBuffer); }
+    if (wordCompleteLoaded) { m_wordCompleteSound = std::make_unique<sf::Sound>(m_wordCompleteBuffer); }
 
     // Create Sprites (Link Textures)
     // Note: m_newHintPanelSpr and m_hintIndicatorLightSprs are created in the constructor
@@ -785,7 +838,7 @@ void Game::m_loadResources() {
 
     // Set initial Sprite properties (Example - some of these are already handled in m_updateLayout or constructor)
     if (m_sapphireSpr && m_sapphireTex.getSize().y > 0) { // Check sprite ptr and tex
-        float desiredGemHeight_load = TILE_SIZE * 0.60f; // Use local var name
+        float desiredGemHeight_load = TILE_SIZE * GEM_TILE_FILL_RATIO; // Use local var name
         float gemScale_load = desiredGemHeight_load / static_cast<float>(m_sapphireTex.getSize().y);
         m_sapphireSpr->setScale(sf::Vector2f(gemScale_load, gemScale_load));
         m_sapphireSpr->setOrigin(sf::Vector2f(static_cast<float>(m_sapphireTex.getSize().x) / 2.f, static_cast<float>(m_sapphireTex.getSize().y) / 2.f));
@@ -913,14 +966,7 @@ void Game::m_update(sf::Time dt) {
             }
         }
 
-        // --- Bonus Words popup: show only when cursor over "Bonus Words: 0/XX" (so solved-word definitions remain visible when cursor is on grid) ---
-        if (m_bonusWordsInHintZoneText) {
-            m_isHoveringHintPointsText = m_bonusWordsInHintZoneText->getGlobalBounds().contains(mappedMousePos);
-        }
-        else {
-            m_isHoveringHintPointsText = false;
-        }
-        // --- END ---
+        m_isHoveringHintPointsText = false;
 
         // --- Solved Word Hover Detection (grid tiles) ---
         m_hoveredSolvedWordIndex = -1;
@@ -944,6 +990,7 @@ void Game::m_update(sf::Time dt) {
     else {
         m_hoveredHintIndex = -1;
         m_isHoveringHintPointsText = false; // Ensure this is also reset if not on relevant screens
+        m_showBonusWordsPopup = false;
         m_bonusWordsPopupScrollOffset = 0.f; // reset scroll when popup is hidden
         m_hoveredSolvedWordIndex = -1;
     }
@@ -956,6 +1003,7 @@ void Game::m_update(sf::Time dt) {
     // Update game elements based on screen
     if (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver) {
         m_updateAnims(deltaSeconds);
+        m_updateScoreAnims(deltaSeconds);
         m_updateScoreFlourishes(deltaSeconds);
         m_updateHintPointAnims(deltaSeconds);
     }
@@ -994,9 +1042,8 @@ void Game::m_render() {
         else { m_renderGameScreen(mpos); }
     }
 
-    // --- Draw Bonus Words Popup (if hovering over hint points text) ---
-    // Must be after m_renderGameScreen has potentially set m_isHoveringHintPointsText true
-    if (m_isHoveringHintPointsText && (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)) {
+    // --- Draw Bonus Words Popup (toggled by bottom "List" button) ---
+    if (m_showBonusWordsPopup && (m_currentScreen == GameScreen::Playing || m_currentScreen == GameScreen::GameOver)) {
         m_renderBonusWordsPopup(m_window); // Pass m_window as the RenderTarget
     }
 
@@ -1353,6 +1400,7 @@ void Game::m_rebuild() {
     m_bonusWordsCacheIsValid = false;
     m_cachedBonusWords.clear();
     m_bonusWordsPopupScrollOffset = 0.f; // reset scroll when puzzle changes
+    m_showBonusWordsPopup = false;
 
     // --- Debug Print ---
     std::cout << "DEBUG: m_rebuild - Final Base: '" << m_base << "', FINAL m_solutions count (Grid Target): " << m_solutions.size() << ", m_sorted count: " << m_sorted.size() << std::endl;
@@ -1402,11 +1450,17 @@ void Game::m_rebuild() {
 
     // --- Setup Grid & Reset State ---
     m_grid.assign(m_sorted.size(), {});
+    m_wordGemTiers.assign(m_sorted.size(), {});
     for (std::size_t i = 0; i < m_sorted.size(); ++i) { /* ... assign grid blanks ... */
         if (!m_sorted[i].text.empty()) {
             m_grid[i].assign(m_sorted[i].text.length(), '_');
+            m_wordGemTiers[i] = generateGemTiersForWord(m_sorted[i].text.length(), m_sorted[i].rarity);
         }
-        else { m_grid[i].clear(); std::cerr << "Warning: Word at m_sorted index " << i << " has empty text. Grid row will be empty." << std::endl; }
+        else {
+            m_grid[i].clear();
+            m_wordGemTiers[i].clear();
+            std::cerr << "Warning: Word at m_sorted index " << i << " has empty text. Grid row will be empty." << std::endl;
+        }
     }
     m_found.clear(); m_foundBonusWords.clear(); m_anims.clear(); m_scoreAnims.clear(); m_hintPointAnims.clear(); m_scoreFlourishes.clear();
     m_hintPointsTextFlourishTimer = 0.f;
@@ -1934,25 +1988,7 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
 
     // --- 9. REVISED Stacked Hint UI Layout ---
     const sf::FloatRect hintZone = HINT_ZONE_RECT_DESIGN;
-    float currentY_for_buttons = hintZone.position.y;
-
-    if (m_bonusWordsInHintZoneText) {
-        const float bonusTextPaddingTop = 5.f;
-        unsigned int bonusTextFontSize = 20.f;
-
-        m_bonusWordsInHintZoneText->setCharacterSize(bonusTextFontSize);
-        m_bonusWordsInHintZoneText->setString("Bonus Words: 00/00");
-        sf::FloatRect btBounds = m_bonusWordsInHintZoneText->getLocalBounds();
-
-        float bonusWordsTextX = (hintZone.position.x + (hintZone.size.x - (btBounds.position.x + btBounds.size.x)) / 2.f) + 10.f;
-        float bonusWordsTextY = hintZone.position.y + bonusTextPaddingTop;
-
-        m_bonusWordsInHintZoneText->setOrigin(sf::Vector2f(btBounds.position.x, btBounds.position.y));
-        m_bonusWordsInHintZoneText->setPosition(sf::Vector2f(bonusWordsTextX, bonusWordsTextY));
-
-        sf::FloatRect positionedBtGlobalBounds = m_bonusWordsInHintZoneText->getGlobalBounds();
-        currentY_for_buttons = positionedBtGlobalBounds.position.y + positionedBtGlobalBounds.size.y + S(this, 5.f);
-    }
+    float currentY_for_buttons = hintZone.position.y + S(this, 4.f);
 
     if (m_hintFrameTexture.getSize().x > 0 && !m_hintFrameSprites.empty()) {
         const float frameTexOriginalWidth = static_cast<float>(m_hintFrameTexture.getSize().x);
@@ -2101,6 +2137,63 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         sf::FloatRect textBounds = m_popupHintDescriptionText->getLocalBounds();
         m_popupHintDescriptionText->setOrigin({ textBounds.position.x, textBounds.position.y });
         m_popupHintDescriptionText->setPosition({ textStartX_popup, textCurrentY_popup });
+    }
+
+    // --- Bottom Bonus Info Bar + List Button ---
+    const float infoBarMarginX = S(this, 24.f);
+    const float infoBarHeight = S(this, 40.f);
+    const float infoBarBottomMargin = S(this, 8.f);
+    const sf::Vector2f infoBarSize = {
+        static_cast<float>(REF_W) - (2.f * infoBarMarginX),
+        infoBarHeight
+    };
+    const sf::Vector2f infoBarPos = {
+        infoBarMarginX,
+        static_cast<float>(REF_H) - infoBarHeight - infoBarBottomMargin
+    };
+    m_bonusInfoBar.setSize(infoBarSize);
+    m_bonusInfoBar.setRadius(S(this, 10.f));
+    m_bonusInfoBar.setOrigin({ 0.f, 0.f });
+    m_bonusInfoBar.setPosition(infoBarPos);
+
+    const float listBtnWidth = S(this, 120.f);
+    const float listBtnHeight = infoBarHeight - S(this, 10.f);
+    const sf::Vector2f listBtnPos = {
+        infoBarPos.x + infoBarSize.x - listBtnWidth - S(this, 8.f),
+        infoBarPos.y + (infoBarHeight - listBtnHeight) * 0.5f
+    };
+    m_bonusListButtonShape.setSize({ listBtnWidth, listBtnHeight });
+    m_bonusListButtonShape.setRadius(S(this, 8.f));
+    m_bonusListButtonShape.setOrigin({ 0.f, 0.f });
+    m_bonusListButtonShape.setPosition(listBtnPos);
+    m_bonusListButtonBounds = m_bonusListButtonShape.getGlobalBounds();
+
+    if (m_bonusListButtonText) {
+        m_bonusListButtonText->setCharacterSize(static_cast<unsigned int>(std::max(10.f, S(this, 20.f))));
+        m_bonusListButtonText->setString("List");
+        sf::FloatRect btnTextBounds = m_bonusListButtonText->getLocalBounds();
+        m_bonusListButtonText->setOrigin({
+            btnTextBounds.position.x + btnTextBounds.size.x / 2.f,
+            btnTextBounds.position.y + btnTextBounds.size.y / 2.f
+        });
+        m_bonusListButtonText->setPosition({
+            listBtnPos.x + listBtnWidth / 2.f,
+            listBtnPos.y + listBtnHeight / 2.f
+        });
+    }
+
+    if (m_bonusWordsInHintZoneText) {
+        m_bonusWordsInHintZoneText->setCharacterSize(static_cast<unsigned int>(std::max(10.f, S(this, 20.f))));
+        m_bonusWordsInHintZoneText->setString("Bonus words found: 00/00");
+        sf::FloatRect bonusLabelBounds = m_bonusWordsInHintZoneText->getLocalBounds();
+        m_bonusWordsInHintZoneText->setOrigin({
+            bonusLabelBounds.position.x,
+            bonusLabelBounds.position.y + bonusLabelBounds.size.y / 2.f
+        });
+        m_bonusWordsInHintZoneText->setPosition({
+            infoBarPos.x + S(this, 16.f),
+            infoBarPos.y + infoBarHeight / 2.f
+        });
     }
 
     // --- Update DEBUG Zone Shapes ---
@@ -2545,9 +2638,9 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
         return;
     }
 
-    // --- Mouse wheel: scroll bonus words popup whenever it is visible (cursor can be over "Bonus Words" text or the popup) ---
+    // --- Mouse wheel: scroll bonus words popup whenever it is visible ---
     if (const auto* wheel = event.getIf<sf::Event::MouseWheelScrolled>()) {
-        if (m_isHoveringHintPointsText) {
+        if (m_showBonusWordsPopup) {
             // delta: positive = scroll up (content moves down) = decrease offset; negative = scroll down = increase offset
             m_bonusWordsPopupScrollOffset -= wheel->delta * BONUS_POPUP_SCROLL_SPEED;
             m_bonusWordsPopupScrollOffset = std::max(0.f, std::min(m_bonusWordsPopupScrollOffset, m_bonusWordsPopupMaxScrollOffset));
@@ -2567,6 +2660,14 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                 m_selectedDifficulty = DifficultyLevel::None;
                 m_clearDragState();
                 m_clearPendingLetterHintTarget();
+                return;
+            }
+            if (m_bonusListButtonBounds.contains(mp)) {
+                if (m_clickSound) m_clickSound->play();
+                m_showBonusWordsPopup = !m_showBonusWordsPopup;
+                if (!m_showBonusWordsPopup) {
+                    m_bonusWordsPopupScrollOffset = 0.f;
+                }
                 return;
             }
             if (m_voiceToggleButton.contains(mp)) {
@@ -2838,6 +2939,8 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 
                         m_currentScore += wordScoreForThisWord;
                         m_spawnScoreFlourish(wordScoreForThisWord, static_cast<int>(w));
+                        if (m_wordCompleteSound) m_wordCompleteSound->play();
+                        else if (m_placeSound) m_placeSound->play();
 
                         if (m_scoreValueText) m_scoreValueText->setString(std::to_string(m_currentScore));
 
@@ -3171,7 +3274,6 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
 
         for (std::size_t w = 0; w < m_sorted.size(); ++w) {
             if (w >= m_grid.size()) continue;
-            int wordRarity = m_sorted[w].rarity;
             for (std::size_t c = 0; c < m_sorted[w].text.length(); ++c) {
                 if (c >= m_grid[w].size()) continue;
 
@@ -3192,14 +3294,19 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
                 }
 
                 if (!isFilled) {
+                    std::uint8_t gemTier = GEM_TIER_NONE;
+                    if (w < m_wordGemTiers.size() && c < m_wordGemTiers[w].size()) {
+                        gemTier = m_wordGemTiers[w][c];
+                    }
+
                     sf::Sprite* gemSprite = nullptr;
                     const sf::Texture* gemTexture = nullptr;
-                    if (wordRarity == 2 && m_sapphireSpr) { gemSprite = m_sapphireSpr.get(); gemTexture = &m_sapphireTex; }
-                    else if (wordRarity == 3 && m_rubySpr) { gemSprite = m_rubySpr.get(); gemTexture = &m_rubyTex; }
-                    else if (wordRarity == 4 && m_diamondSpr) { gemSprite = m_diamondSpr.get(); gemTexture = &m_diamondTex; }
+                    if (gemTier == GEM_TIER_EMERALD && m_sapphireSpr) { gemSprite = m_sapphireSpr.get(); gemTexture = &m_sapphireTex; }
+                    else if (gemTier == GEM_TIER_RUBY && m_rubySpr) { gemSprite = m_rubySpr.get(); gemTexture = &m_rubyTex; }
+                    else if (gemTier == GEM_TIER_DIAMOND && m_diamondSpr) { gemSprite = m_diamondSpr.get(); gemTexture = &m_diamondTex; }
 
                     if (gemSprite && gemTexture && gemTexture->getSize().y > 0) {
-                        float desiredGemHeight_grid = finalRenderTileSize * 0.60f;
+                        float desiredGemHeight_grid = finalRenderTileSize * GEM_TILE_FILL_RATIO;
                         float gemScale_grid = desiredGemHeight_grid / static_cast<float>(gemTexture->getSize().y);
                         gemSprite->setScale(sf::Vector2f(gemScale_grid, gemScale_grid));
                         gemSprite->setOrigin(sf::Vector2f(static_cast<float>(gemTexture->getSize().x) / 2.f, static_cast<float>(gemTexture->getSize().y) / 2.f));
@@ -3374,6 +3481,11 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         }
     }
 
+    // Draw points traveling from completed word to the score/player area.
+    for (const auto& scoreAnim : m_scoreAnims) {
+        m_window.draw(scoreAnim.particle);
+    }
+
     // --- Draw Score Flourishes & Hint Point Animations ---
     m_renderScoreFlourishes(m_window);
     m_renderHintPointAnims(m_window);
@@ -3423,10 +3535,28 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         }
     }
 
-    // --- Hint Zone UI (Left Side) ---
+    // --- Bottom Bonus Info Bar ---
+    m_bonusInfoBar.setFillColor(sf::Color(20, 20, 20, 190));
+    m_bonusInfoBar.setOutlineColor(sf::Color(220, 190, 120, 220));
+    m_bonusInfoBar.setOutlineThickness(S(this, 1.5f));
+    m_window.draw(m_bonusInfoBar);
+
+    const bool isHoveringListButton = m_bonusListButtonBounds.contains(mousePos);
+    m_bonusListButtonShape.setFillColor(
+        isHoveringListButton || m_showBonusWordsPopup
+            ? sf::Color(120, 90, 35, 230)
+            : sf::Color(80, 60, 25, 220));
+    m_bonusListButtonShape.setOutlineColor(sf::Color(240, 210, 150, 220));
+    m_bonusListButtonShape.setOutlineThickness(S(this, 1.2f));
+    m_window.draw(m_bonusListButtonShape);
+    if (m_bonusListButtonText) {
+        m_bonusListButtonText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
+        m_window.draw(*m_bonusListButtonText);
+    }
+
     if (m_bonusWordsInHintZoneText) {
         int totalPossibleBonus = m_calculateTotalPossibleBonusWords();
-        std::string bonusTextStr = "Bonus Words: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
+        std::string bonusTextStr = "Bonus words found: " + std::to_string(m_foundBonusWords.size()) + "/" + std::to_string(totalPossibleBonus);
         m_bonusWordsInHintZoneText->setString(bonusTextStr);
         m_bonusWordsInHintZoneText->setFillColor(GLOWING_TUBE_TEXT_COLOR);
 
@@ -4442,6 +4572,8 @@ void Game::m_checkWordCompletion(int wordIdx) {
 
             m_currentScore += wordScoreForThisWord;
             m_spawnScoreFlourish(wordScoreForThisWord, wordIdx);
+            if (m_wordCompleteSound) m_wordCompleteSound->play();
+            else if (m_placeSound) m_placeSound->play();
 
             if (m_scoreValueText) {
                 m_scoreValueText->setString(std::to_string(m_currentScore));
@@ -4507,6 +4639,42 @@ void Game::m_spawnScoreFlourish(int points, int wordIdxOnGrid) {
     particle.initialLifetime = particle.lifetime;
 
     m_scoreFlourishes.push_back(std::move(particle));
+
+    ScoreParticleAnim pointsTravelAnim;
+    pointsTravelAnim.points = points;
+    pointsTravelAnim.startPos = {
+        (firstLetterCenter.x + lastLetterCenter.x) / 2.f,
+        firstLetterCenter.y
+    };
+
+    sf::Vector2f scoreTarget = {
+        SCORE_ZONE_RECT_DESIGN.position.x + SCORE_ZONE_RECT_DESIGN.size.x * 0.5f,
+        SCORE_ZONE_RECT_DESIGN.position.y + SCORE_ZONE_RECT_DESIGN.size.y * 0.45f
+    };
+    if (m_scoreValueText) {
+        sf::FloatRect scoreBounds = m_scoreValueText->getGlobalBounds();
+        if (scoreBounds.size.x > 0.f && scoreBounds.size.y > 0.f) {
+            scoreTarget = {
+                scoreBounds.position.x + scoreBounds.size.x * 0.5f,
+                scoreBounds.position.y + scoreBounds.size.y * 0.5f
+            };
+        }
+    }
+
+    pointsTravelAnim.endPos = scoreTarget;
+    pointsTravelAnim.t = 0.f;
+    pointsTravelAnim.speed = 1.9f;
+    pointsTravelAnim.particle = sf::Text(m_font, "+" + std::to_string(points),
+        static_cast<unsigned int>(std::max(10.f, S(this, SCORE_FLOURISH_FONT_SIZE_BASE_DESIGN) * 1.2f)));
+    pointsTravelAnim.particle.setStyle(sf::Text::Bold);
+    pointsTravelAnim.particle.setFillColor(sf::Color(255, 215, 0, 255));
+    sf::FloatRect flyBounds = pointsTravelAnim.particle.getLocalBounds();
+    pointsTravelAnim.particle.setOrigin({
+        flyBounds.position.x + flyBounds.size.x / 2.f,
+        flyBounds.position.y + flyBounds.size.y / 2.f
+    });
+    pointsTravelAnim.particle.setPosition(pointsTravelAnim.startPos);
+    m_scoreAnims.push_back(std::move(pointsTravelAnim));
 }
 
 void Game::m_updateScoreFlourishes(float dt) {

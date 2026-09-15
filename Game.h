@@ -34,6 +34,7 @@
 #include <set>
 #include <map>
 #include <memory> 
+#include <cstdint>
 
 enum class GameMode { Casual, Crossword };
 
@@ -223,6 +224,7 @@ private:
     sf::SoundBuffer m_clickBuffer;
     sf::SoundBuffer m_hintUsedBuffer;
     sf::SoundBuffer m_errorWordBuffer;
+    sf::SoundBuffer m_wordCompleteBuffer;
 
     std::vector<std::string> m_musicFiles;
     sf::Music m_backgroundMusic;
@@ -233,6 +235,7 @@ private:
     std::unique_ptr<sf::Sound> m_clickSound;
     std::unique_ptr<sf::Sound> m_hintUsedSound;
     std::unique_ptr<sf::Sound> m_errorWordSound;
+    std::unique_ptr<sf::Sound> m_wordCompleteSound;
 
     std::unique_ptr<sf::Sprite> m_scrambleSpr;
     std::unique_ptr<sf::Sprite> m_sapphireSpr;
@@ -305,6 +308,7 @@ private:
 
     std::vector<ColorTheme> m_themes;
     ColorTheme m_currentTheme;
+    std::vector<std::vector<std::uint8_t>> m_wordGemTiers;
 
     struct PuzzleCriteria {
         std::vector<int> allowedLengths;
@@ -326,6 +330,11 @@ private:
     bool m_showDebugZones;
 
     bool m_isHoveringHintPointsText;
+    bool m_showBonusWordsPopup;
+    RoundedRectangleShape m_bonusInfoBar;
+    RoundedRectangleShape m_bonusListButtonShape;
+    std::unique_ptr<sf::Text> m_bonusListButtonText;
+    sf::FloatRect m_bonusListButtonBounds;
     std::vector<WordInfo> m_cachedBonusWords;
     bool m_bonusWordsCacheIsValid;
     float m_bonusWordsPopupScrollOffset;   // current scroll position (design units) for bonus words popup

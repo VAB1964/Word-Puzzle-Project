@@ -74,7 +74,7 @@ const awardPosition = (
   if (!word || !actor || !ledger || position < 0 || position >= word.cells.length || ledger[position]) {
     return 0;
   }
-  const credit = createPositionCredit(word, actorId);
+  const credit = createPositionCredit(word, actorId, position);
   ledger[position] = credit;
   addCreditToParticipant(actor, credit);
   return totalCreditValue(credit);

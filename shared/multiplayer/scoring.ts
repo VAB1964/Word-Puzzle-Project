@@ -8,9 +8,9 @@ import type {
 
 export const GEM_BONUS: Record<GemType, number> = {
   none: 0,
-  diamond: 5,
+  emerald: 5,
   ruby: 10,
-  emerald: 15
+  diamond: 15
 };
 
 export const emptyScore = (): ScoreBreakdown => ({
@@ -21,23 +21,22 @@ export const emptyScore = (): ScoreBreakdown => ({
   total: 0
 });
 
-export const gemForRarity = (rarity: number): GemType => {
-  if (rarity === 2) return "emerald";
-  if (rarity === 3) return "ruby";
-  if (rarity === 4) return "diamond";
-  return "none";
+export const gemForPosition = (word: PuzzleWordDefinition, position: number): GemType => {
+  if (position < 0 || position >= word.gems.length) return "none";
+  return word.gems[position] ?? "none";
 };
 
-export const positionValue = (word: PuzzleWordDefinition) => {
-  const gem = gemForRarity(word.rarity);
+export const positionValue = (word: PuzzleWordDefinition, position: number) => {
+  const gem = gemForPosition(word, position);
   return { base: 1, gem, bonus: GEM_BONUS[gem], total: 1 + GEM_BONUS[gem] };
 };
 
 export const createPositionCredit = (
   word: PuzzleWordDefinition,
-  ownerId: string
+  ownerId: string,
+  position: number
 ): PositionCredit => {
-  const value = positionValue(word);
+  const value = positionValue(word, position);
   return { ownerId, base: value.base, gem: value.gem, bonus: value.bonus };
 };
 
@@ -56,7 +55,7 @@ export const addCreditToParticipant = (participant: Participant, credit: Positio
 export const totalCreditValue = (credit: PositionCredit) => credit.base + credit.bonus;
 
 export const wordMaximumScore = (word: PuzzleWordDefinition) =>
-  word.answer.length * positionValue(word).total;
+  word.answer.split("").reduce((total, _, position) => total + positionValue(word, position).total, 0);
 
 export const puzzleMaximumScore = (words: PuzzleWordDefinition[]) =>
   words.reduce((total, word) => total + wordMaximumScore(word), 0);

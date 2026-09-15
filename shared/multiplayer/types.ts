@@ -47,6 +47,7 @@ export interface PuzzleWordDefinition {
   id: string;
   answer: string;
   rarity: number;
+  gems: GemType[];
   cells: PuzzleCellRef[];
 }
 
@@ -84,6 +85,7 @@ export interface PublicPuzzleWord {
   id: string;
   length: number;
   rarity: number;
+  gems: GemType[];
   cells: PuzzleCellRef[];
   completed: boolean;
 }
@@ -96,6 +98,9 @@ export interface PublicPuzzle {
   cols: number;
   words: PublicPuzzleWord[];
   visibleCells: Record<string, VisibleCell>;
+  bonusWordCount: number;
+  claimedBonusCount: number;
+  claimedBonusWords: string[];
   skipped: boolean;
 }
 

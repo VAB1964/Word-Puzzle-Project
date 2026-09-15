@@ -804,10 +804,16 @@ export class WordPuzzleRoom extends DurableObject<Env> {
                 id: word.id,
                 length: word.answer.length,
                 rarity: word.rarity,
+                gems: word.gems,
                 cells: word.cells,
                 completed: completed.has(word.id)
               })),
               visibleCells: structuredClone(state.runtime.visibleCells),
+              bonusWordCount: state.puzzle.bonusWords.length,
+              claimedBonusCount: Object.keys(state.runtime.claimedBonusWords).length,
+              claimedBonusWords: Object.keys(state.runtime.claimedBonusWords).sort(
+                (left, right) => left.localeCompare(right)
+              ),
               skipped: state.runtime.skipped
             }
           : null,

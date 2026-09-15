@@ -1,5 +1,6 @@
 import type {
   Difficulty,
+  GemType,
   GameMode,
   PuzzleCellRef,
   PuzzleDefinition,
@@ -127,6 +128,38 @@ const allowedRarities = (difficulty: Difficulty, lastPuzzle: boolean) => {
   return lastPuzzle ? [2, 3, 4] : [2, 3, 4];
 };
 
+const gemTierOrder: GemType[] = ["emerald", "ruby", "diamond"];
+
+const maxGemTierIndexForRarity = (rarity: number) => {
+  if (rarity >= 4) return 2;
+  if (rarity === 3) return 1;
+  return 0;
+};
+
+const buildWordGems = (wordLength: number, rarity: number, random: () => number): GemType[] => {
+  const gems: GemType[] = Array.from({ length: wordLength }, () => "none");
+  const maxGems = wordLength;
+  if (maxGems <= 0) return gems;
+
+  const gemCount = Math.floor(random() * (maxGems + 1));
+  if (gemCount <= 0) return gems;
+
+  const positions = [...Array(wordLength).keys()];
+  for (let idx = positions.length - 1; idx > 0; idx -= 1) {
+    const swap = Math.floor(random() * (idx + 1));
+    [positions[idx], positions[swap]] = [positions[swap], positions[idx]];
+  }
+
+  const maxTier = maxGemTierIndexForRarity(rarity);
+  for (let idx = 0; idx < gemCount; idx += 1) {
+    const position = positions[idx];
+    const tier = Math.floor(random() * (maxTier + 1));
+    gems[position] = gemTierOrder[tier];
+  }
+
+  return gems;
+};
+
 const chooseBase = (
   words: PuzzleWordData[],
   difficulty: Difficulty,
@@ -245,6 +278,7 @@ export const generateMultiplayerPuzzle = (
     id: `w${index}`,
     answer: entry.word.text,
     rarity: entry.word.rarity,
+    gems: buildWordGems(entry.word.text.length, entry.word.rarity, random),
     cells: entry.word.text.split("").map((_, position) => coordinates(entry, position))
   }));
   return {
