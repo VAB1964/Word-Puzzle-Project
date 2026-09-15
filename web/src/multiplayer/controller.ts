@@ -52,6 +52,7 @@ export class MultiplayerController {
   private selectedIndices: number[] = [];
   private wheelLetters: string[] = [];
   private awaitingLetterHint = false;
+  private awaitingFullWordHint = false;
   private showBonusList = false;
   private sounds: Record<string, HTMLAudioElement> = {};
   private audioUnlocked = false;
@@ -130,6 +131,8 @@ export class MultiplayerController {
     if (puzzleChanged) {
       this.wheelLetters = snapshot.puzzle?.baseLetters.split("") ?? [];
       this.clearGuess();
+      this.awaitingLetterHint = false;
+      this.awaitingFullWordHint = false;
       this.showBonusList = false;
       this.shownTurnOrderKey = null;
       this.feedback = "";
@@ -172,7 +175,7 @@ export class MultiplayerController {
         <header class="mp-room-header">
           <button class="mp-link-button" data-action="leave">Leave</button>
           <strong>Room ${escapeHtml(snapshot.roomCode)}</strong>
-          <span>${escapeHtml(snapshot.settings.mode)} · ${escapeHtml(snapshot.settings.playMode)} · ${escapeHtml(String(snapshot.settings.turnTimeLimit))} · ${escapeHtml(snapshot.settings.difficulty)}</span>
+          <span>${escapeHtml(snapshot.settings.mode)} · ${escapeHtml(snapshot.settings.playMode)} · ${escapeHtml(String(snapshot.settings.turnTimeLimit))} · ${escapeHtml(snapshot.settings.difficulty)} · ${escapeHtml(String(snapshot.settings.puzzlesPerRound))} Puzzles</span>
           <button class="mp-link-button" data-action="copy-invite">Copy Invite</button>
         </header>
         ${
@@ -245,6 +248,11 @@ export class MultiplayerController {
             <label>Seats
               <select data-setting="capacity" ${host ? "" : "disabled"}>
                 ${[1, 2, 3, 4].map((value) => `<option ${snapshot.settings.capacity === value ? "selected" : ""}>${value}</option>`).join("")}
+              </select>
+            </label>
+            <label>Puzzles per Round
+              <select data-setting="puzzlesPerRound" ${host ? "" : "disabled"}>
+                ${[3, 4, 5, 6, 7].map((value) => `<option ${snapshot.settings.puzzlesPerRound === value ? "selected" : ""}>${value}</option>`).join("")}
               </select>
             </label>
             ${
@@ -439,6 +447,7 @@ export class MultiplayerController {
       ${[...cells.entries()]
         .map(([key, cell]) => {
           const visible = puzzle.visibleCells[key];
+          const hintTarget = !visible && (this.awaitingLetterHint || this.awaitingFullWordHint);
           const owner = snapshot.participants.find((participant) => participant.id === visible?.ownerId);
           const ref = cell.refs.find(
             (candidate) => !puzzle.words.find((word) => word.id === candidate.wordId)?.completed
@@ -451,7 +460,7 @@ export class MultiplayerController {
               return gems[candidate.position] ?? "none";
             })
             .reduce((best, current) => (GEM_RANK[current] > GEM_RANK[best] ? current : best), "none");
-          return `<button class="mp-cell ${visible ? "filled" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
+          return `<button class="mp-cell ${visible ? "filled" : ""} ${hintTarget ? "mp-cell-hint-target" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
             data-action="board-cell" data-word="${ref.wordId}" data-position="${ref.position}"
             data-row="${cell.row}" data-col="${cell.col}"
             aria-label="${visible ? `${visible.letter}, owned by ${owner?.name ?? "player"}` : "Unrevealed letter"}">
@@ -471,9 +480,20 @@ export class MultiplayerController {
     const puzzle = snapshot.puzzle;
     const found = puzzle?.claimedBonusCount ?? 0;
     const total = puzzle?.bonusWordCount ?? 0;
+    const failed = [...(puzzle?.failedWords ?? [])].sort((left, right) => left.localeCompare(right));
     return `<section class="mp-bonus-info mp-paper">
       <span>Bonus words found: <strong>${found}/${total}</strong></span>
       <button data-action="toggle-bonus-list" ${total === 0 ? "disabled" : ""}>List</button>
+    </section>
+    <section class="mp-tried-info mp-paper">
+      <span>Failed words: <strong>${failed.length}</strong></span>
+      ${
+        failed.length > 0
+          ? `<div class="mp-tried-word-list">${failed
+              .map((word) => `<span>${escapeHtml(word)}</span>`)
+              .join("")}</div>`
+          : `<p class="mp-tried-empty">No failed guesses yet.</p>`
+      }
     </section>`;
   }
 
@@ -648,18 +668,37 @@ export class MultiplayerController {
       const hint = button.dataset.hint as HintKind;
       if (hint === "letter") {
         this.awaitingLetterHint = true;
+        this.awaitingFullWordHint = false;
         this.feedback = "Choose an unrevealed board letter.";
         this.render();
+      } else if (hint === "full-word") {
+        this.awaitingFullWordHint = true;
+        this.awaitingLetterHint = false;
+        this.feedback = "Choose any unrevealed board letter from the word you want solved.";
+        this.render();
       } else {
+        this.awaitingLetterHint = false;
+        this.awaitingFullWordHint = false;
         this.client.send({ type: "use-hint", hint });
       }
     } else if (action === "board-cell" && this.awaitingLetterHint) {
+      const cellKeyValue = `${button.dataset.row ?? ""},${button.dataset.col ?? ""}`;
+      if (snapshot.puzzle?.visibleCells[cellKeyValue]) return;
       this.awaitingLetterHint = false;
       this.client.send({
         type: "use-hint",
         hint: "letter",
         wordId: button.dataset.word,
         position: Number(button.dataset.position)
+      });
+    } else if (action === "board-cell" && this.awaitingFullWordHint) {
+      const cellKeyValue = `${button.dataset.row ?? ""},${button.dataset.col ?? ""}`;
+      if (snapshot.puzzle?.visibleCells[cellKeyValue]) return;
+      this.awaitingFullWordHint = false;
+      this.client.send({
+        type: "use-hint",
+        hint: "full-word",
+        wordId: button.dataset.word
       });
     } else if (action === "skip") {
       this.client.send({ type: snapshot.skipVote ? "accept-skip" : "request-skip" });
@@ -703,6 +742,9 @@ export class MultiplayerController {
     }
     if (select.dataset.setting === "capacity") {
       settings.capacity = Number(select.value) as typeof settings.capacity;
+    }
+    if (select.dataset.setting === "puzzlesPerRound") {
+      settings.puzzlesPerRound = Number(select.value) as typeof settings.puzzlesPerRound;
     }
     this.client.send({ type: "update-settings", settings, expectedRevision: snapshot.revision });
   }
@@ -751,18 +793,9 @@ export class MultiplayerController {
 
   private renderFeedbackText(message: string) {
     const withIcons = escapeHtml(message)
-      .replaceAll(
-        "💚",
-        `<img class="mp-feedback-gem" src="${escapeHtml(Assets.sapphire)}" alt="Emerald gem" aria-label="Emerald gem">`
-      )
-      .replaceAll(
-        "♦️",
-        `<img class="mp-feedback-gem" src="${escapeHtml(Assets.ruby)}" alt="Ruby gem" aria-label="Ruby gem">`
-      )
-      .replaceAll(
-        "💎",
-        `<img class="mp-feedback-gem" src="${escapeHtml(Assets.diamond)}" alt="Diamond gem" aria-label="Diamond gem">`
-      );
+      .replace(/💚/g, `<img class="mp-feedback-gem" src="${escapeHtml(Assets.sapphire)}" alt="Emerald gem" aria-label="Emerald gem">`)
+      .replace(/♦️/g, `<img class="mp-feedback-gem" src="${escapeHtml(Assets.ruby)}" alt="Ruby gem" aria-label="Ruby gem">`)
+      .replace(/💎/g, `<img class="mp-feedback-gem" src="${escapeHtml(Assets.diamond)}" alt="Diamond gem" aria-label="Diamond gem">`);
     return `<p class="mp-feedback" role="status">${withIcons}</p>`;
   }
 

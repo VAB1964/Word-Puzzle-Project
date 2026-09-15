@@ -135,7 +135,8 @@ export const initializeAppEntry = (canvas: HTMLCanvasElement, startSinglePlayer:
         playMode: "Free for All",
         turnTimeLimit: "Not Timed",
         difficulty: "Easy",
-        capacity: 4
+        capacity: 4,
+        puzzlesPerRound: 3
       };
       void createRoom({ name, settings })
         .then((result) =>

@@ -7,6 +7,7 @@ import {
   type GameMode,
   type PlayMode,
   type JoinRoomRequest,
+  type PuzzlesPerRound,
   type RoomSettings,
   type TurnTimeLimit
 } from "../../shared/multiplayer/types";
@@ -17,6 +18,7 @@ const MODES: GameMode[] = ["Casual", "Crossword"];
 const PLAY_MODES: PlayMode[] = ["Free for All", "Turn Based"];
 const DIFFICULTIES: Difficulty[] = ["Easy", "Medium", "Hard"];
 const TURN_LIMITS: TurnTimeLimit[] = ["Not Timed", 30, 25, 20, 15, 10];
+const PUZZLES_PER_ROUND: PuzzlesPerRound[] = [3, 4, 5, 6, 7];
 
 export class ProtocolError extends Error {
   constructor(
@@ -58,6 +60,9 @@ export const validateSettings = (value: unknown): RoomSettings => {
   }
   if (![1, 2, 3, 4].includes(candidate.capacity ?? 0)) {
     throw new ProtocolError("INVALID_SETTINGS", "Capacity must be from one to four.");
+  }
+  if (!PUZZLES_PER_ROUND.includes(candidate.puzzlesPerRound as PuzzlesPerRound)) {
+    throw new ProtocolError("INVALID_SETTINGS", "Puzzles per round must be from three to seven.");
   }
   return candidate as RoomSettings;
 };

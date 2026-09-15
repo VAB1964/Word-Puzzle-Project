@@ -54,4 +54,35 @@ describe("multiplayer puzzle difficulty", () => {
       )
     ).toThrow("No eligible easy seven-letter base words");
   });
+
+  it("allows rarity-three and rarity-four words as bonus-only on Easy", () => {
+    const data = [
+      word("resting", 1),
+      word("string", 2),
+      word("stinger", 2),
+      word("sting", 2),
+      word("rings", 2),
+      word("tiger", 2),
+      word("tiers", 1),
+      word("tire", 1),
+      word("rest", 1),
+      word("sign", 1),
+      word("resign", 3),
+      word("ingerts", 4)
+    ];
+
+    const puzzle = generateMultiplayerPuzzle(
+      data,
+      "Casual",
+      "Easy",
+      "easy-bonus-rarity3",
+      0,
+      5,
+      new Set()
+    );
+
+    expect(puzzle.words.every((candidate) => candidate.rarity <= 2)).toBe(true);
+    expect(puzzle.bonusWords).toContain("resign");
+    expect(puzzle.bonusWords).toContain("ingerts");
+  });
 });

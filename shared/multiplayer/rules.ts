@@ -43,10 +43,15 @@ export const createPuzzleRuntime = (puzzle: PuzzleDefinition): PuzzleRuntime => 
   completedWordIds: [],
   credits: Object.fromEntries(puzzle.words.map((word) => [word.id, word.cells.map(() => null)])),
   claimedBonusWords: {},
+  failedGuesses: [],
   skipped: false
 });
 
 const normalizeGuess = (guess: string) => guess.trim().toLowerCase();
+const recordFailedGuess = (runtime: PuzzleRuntime, guess: string) => {
+  const failed = runtime.failedGuesses ?? (runtime.failedGuesses = []);
+  if (!failed.includes(guess)) failed.push(guess);
+};
 
 const bonusHintAward = (length: number) => {
   if (length === 3) return 1;
@@ -179,6 +184,7 @@ export const submitGuess = (
     };
   }
 
+  recordFailedGuess(runtime, guess);
   return failure(`The word "${guess.toUpperCase()}" is not in the puzzle and is not a bonus word.`);
 };
 
@@ -230,7 +236,9 @@ export const useHint = (
       }
     }
   } else if (request.hint === "full-word") {
-    const word = unfinished[unfinished.length - 1];
+    const word =
+      unfinished.find((candidate) => candidate.id === request.wordId) ??
+      unfinished[unfinished.length - 1];
     if (word) {
       for (const choice of unrevealed(word.id)) {
         targets.push({ wordId: word.id, position: choice.position });

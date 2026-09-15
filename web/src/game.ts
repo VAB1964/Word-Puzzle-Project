@@ -1322,7 +1322,7 @@ export class Game {
 
     let finalSolutions: WordInfo[] = [];
     if (this.base !== "ERROR") {
-      this.allPotentialSolutions = subWords(this.base, this.fullWordList);
+      const allSubWords = subWords(this.base, this.fullWordList);
       const allowedSubRarities =
         this.selectedDifficulty === DifficultyLevel.Easy
           ? [1, 2]
@@ -1331,9 +1331,21 @@ export class Game {
             : this.selectedDifficulty === DifficultyLevel.Hard
               ? [2, 3, 4]
               : [1, 2, 3, 4];
+      const allowedBonusRarities =
+        this.selectedDifficulty === DifficultyLevel.Easy
+          ? [1, 2, 3, 4]
+          : this.selectedDifficulty === DifficultyLevel.Medium
+            ? [1, 2, 3]
+            : this.selectedDifficulty === DifficultyLevel.Hard
+              ? [2, 3, 4]
+              : [1, 2, 3, 4];
+
+      this.allPotentialSolutions = allSubWords.filter((info) => {
+        if (info.text.length < minSubLengthForDifficulty) return false;
+        return allowedBonusRarities.includes(info.rarity);
+      });
 
       const filtered = this.allPotentialSolutions.filter((info) => {
-        if (info.text.length < minSubLengthForDifficulty) return false;
         return allowedSubRarities.includes(info.rarity);
       });
 
@@ -1382,8 +1394,8 @@ export class Game {
       const minGridTarget = Math.min(MIN_DESIRED_GRID_WORDS, maxSolutionsForDifficulty);
       if (finalSolutions.length < minGridTarget) {
         const existing = new Set(finalSolutions.map((info) => info.text));
-        const fallback = this.allPotentialSolutions
-          .filter((info) => info.text.length >= minSubLengthForDifficulty && !existing.has(info.text))
+        const fallback = filtered
+          .filter((info) => !existing.has(info.text))
           .sort((a, b) => {
             if (a.text.length !== b.text.length) return b.text.length - a.text.length;
             if (a.rarity !== b.rarity) return a.rarity - b.rarity;

@@ -737,6 +737,23 @@ select {
   background: #fff3cd;
 }
 
+.mp-cell-hint-target {
+  animation: mp-hint-target-pulse 1s ease-in-out infinite;
+  border-color: #ccb07e;
+}
+
+@keyframes mp-hint-target-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0.08rem 0.18rem 0.3rem rgba(61, 39, 17, 0.35);
+  }
+  50% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0.14rem rgba(177, 142, 86, 0.48), 0.08rem 0.18rem 0.3rem rgba(61, 39, 17, 0.35);
+  }
+}
+
 .mp-cell-letter {
   position: absolute;
   inset: 0;
@@ -775,6 +792,39 @@ select {
 .mp-bonus-info button {
   min-height: 2.2rem;
   padding: 0.4rem 1rem;
+}
+
+.mp-tried-info {
+  width: min(112rem, calc(100% - 1rem));
+  margin: 0.55rem auto 0;
+  padding: 0.55rem 0.85rem;
+}
+
+.mp-tried-info strong {
+  color: #526b3d;
+}
+
+.mp-tried-word-list {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-height: 7.5rem;
+  overflow-y: auto;
+}
+
+.mp-tried-word-list span {
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 70, 49, 0.28);
+  background: rgba(255, 250, 229, 0.92);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.mp-tried-empty {
+  margin: 0.45rem 0 0;
+  color: #6a5a46;
 }
 
 .mp-bonus-popup {

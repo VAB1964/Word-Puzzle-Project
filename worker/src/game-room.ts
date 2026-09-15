@@ -24,6 +24,7 @@ import {
   type ScoreBreakdown,
   type ServerMessage,
   type StoredCommandResult,
+  type GemType,
   type TurnState,
   type TurnTimeLimit
 } from "../../shared/multiplayer/types";
@@ -69,8 +70,7 @@ type RoomJoinOutcome =
   | ({ ok: true } & RoomJoinResult)
   | { ok: false; code: string; message: string; status: number };
 
-const puzzleCountFor = (difficulty: RoomSettings["difficulty"]) =>
-  difficulty === "Easy" ? 5 : difficulty === "Medium" ? 7 : 10;
+const puzzleCountFor = (settings: RoomSettings) => settings.puzzlesPerRound;
 
 const randomToken = () => {
   const bytes = new Uint8Array(32);
@@ -121,7 +121,15 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       this.ctx.storage.get<CommandStore>("commandResults")
     ]);
     this.state = state
-      ? { ...state, aiIntents: state.aiIntents ?? {}, turnState: state.turnState ?? null }
+      ? {
+          ...state,
+          settings: {
+            ...state.settings,
+            puzzlesPerRound: state.settings.puzzlesPerRound ?? 3
+          },
+          aiIntents: state.aiIntents ?? {},
+          turnState: state.turnState ?? null
+        }
       : null;
     this.credentials = credentials ?? {};
     this.commandResults = commandResults ?? {};
@@ -147,7 +155,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       rosterLocked: false,
       sessionId: null,
       puzzleIndex: 0,
-      puzzleCount: puzzleCountFor(settings.difficulty),
+      puzzleCount: puzzleCountFor(settings),
       participants: [participant],
       puzzle: null,
       runtime: null,
@@ -452,7 +460,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
         throw new ProtocolError("CAPACITY_TOO_SMALL", "Remove seats before lowering capacity.");
       }
       state.settings = settings;
-      state.puzzleCount = puzzleCountFor(settings.difficulty);
+      state.puzzleCount = puzzleCountFor(settings);
       state.participants.forEach((participant) => {
         if (participant.kind === "human") participant.ready = false;
       });
@@ -568,6 +576,9 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           result.pointsAwarded
         )
       ];
+      if (command.hint === "full-word" && this.shouldEndTurnOnGuessAttempt(state) && state.status === "playing") {
+        events.push(...this.advanceTurn(state, "attempt-ended"));
+      }
       return events;
     }
     if (command.type === "continue") {
@@ -670,6 +681,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       state.rosterLocked = false;
       state.sessionId = null;
       state.puzzleIndex = 0;
+      state.puzzleCount = puzzleCountFor(state.settings);
       state.puzzle = null;
       state.runtime = null;
       state.turnState = null;
@@ -998,15 +1010,12 @@ export class WordPuzzleRoom extends DurableObject<Env> {
 
   private snapshotFor(state: RoomState, localParticipantId: string): RoomSnapshot {
     const completed = new Set(state.runtime?.completedWordIds ?? []);
-    const rarityGem = (rarity: number) =>
+    const rarityGem = (rarity: number): GemType =>
       rarity >= 4 ? "diamond" : rarity === 3 ? "ruby" : rarity === 2 ? "emerald" : "none";
-    const normalizeWordGems = (word: { answer: string; gems?: string[] }) =>
+    const normalizeWordGems = (word: { answer: string; rarity: number; gems?: GemType[] }): GemType[] =>
       Array.isArray(word.gems) && word.gems.length > 0
         ? word.gems
-        : Array.from(
-            { length: word.answer.length },
-            () => rarityGem((word as { rarity?: number }).rarity ?? 0) as "none" | "emerald" | "ruby" | "diamond"
-          );
+        : Array.from({ length: word.answer.length }, () => rarityGem(word.rarity));
     return {
       protocolVersion: MULTIPLAYER_PROTOCOL_VERSION,
       roomCode: state.code,
@@ -1043,6 +1052,9 @@ export class WordPuzzleRoom extends DurableObject<Env> {
               claimedBonusWords: Object.keys(state.runtime.claimedBonusWords).sort(
                 (left, right) => left.localeCompare(right)
               ),
+              failedWords: [...(state.runtime.failedGuesses ?? [])]
+                .map((word) => word.toUpperCase())
+                .sort((left, right) => left.localeCompare(right)),
               skipped: state.runtime.skipped
             }
           : null,

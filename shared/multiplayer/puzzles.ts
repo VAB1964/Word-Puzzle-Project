@@ -128,6 +128,11 @@ const allowedRarities = (difficulty: Difficulty, lastPuzzle: boolean) => {
   return lastPuzzle ? [2, 3, 4] : [2, 3, 4];
 };
 
+const bonusRaritiesFor = (difficulty: Difficulty, lastPuzzle: boolean) => {
+  if (difficulty === "Easy") return [1, 2, 3, 4];
+  return allowedRarities(difficulty, lastPuzzle);
+};
+
 const gemTierOrder: GemType[] = ["emerald", "ruby", "diamond"];
 
 const maxGemTierIndexForRarity = (rarity: number) => {
@@ -238,27 +243,34 @@ export const generateMultiplayerPuzzle = (
   usedBases: Set<string>
 ): PuzzleDefinition => {
   const random = randomForSeed(seed);
+  const lastPuzzle = puzzleIndex === puzzleCount - 1;
   const baseWord = chooseBase(data, difficulty, puzzleIndex === puzzleCount - 1, usedBases, random);
   usedBases.add(baseWord.text);
   const minimumLength = difficulty === "Hard" ? 4 : 3;
-  const rarities = allowedRarities(difficulty, puzzleIndex === puzzleCount - 1);
-  const possible = data.filter(
+  const boardRarities = allowedRarities(difficulty, lastPuzzle);
+  const bonusRarities = bonusRaritiesFor(difficulty, lastPuzzle);
+  const possibleForBoard = data.filter(
     (word) =>
       word.text.length >= minimumLength &&
-      rarities.includes(word.rarity) &&
+      boardRarities.includes(word.rarity) &&
       canSpell(word.text, baseWord.text)
   );
-  const unique = new Map(possible.map((word) => [word.text, word]));
+  const possibleForBonus = data.filter(
+    (word) =>
+      word.text.length >= minimumLength &&
+      bonusRarities.includes(word.rarity) &&
+      canSpell(word.text, baseWord.text)
+  );
+  const unique = new Map(possibleForBoard.map((word) => [word.text, word]));
   if (!unique.has(baseWord.text)) unique.set(baseWord.text, baseWord);
   const ordered = [...unique.values()].sort(
     (left, right) =>
       right.text.length - left.text.length ||
-      left.rarity - right.rarity ||
       left.text.localeCompare(right.text)
   );
   const selected = ordered.slice(0, limits[mode][difficulty]);
   const selectedSet = new Set(selected.map((word) => word.text));
-  const bonusWords = possible.map((word) => word.text).filter((word) => !selectedSet.has(word));
+  const bonusWords = possibleForBonus.map((word) => word.text).filter((word) => !selectedSet.has(word));
 
   let placed: Placed[];
   let rows: number;

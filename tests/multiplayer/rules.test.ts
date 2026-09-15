@@ -150,6 +150,23 @@ describe("multiplayer scoring rules", () => {
     expect(players[0].hintCredits).toBe(before);
   });
 
+  it("full-word hint can target a chosen word", () => {
+    const players = [participant("Alice", 0, 10)];
+    const runtime = createPuzzleRuntime(crossword);
+
+    const result = useHint(crossword, runtime, players, "Alice", {
+      hint: "full-word",
+      wordId: "car"
+    });
+
+    expect(result.changed).toBe(true);
+    expect(result.solvedWords).toContain("car");
+    expect(runtime.visibleCells["0,0"]).toBeTruthy();
+    expect(runtime.visibleCells["1,0"]).toBeTruthy();
+    expect(runtime.visibleCells["2,0"]).toBeTruthy();
+    expect(players[0].hintCredits).toBe(5);
+  });
+
   it("never exceeds the defined puzzle maximum and keeps totals consistent", () => {
     const players = [participant("Alice", 0, 20), participant("Bob", 1, 20)];
     const runtime = createPuzzleRuntime(crossword);

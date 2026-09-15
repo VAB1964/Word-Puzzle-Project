@@ -4,6 +4,7 @@ export type GameMode = "Casual" | "Crossword";
 export type PlayMode = "Free for All" | "Turn Based";
 export type TurnTimeLimit = "Not Timed" | 30 | 25 | 20 | 15 | 10;
 export type Difficulty = "Easy" | "Medium" | "Hard";
+export type PuzzlesPerRound = 3 | 4 | 5 | 6 | 7;
 export type AiLevel = "High School" | "College" | "Professional";
 export type GemType = "none" | "diamond" | "ruby" | "emerald";
 export type RoomStatus = "lobby" | "playing" | "puzzle-summary" | "completed" | "ended";
@@ -40,6 +41,7 @@ export interface RoomSettings {
   turnTimeLimit: TurnTimeLimit;
   difficulty: Difficulty;
   capacity: 1 | 2 | 3 | 4;
+  puzzlesPerRound: PuzzlesPerRound;
 }
 
 export interface TurnState {
@@ -92,6 +94,7 @@ export interface PuzzleRuntime {
   completedWordIds: string[];
   credits: Record<string, Array<PositionCredit | null>>;
   claimedBonusWords: Record<string, string>;
+  failedGuesses: string[];
   skipped: boolean;
 }
 
@@ -115,6 +118,7 @@ export interface PublicPuzzle {
   bonusWordCount: number;
   claimedBonusCount: number;
   claimedBonusWords: string[];
+  failedWords: string[];
   skipped: boolean;
 }
 
