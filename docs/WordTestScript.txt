@@ -1,0 +1,104 @@
+node - <<'NODE'
+const fs = require("fs");
+
+const baseInput = (process.argv[2] || "RESTING").toLowerCase();
+const difficulty = (process.argv[3] || "Easy"); // Easy | Medium | Hard
+const mode = (process.argv[4] || "Casual");     // Casual | Crossword
+const puzzleIndex = Number(process.argv[5] || 0);
+const puzzleCount = Number(process.argv[6] || 3);
+
+const limits = {
+  Casual: { Easy: 7, Medium: 12, Hard: 15 },
+  Crossword: { Easy: 10, Medium: 15, Hard: 20 }
+};
+
+const csv = fs.readFileSync("words_processed.csv", "utf8");
+const lines = csv.split(/\r?\n/).filter(Boolean).slice(1);
+
+const data = lines
+  .map((line) => {
+    const f = line.split(",");
+    return {
+      text: (f[0] || "").trim().toLowerCase(),
+      rarity: Number.parseInt(f[1] || "0", 10) || 0
+    };
+  })
+  .filter((w) => /^[a-z]+$/.test(w.text) && w.text.length >= 3 && w.text.length <= 7);
+
+const canSpell = (word, letters) => {
+  const counts = Object.create(null);
+  for (const c of letters) counts[c] = (counts[c] || 0) + 1;
+  for (const c of word) {
+    if (!counts[c]) return false;
+    counts[c] -= 1;
+  }
+  return true;
+};
+
+const allowedRarities = (difficulty, lastPuzzle) => {
+  if (difficulty === "Easy") return [1, 2];
+  if (difficulty === "Medium") return [1, 2, 3];
+  return lastPuzzle ? [2, 3, 4] : [2, 3, 4];
+};
+
+const bonusRaritiesFor = (difficulty, lastPuzzle) => {
+  if (difficulty === "Easy") return [1, 2, 3, 4];
+  return allowedRarities(difficulty, lastPuzzle);
+};
+
+if (!/^[a-z]{7}$/.test(baseInput)) {
+  console.error(`Base word must be exactly 7 letters. Got: "${baseInput}"`);
+  process.exit(1);
+}
+
+const baseRow = data.find((w) => w.text === baseInput);
+if (!baseRow) {
+  console.error(`Base word "${baseInput}" not found in words_processed.csv`);
+  process.exit(1);
+}
+
+const minLen = difficulty === "Hard" ? 4 : 3;
+const lastPuzzle = puzzleIndex === puzzleCount - 1;
+
+const boardR = allowedRarities(difficulty, lastPuzzle);
+const bonusR = bonusRaritiesFor(difficulty, lastPuzzle);
+
+const possibleForBoard = data.filter(
+  (w) => w.text.length >= minLen && boardR.includes(w.rarity) && canSpell(w.text, baseInput)
+);
+
+const possibleForBonus = data.filter(
+  (w) => w.text.length >= minLen && bonusR.includes(w.rarity) && canSpell(w.text, baseInput)
+);
+
+// mirror generateMultiplayerPuzzle behavior
+const unique = new Map(possibleForBoard.map((w) => [w.text, w]));
+if (!unique.has(baseInput)) unique.set(baseInput, baseRow);
+
+const ordered = [...unique.values()].sort(
+  (a, b) => b.text.length - a.text.length || a.text.localeCompare(b.text)
+);
+
+const selected = ordered.slice(0, limits[mode][difficulty]);
+const selectedSet = new Set(selected.map((w) => w.text));
+
+const bonusWords = [...new Set(
+  possibleForBonus.map((w) => w.text).filter((w) => !selectedSet.has(w))
+)].sort((a, b) => a.localeCompare(b));
+
+console.log("====================================");
+console.log(`BASE: ${baseInput.toUpperCase()}`);
+console.log(`MODE: ${mode} | DIFFICULTY: ${difficulty}`);
+console.log(`PUZZLE INDEX: ${puzzleIndex} / COUNT: ${puzzleCount}`);
+console.log(`BOARD LIMIT: ${limits[mode][difficulty]}`);
+console.log("====================================\n");
+
+console.log(`BOARD WORDS (${selected.length})`);
+for (const w of selected) console.log(`- ${w.text.toUpperCase()} (r${w.rarity})`);
+
+console.log(`\nBONUS WORDS (${bonusWords.length})`);
+console.log(bonusWords.map((w) => w.toUpperCase()).join(", "));
+
+console.log("\nChecks:");
+console.log(`- RESIGN in bonus? ${bonusWords.includes("resign") ? "YES" : "NO"}`);
+NODE
