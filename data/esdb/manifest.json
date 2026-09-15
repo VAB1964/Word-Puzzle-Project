@@ -1,0 +1,33 @@
+{
+  "repository": "https://github.com/en-wl/wordlist",
+  "commit": "1e5b7d3a72f47a71da5d28686c1dd4b397178485",
+  "dialect": "American English",
+  "spelling": "A",
+  "variant_level": 1,
+  "base_size": 60,
+  "review_sizes": [
+    70,
+    80
+  ],
+  "options": [
+    "--deaccent",
+    "--wo-poses=abbr",
+    "--wo-pos-classes=person,surname,place,name,demonym,trademark,abbr,upper,name?,upper?,abbr?",
+    "--wo-pos-categories=nonword,wordpart",
+    "--categories=",
+    "--wo-usage-notes=offensive-1,offensive-2,vulgar-1,vulgar-3,nonstandard"
+  ],
+  "post_filter": "full lowercase ASCII spelling, 3-7 letters; no lowercasing",
+  "cumulative_counts": {
+    "60": 28324,
+    "70": 39883,
+    "80": 51018
+  },
+  "sha256_normalized_utf8": {
+    "american-60.txt": "6cd154a0896d3832309057fc4568ab863454b7a28f0a666cc60cf1ca8b346da1",
+    "american-70-additions.txt": "8642b9f6046d363c6ec8442cf3f1ef15bb28d15bd5ae37ae3fee46f54a7b3237",
+    "american-80-additions.txt": "0e5d5bf0b34bcf7ab23182ed9841a1d21e255dcf402c3f4def10dc5fb85c2cf1",
+    "inflections-60.csv": "b6c5c32efd8d9f314e16d8d2a076c49b91d8a6cb25a86b234d90d9a446d04ef1",
+    "Copyright": "71bffd4b74ad47fff01c8b3c666e77da92737854e568850d8728024e0a53f304"
+  }
+}

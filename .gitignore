@@ -374,3 +374,6 @@ web/.wrangler/
 web/dist/
 .wrangler/
 *.cpuprofile
+
+# Review output from the ESDB dictionary builder
+/esdb-candidate/
