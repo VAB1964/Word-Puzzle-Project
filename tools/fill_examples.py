@@ -3,12 +3,6 @@ import csv
 import re
 
 
-def first_gloss(glosses):
-    if not glosses:
-        return ""
-    return glosses.split(" | ")[0].strip()
-
-
 def normalize_sentence(text):
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
@@ -18,22 +12,9 @@ def normalize_sentence(text):
     return text
 
 
-def make_sentence(word, pos, gloss):
-    if not gloss:
-        return normalize_sentence(f"{word} is a word")
-    gloss_lower = gloss.lower()
-    if pos == "verb":
-        if gloss_lower.startswith("to "):
-            return normalize_sentence(f"To {word} is {gloss}")
-        return normalize_sentence(f"To {word} is to {gloss}")
-    if pos in {"noun", "adjective", "adverb"}:
-        return normalize_sentence(f"{word} means {gloss}")
-    return normalize_sentence(f"{word} means {gloss}")
-
-
 def main():
     parser = argparse.ArgumentParser(
-        description="Fill missing example sentences using the gloss."
+        description="Normalize existing examples; leave missing examples empty. Use clean_dictionary.py to select suitable source examples."
     )
     parser.add_argument("--input", required=True, help="Input CSV file.")
     parser.add_argument("--output", required=True, help="Output CSV file.")
@@ -47,12 +28,8 @@ def main():
         writer.writeheader()
         for row in reader:
             examples = (row.get("examples") or "").strip()
-            if not examples:
-                word = (row.get("word") or "").strip()
-                pos = (row.get("pos") or "").strip().lower()
-                gloss = first_gloss((row.get("glosses") or "").strip())
-                if word:
-                    row["examples"] = make_sentence(word, pos, gloss)
+            # A restatement of a definition is not an example of usage.
+            row["examples"] = normalize_sentence(examples) if examples else ""
             writer.writerow(row)
 
 

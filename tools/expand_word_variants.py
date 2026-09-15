@@ -330,13 +330,13 @@ def main() -> None:
 
             for var_word, var_type in variants_to_add:
                 var_def = f"{var_type.capitalize()} of {word}."
-                var_sent = f"{var_word} means {var_def}"
                 writer.writerow({
                     "word": var_word,
                     "rarity": rarity,
                     "pos": pos,
                     "Definition": var_def,
-                    "Sentence": var_sent,
+                    # Missing usage examples stay empty; a definition is not a sentence example.
+                    "Sentence": "",
                 })
                 written_words.add(var_word.lower())
 

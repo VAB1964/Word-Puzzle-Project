@@ -41,6 +41,7 @@ const crossword: PuzzleDefinition = {
       id: "cat",
       answer: "cat",
       rarity: 1,
+      gems: ["none", "none", "none"],
       cells: [
         { row: 0, col: 0 },
         { row: 0, col: 1 },
@@ -51,6 +52,7 @@ const crossword: PuzzleDefinition = {
       id: "car",
       answer: "car",
       rarity: 1,
+      gems: ["none", "none", "none"],
       cells: [
         { row: 0, col: 0 },
         { row: 1, col: 0 },
@@ -88,6 +90,7 @@ describe("multiplayer scoring rules", () => {
           id: "stone",
           answer: "stone",
           rarity: 4,
+          gems: ["emerald", "emerald", "emerald", "emerald", "emerald"],
           cells: Array.from({ length: 5 }, (_, col) => ({ row: 0, col }))
         }
       ]

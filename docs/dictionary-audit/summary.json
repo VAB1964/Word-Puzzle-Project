@@ -1,0 +1,27 @@
+{
+  "input_entries": 19885,
+  "output_words": 18242,
+  "removed_entries": 1643,
+  "removal_reasons": {
+    "outside-ascii-letter-wheel": 73,
+    "excluded-usage": 195,
+    "cyclic-reference": 11,
+    "duplicate-after-lowercasing": 474,
+    "abbreviation-only-sense;proper-name-or-nonword-sense": 1,
+    "capitalized-only-without-lowercase-source": 722,
+    "obsolete-or-invalid-form": 113,
+    "capitalized-root": 27,
+    "abbreviation-only-sense;excluded-usage": 2,
+    "excluded-root": 23,
+    "invalid-generated-plural-of-pres": 1,
+    "proper-name-or-nonword-sense": 1
+  },
+  "rarity_counts": {
+    "1": 955,
+    "2": 3082,
+    "3": 6396,
+    "4": 7809
+  },
+  "with_examples": 6044,
+  "without_examples": 12198
+}

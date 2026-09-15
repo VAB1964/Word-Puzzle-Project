@@ -1,0 +1,476 @@
+{
+  "description": "Reviewed meanings and original examples for existing words. These overrides do not add words or change rarity. Dictionary adaptations and these contributions are CC BY-SA 4.0; see docs/dictionary-cleanup.md.",
+  "reference_meanings": {
+    "be": {
+      "verb": "To exist, or to have a particular state or identity."
+    },
+    "do": {
+      "verb": "To perform an action or carry out a task."
+    },
+    "go": {
+      "verb": "To move or travel from one place to another."
+    },
+    "mean": {
+      "verb": "To signify something or intend to convey it."
+    },
+    "steal": {
+      "verb": "To take something that belongs to someone else without permission."
+    }
+  },
+  "words": {
+    "ought": {
+      "pos": "verb",
+      "Definition": "Used to express duty, advisability, or an expected result.",
+      "Sentence": "We ought to leave before it gets dark.",
+      "reason": "Keep the ordinary verb rather than an old variant of aught."
+    },
+    "true": {
+      "pos": "adj",
+      "Definition": "In accordance with fact or reality; correct.",
+      "Sentence": "The story she told was true.",
+      "reason": "Repair the spreadsheet-style TRUE spelling of an ordinary adjective."
+    },
+    "okay": {
+      "pos": "adj",
+      "Definition": "Acceptable or satisfactory; also safe or in good health.",
+      "Sentence": "Everyone was okay after the storm.",
+      "reason": "Retain an ordinary word whose source points to uppercase OK."
+    },
+    "forth": {
+      "pos": "adv",
+      "Definition": "Forward or outward from a place.",
+      "Sentence": "The children ran back and forth across the yard.",
+      "reason": "Keep a familiar word despite overly restrictive source usage labels."
+    },
+    "gotta": {
+      "pos": "verb",
+      "Definition": "An informal way of saying have to or have got to.",
+      "Sentence": "I gotta go home now.",
+      "reason": "Preserve an established informal spelling already accepted by the game."
+    },
+    "means": {
+      "pos": "noun",
+      "Definition": "A method of achieving something, or resources available for a purpose.",
+      "Sentence": "The bicycle was her only means of transport.",
+      "reason": "Explain the familiar noun directly; its root is missing from the source export."
+    },
+    "abs": {
+      "pos": "noun",
+      "Definition": "The abdominal muscles at the front of the body.",
+      "Sentence": "These exercises strengthen your abs.",
+      "reason": "Keep the familiar muscle sense instead of the abbreviation for abstract."
+    },
+    "bio": {
+      "pos": "noun",
+      "Definition": "A short account of a person's life.",
+      "Sentence": "Her bio describes her work as an artist.",
+      "reason": "An established everyday shortening of biography."
+    },
+    "app": {
+      "pos": "noun",
+      "Definition": "A computer program, especially one designed for a phone or tablet.",
+      "Sentence": "I use an app to check the weather.",
+      "reason": "Use the familiar software meaning and a short example."
+    },
+    "apple": {
+      "pos": "noun",
+      "Definition": "A round fruit with red, green, or yellow skin and firm flesh.",
+      "Sentence": "She packed an apple in her lunch.",
+      "reason": "Keep the fruit meaning, remove the brand collision and archaic quotation."
+    },
+    "orange": {
+      "pos": "noun",
+      "Definition": "A round citrus fruit with a thick peel and juicy flesh; also the color between red and yellow.",
+      "Sentence": "He peeled an orange for a snack.",
+      "reason": "Lead with the familiar fruit meaning rather than the tree or Orange Order."
+    },
+    "train": {
+      "pos": "noun",
+      "Definition": "A connected series of railway cars; also the trailing part of a long dress.",
+      "Sentence": "We took the train into the city.",
+      "reason": "Restore the everyday railway meaning while preserving the valid dress meaning."
+    },
+    "cat": {
+      "pos": "noun",
+      "Definition": "A small domesticated feline often kept as a pet; also a member of the wider cat family.",
+      "Sentence": "The cat curled up on the sofa.",
+      "reason": "Replace a taxonomic heading and lengthy quotation with a clear familiar meaning."
+    },
+    "dog": {
+      "pos": "noun",
+      "Definition": "A domesticated animal related to the wolf, often kept as a pet or working animal.",
+      "Sentence": "The dog waited by the door.",
+      "reason": "Repair damaged characters in the existing entry, which is absent from the partial source export."
+    },
+    "can": {
+      "pos": "verb",
+      "Definition": "To be able to do something.",
+      "Sentence": "I can swim across the pool.",
+      "reason": "Use a clear explanation of the ability sense."
+    },
+    "bank": {
+      "pos": "noun",
+      "Definition": "A business that holds and lends money; also the land along the edge of a river or lake.",
+      "Sentence": "She deposited her savings at the bank.",
+      "reason": "Provide familiar meanings and replace a long quotation."
+    },
+    "bat": {
+      "pos": "noun",
+      "Definition": "A flying mammal; also a piece of sporting equipment used to hit a ball.",
+      "Sentence": "A bat flew out of the cave at dusk.",
+      "reason": "Include two familiar meanings with a short example."
+    },
+    "crane": {
+      "pos": "noun",
+      "Definition": "A large bird with long legs and a long neck; also a machine used to lift heavy objects.",
+      "Sentence": "The crane lifted a steel beam onto the building.",
+      "reason": "Include the familiar lifting-machine meaning."
+    },
+    "rose": {
+      "pos": "noun",
+      "Definition": "A flowering shrub with often fragrant blossoms; also one of its flowers.",
+      "Sentence": "A red rose bloomed beside the path.",
+      "reason": "Keep the flower meaning rather than a capitalized contest title."
+    },
+    "run": {
+      "pos": "verb",
+      "Definition": "To move quickly on foot, with both feet briefly off the ground during each stride.",
+      "Sentence": "The children run across the field.",
+      "reason": "Give related forms a clear base meaning."
+    },
+    "ran": {
+      "pos": "verb",
+      "Definition": "Past tense of run: moved quickly on foot.",
+      "Sentence": "She ran to catch the bus.",
+      "reason": "Replace a grammatical placeholder example and explain the underlying meaning."
+    },
+    "running": {
+      "pos": "verb",
+      "Definition": "The present participle of run: moving quickly on foot.",
+      "Sentence": "He is running around the track.",
+      "reason": "Replace the ungrammatical template example."
+    },
+    "dogs": {
+      "pos": "noun",
+      "Definition": "Plural of dog: domesticated animals often kept as pets or working animals.",
+      "Sentence": "The dogs played together in the park.",
+      "reason": "Explain the plural directly and provide natural usage."
+    },
+    "gal": {
+      "pos": "noun",
+      "Definition": "An informal word for a girl or woman.",
+      "Sentence": "That gal has a wonderful singing voice.",
+      "reason": "Keep the lexical word rather than the abbreviation for gallon."
+    },
+    "par": {
+      "pos": "noun",
+      "Definition": "The expected number of strokes for a golf hole or course; also an ordinary or expected standard.",
+      "Sentence": "She finished the hole one stroke under par.",
+      "reason": "Restore the everyday golf meaning instead of paragraph."
+    },
+    "sub": {
+      "pos": "noun",
+      "Definition": "A submarine; also a substitute or a sandwich made with a long bread roll.",
+      "Sentence": "I ordered a sub for lunch.",
+      "reason": "Retain a well-established standalone word despite abbreviation labels."
+    },
+    "rem": {
+      "pos": "noun",
+      "Definition": "A unit used to measure the biological effect of ionizing radiation.",
+      "Sentence": "",
+      "reason": "Keep the lowercase radiation-unit meaning, not the uppercase sleep initialism."
+    },
+    "polio": {
+      "pos": "noun",
+      "Definition": "An infectious viral disease that can cause paralysis.",
+      "Sentence": "",
+      "reason": "Retain the established disease name instead of rejecting it as a mere abbreviation."
+    },
+    "parsec": {
+      "pos": "noun",
+      "Definition": "A unit of astronomical distance equal to about 3.26 light-years.",
+      "Sentence": "",
+      "reason": "Retain an established scientific word and explain its meaning."
+    },
+    "specs": {
+      "pos": "noun",
+      "Definition": "An informal word for eyeglasses; also details describing how something is designed or should work.",
+      "Sentence": "He put on his specs to read the letter.",
+      "reason": "Retain an established everyday shortening."
+    },
+    "forex": {
+      "pos": "noun",
+      "Definition": "The exchange or trading of one country's currency for another.",
+      "Sentence": "",
+      "reason": "Retain an established lexical term."
+    },
+    "tally": {
+      "pos": "noun",
+      "Definition": "A count or running total.",
+      "Sentence": "We kept a tally of the votes.",
+      "reason": "Use the familiar counting meaning instead of a shortened reference to tally stick."
+    },
+    "teddy": {
+      "pos": "noun",
+      "Definition": "A soft toy shaped like a bear.",
+      "Sentence": "The child hugged her teddy before bed.",
+      "reason": "Retain a familiar word with a direct definition."
+    },
+    "golly": {
+      "pos": "intj",
+      "Definition": "An exclamation expressing surprise.",
+      "Sentence": "Golly, that is a huge pumpkin!",
+      "reason": "Replace the unsuitable doll-name sense with the familiar exclamation."
+    },
+    "lied": {
+      "pos": "verb",
+      "Definition": "Past tense of lie: deliberately said something untrue.",
+      "Sentence": "He lied about where he had been.",
+      "reason": "Lead with the everyday past-tense meaning rather than the German art-song meaning."
+    },
+    "fair": {
+      "pos": "adj",
+      "Definition": "Treating people equally and without favoritism; reasonable or just.",
+      "Sentence": "Everyone agreed that the rules were fair.",
+      "reason": "Use the familiar impartiality meaning."
+    },
+    "free": {
+      "pos": "adj",
+      "Definition": "Not restricted or imprisoned; also available without payment.",
+      "Sentence": "Admission to the museum is free today.",
+      "reason": "Replace an overly brief definition with familiar meanings."
+    },
+    "date": {
+      "pos": "noun",
+      "Definition": "A particular day in the calendar; also a sweet fruit that grows on a date palm.",
+      "Sentence": "Write the date at the top of the page.",
+      "reason": "Restore the common calendar meaning while retaining the fruit meaning."
+    },
+    "club": {
+      "pos": "noun",
+      "Definition": "A group of people who meet for a shared interest; also a heavy stick or a golf implement.",
+      "Sentence": "She joined a club for people who enjoy books.",
+      "reason": "Include the familiar social-group meaning."
+    },
+    "spring": {
+      "pos": "noun",
+      "Definition": "The season between winter and summer; also a coil that returns to its shape or a place where water flows from the ground.",
+      "Sentence": "The flowers begin to bloom in spring.",
+      "reason": "Include familiar meanings rather than only the verb sense."
+    },
+    "pre": {
+      "exclude": true,
+      "reason": "invalid-generated-plural-of-pres"
+    },
+    "tux": {
+      "pos": "noun",
+      "Definition": "A tuxedo: a formal suit worn for evening occasions.",
+      "Sentence": "He wore a tux to the wedding.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "limo": {
+      "pos": "noun",
+      "Definition": "A limousine: a large, comfortable car, often driven by a hired driver.",
+      "Sentence": "A limo arrived to take them to the party.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "mani": {
+      "pos": "noun",
+      "Definition": "An informal word for a manicure, a treatment for the hands and fingernails.",
+      "Sentence": "She booked a mani at the salon.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "condo": {
+      "pos": "noun",
+      "Definition": "A privately owned home within a building or development with shared areas.",
+      "Sentence": "They bought a condo near the park.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "corgi": {
+      "pos": "noun",
+      "Definition": "A small, short-legged dog originally bred for herding in Wales.",
+      "Sentence": "The corgi chased a ball across the lawn.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "tit": {
+      "pos": "noun",
+      "Definition": "A small songbird related to chickadees.",
+      "Sentence": "A blue tit perched on the branch.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "halt": {
+      "pos": "verb",
+      "Definition": "To stop, or to cause something to stop.",
+      "Sentence": "The guard ordered the traffic to halt.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "caucus": {
+      "pos": "noun",
+      "Definition": "A meeting of members of a political group to discuss policy or choose candidates.",
+      "Sentence": "Members gathered for the party caucus.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "fraught": {
+      "pos": "adj",
+      "Definition": "Filled with something undesirable; tense or anxious.",
+      "Sentence": "The journey was fraught with delays.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "recluse": {
+      "pos": "noun",
+      "Definition": "A person who lives apart from others and avoids social contact.",
+      "Sentence": "The recluse lived in a quiet cabin.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "delft": {
+      "pos": "noun",
+      "Definition": "Glazed earthenware, traditionally decorated in blue and white.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "kaiser": {
+      "pos": "noun",
+      "Definition": "A German emperor.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "kraken": {
+      "pos": "noun",
+      "Definition": "A legendary giant sea monster, often pictured as a squid or octopus.",
+      "Sentence": "The sailors told a story about a kraken.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "mister": {
+      "pos": "noun",
+      "Definition": "A form of address for a man; also a device that sprays a fine mist.",
+      "Sentence": "The plant mister stood beside the watering can.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "frisbee": {
+      "pos": "noun",
+      "Definition": "A light plastic disc thrown between people for sport or recreation.",
+      "Sentence": "We tossed a frisbee across the lawn.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "lav": {
+      "pos": "noun",
+      "Definition": "An informal word for a lavatory or toilet.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "mag": {
+      "pos": "noun",
+      "Definition": "An informal word for a magazine.",
+      "Sentence": "She picked up a gardening mag at the shop.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "algo": {
+      "pos": "noun",
+      "Definition": "An informal word for an algorithm, a set of steps for solving a problem.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "choc": {
+      "pos": "noun",
+      "Definition": "An informal word for chocolate.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "doco": {
+      "pos": "noun",
+      "Definition": "An informal word for a documentary film or program.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "artic": {
+      "pos": "noun",
+      "Definition": "An informal British word for an articulated truck with a separate trailer.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "biner": {
+      "pos": "noun",
+      "Definition": "An informal word for a carabiner, a metal clip with a spring-loaded gate.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "orang": {
+      "pos": "noun",
+      "Definition": "An orangutan, a large ape with long arms and reddish hair.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "panto": {
+      "pos": "noun",
+      "Definition": "An informal word for a pantomime, a comic stage show often based on a fairy tale.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "queso": {
+      "pos": "noun",
+      "Definition": "Cheese; especially a melted cheese dip.",
+      "Sentence": "We shared a bowl of queso with tortilla chips.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "regex": {
+      "pos": "noun",
+      "Definition": "A regular expression: a pattern used to match or search text.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "smore": {
+      "pos": "noun",
+      "Definition": "A treat made with a toasted marshmallow and chocolate between crackers.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "defrag": {
+      "pos": "verb",
+      "Definition": "To reorganize stored computer data so that file fragments are brought together.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "octopi": {
+      "pos": "noun",
+      "Definition": "A plural of octopus: sea animals with eight arms.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "males": {
+      "pos": "noun",
+      "Definition": "Plural of male: male people or animals.",
+      "Sentence": "The males of this bird species have bright feathers.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "enters": {
+      "pos": "verb",
+      "Definition": "Goes or comes into a place.",
+      "Sentence": "She enters the room quietly.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "grants": {
+      "pos": "verb",
+      "Definition": "Gives or allows something formally.",
+      "Sentence": "The council grants permission for the event.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "abates": {
+      "pos": "verb",
+      "Definition": "Becomes less intense or severe.",
+      "Sentence": "We will leave when the storm abates.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "catsup": {
+      "pos": "noun",
+      "Definition": "A tomato-based sauce, also called ketchup.",
+      "Sentence": "He put catsup on his fries.",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    },
+    "pinyin": {
+      "pos": "noun",
+      "Definition": "A system for writing Mandarin Chinese sounds using the Latin alphabet.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary lexical meaning; retain the existing word despite incomplete or misleading source labels/references."
+    }
+  }
+}
