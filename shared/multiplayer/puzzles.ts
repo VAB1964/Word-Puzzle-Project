@@ -204,10 +204,78 @@ interface Placed {
   vertical: boolean;
 }
 
+const MAX_LAYOUT_COLS = 8;
+const MAX_ROWS_PER_CASUAL_COLUMN = 5;
+const CASUAL_COLUMN_GAP_CELLS = 1;
+
 const coordinates = (placed: Placed, index: number): PuzzleCellRef => ({
   row: placed.row + (placed.vertical ? index : 0),
   col: placed.col + (placed.vertical ? 0 : index)
 });
+
+const sortForCasualGrid = (words: PuzzleWordData[]) =>
+  [...words].sort((left, right) => {
+    if (left.text.length !== right.text.length) {
+      return left.text.length - right.text.length;
+    }
+    return left.text.localeCompare(right.text, undefined, { sensitivity: "base" });
+  });
+
+const casualLayout = (words: PuzzleWordData[]) => {
+  const sorted = sortForCasualGrid(words);
+  if (sorted.length === 0) return { placed: [] as Placed[], rows: 0, cols: 0 };
+
+  const wordCount = sorted.length;
+  const maxPossibleCols = Math.min(MAX_LAYOUT_COLS, wordCount);
+  let narrowestCols = 1;
+  let narrowestRows = wordCount;
+  let minimumWidth = Number.POSITIVE_INFINITY;
+
+  for (let cols = 1; cols <= maxPossibleCols; cols += 1) {
+    const rows = Math.ceil(wordCount / cols);
+    const colMaxLen = Array(cols).fill(0);
+    for (let index = 0; index < wordCount; index += 1) {
+      const col = Math.min(cols - 1, Math.floor(index / rows));
+      colMaxLen[col] = Math.max(colMaxLen[col], sorted[index].text.length);
+    }
+    const width = colMaxLen.reduce((sum, len) => sum + len, 0) + (cols - 1) * CASUAL_COLUMN_GAP_CELLS;
+    if (width < minimumWidth) {
+      minimumWidth = width;
+      narrowestCols = cols;
+      narrowestRows = rows;
+    }
+  }
+
+  let numCols = narrowestCols;
+  let maxRowsPerCol = narrowestRows;
+  if (maxRowsPerCol > MAX_ROWS_PER_CASUAL_COLUMN) {
+    maxRowsPerCol = MAX_ROWS_PER_CASUAL_COLUMN;
+    numCols = Math.ceil(wordCount / maxRowsPerCol);
+  }
+
+  const colMaxLen = Array(numCols).fill(0);
+  for (let index = 0; index < wordCount; index += 1) {
+    const col = Math.min(numCols - 1, Math.floor(index / maxRowsPerCol));
+    colMaxLen[col] = Math.max(colMaxLen[col], sorted[index].text.length);
+  }
+
+  const colStartCells: number[] = [];
+  let currentStart = 0;
+  for (let col = 0; col < numCols; col += 1) {
+    colStartCells[col] = currentStart;
+    currentStart += colMaxLen[col] + CASUAL_COLUMN_GAP_CELLS;
+  }
+  const totalCols = currentStart - (numCols > 0 ? CASUAL_COLUMN_GAP_CELLS : 0);
+  const totalRows = Math.min(maxRowsPerCol, wordCount);
+
+  const placed = sorted.map((word, index) => {
+    const col = Math.min(numCols - 1, Math.floor(index / maxRowsPerCol));
+    const row = index % maxRowsPerCol;
+    return { word, row, col: colStartCells[col], vertical: false };
+  });
+
+  return { placed, rows: totalRows, cols: totalCols };
+};
 
 const crosswordLayout = (words: PuzzleWordData[]) => {
   const byText = new Map(words.map((word) => [word.text, word]));
@@ -281,9 +349,10 @@ export const generateMultiplayerPuzzle = (
     rows = layout.rows;
     cols = layout.cols;
   } else {
-    placed = selected.map((word, row) => ({ word, row, col: 0, vertical: false }));
-    rows = placed.length;
-    cols = Math.max(...selected.map((word) => word.text.length));
+    const layout = casualLayout(selected);
+    placed = layout.placed;
+    rows = layout.rows;
+    cols = layout.cols;
   }
 
   const words: PuzzleWordDefinition[] = placed.map((entry, index) => ({

@@ -720,6 +720,17 @@ select {
   min-height: 24rem;
 }
 
+.mp-column-divider {
+  justify-self: center;
+  align-self: stretch;
+  width: 0.24rem;
+  margin-block: 0.1rem;
+  border-radius: 999px;
+  background: rgba(120, 100, 80, 0.78);
+  box-shadow: 0 0 0.1rem rgba(59, 39, 20, 0.35);
+  pointer-events: none;
+}
+
 .mp-cell {
   position: relative;
   width: 100%;
@@ -738,7 +749,7 @@ select {
 }
 
 .mp-cell-hint-target {
-  animation: mp-hint-target-pulse 1s ease-in-out infinite;
+  animation: mp-hint-target-pulse 3s ease-in-out infinite;
   border-color: #ccb07e;
 }
 
@@ -749,8 +760,8 @@ select {
     box-shadow: 0.08rem 0.18rem 0.3rem rgba(61, 39, 17, 0.35);
   }
   50% {
-    transform: scale(0.96);
-    box-shadow: 0 0 0 0.14rem rgba(177, 142, 86, 0.48), 0.08rem 0.18rem 0.3rem rgba(61, 39, 17, 0.35);
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0.1rem rgba(177, 142, 86, 0.42), 0.08rem 0.18rem 0.3rem rgba(61, 39, 17, 0.35);
   }
 }
 

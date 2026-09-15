@@ -435,15 +435,29 @@ export class MultiplayerController {
 
   private renderBoard(puzzle: PublicPuzzle, snapshot: RoomSnapshot) {
     const cells = new Map<string, { row: number; col: number; refs: Array<{ wordId: string; position: number }> }>();
+    const occupiedCols = new Set<number>();
     for (const word of puzzle.words) {
       word.cells.forEach((cell, position) => {
         const key = cellKey(cell.row, cell.col);
         const entry = cells.get(key) ?? { ...cell, refs: [] };
         entry.refs.push({ wordId: word.id, position });
         cells.set(key, entry);
+        occupiedCols.add(cell.col);
       });
     }
+    const dividerCols =
+      puzzle.mode === "Casual"
+        ? Array.from({ length: Math.max(0, puzzle.cols - 2) }, (_, index) => index + 1).filter(
+            (col) => !occupiedCols.has(col)
+          )
+        : [];
     return `<div class="mp-board-scroll" role="region" aria-label="Puzzle board" tabindex="0"><div class="mp-board" style="--rows:${puzzle.rows};--cols:${puzzle.cols}">
+      ${dividerCols
+        .map(
+          (col) =>
+            `<span class="mp-column-divider" style="grid-row:1 / span ${puzzle.rows};grid-column:${col + 1};" aria-hidden="true"></span>`
+        )
+        .join("")}
       ${[...cells.entries()]
         .map(([key, cell]) => {
           const visible = puzzle.visibleCells[key];

@@ -85,4 +85,41 @@ describe("multiplayer puzzle difficulty", () => {
     expect(puzzle.bonusWords).toContain("resign");
     expect(puzzle.bonusWords).toContain("ingerts");
   });
+
+  it("uses single-player-style multi-column casual layout when many words are present", () => {
+    const data = [
+      word("reactor", 1),
+      word("trace", 2),
+      word("crate", 2),
+      word("cater", 2),
+      word("caret", 2),
+      word("race", 1),
+      word("care", 1),
+      word("cart", 1),
+      word("rate", 1),
+      word("tare", 1),
+      word("ace", 1),
+      word("act", 1),
+      word("arc", 1),
+      word("are", 1),
+      word("art", 1),
+      word("car", 1),
+      word("cat", 1)
+    ];
+
+    const puzzle = generateMultiplayerPuzzle(
+      data,
+      "Casual",
+      "Easy",
+      "casual-column-layout",
+      0,
+      5,
+      new Set()
+    );
+
+    expect(puzzle.words.length).toBeGreaterThan(5);
+    expect(puzzle.rows).toBeLessThanOrEqual(5);
+    const distinctStartCols = new Set(puzzle.words.map((entry) => entry.cells[0]?.col ?? 0));
+    expect(distinctStartCols.size).toBeGreaterThan(1);
+  });
 });

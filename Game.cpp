@@ -1273,11 +1273,10 @@ void Game::m_rebuild() {
         std::cout << "DEBUG: Reduced to " << unique_solutions_temp.size() << " unique grid words." << std::endl;
 
         // --- Sort Unique Solutions ---
-        std::cout << "DEBUG: Sorting unique solutions by length/rarity/alpha..." << std::endl;
+        std::cout << "DEBUG: Sorting unique solutions by length/alpha..." << std::endl;
         std::sort(unique_solutions_temp.begin(), unique_solutions_temp.end(),
             [](const WordInfo& a, const WordInfo& b) { /* ... sort logic ... */
                 if (a.text.length() != b.text.length()) return a.text.length() > b.text.length();
-                if (a.rarity != b.rarity) return a.rarity < b.rarity;
                 return a.text < b.text;
             });
 
@@ -1357,7 +1356,6 @@ void Game::m_rebuild() {
             std::sort(fallbackCandidates.begin(), fallbackCandidates.end(),
                 [](const WordInfo& a, const WordInfo& b) {
                     if (a.text.length() != b.text.length()) return a.text.length() > b.text.length();
-                    if (a.rarity != b.rarity) return a.rarity < b.rarity;
                     return a.text < b.text;
                 });
 

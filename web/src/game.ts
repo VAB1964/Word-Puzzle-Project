@@ -162,8 +162,8 @@ const HINT_DESCRIPTIONS = [
   "This hint will reveal the first unrevealed letter for every word."
 ];
 const LETTER_HINT_TARGET_TILE_SCALE_BASE = 0.92;
-const LETTER_HINT_TARGET_TILE_SCALE_PULSE_AMPLITUDE = 0.04;
-const LETTER_HINT_TARGET_TILE_SCALE_PULSE_SPEED = 5.5;
+const LETTER_HINT_TARGET_TILE_SCALE_PULSE_AMPLITUDE = 0.02;
+const LETTER_HINT_TARGET_TILE_SCALE_PULSE_SPEED = 2.8;
 const GEM_HINT_POINTS_BY_RARITY: Record<number, number> = {
   2: 2, // Emerald
   3: 4, // Ruby
@@ -1356,7 +1356,6 @@ export class Game {
 
       const sortedUnique = Array.from(unique.values()).sort((a, b) => {
         if (a.text.length !== b.text.length) return b.text.length - a.text.length;
-        if (a.rarity !== b.rarity) return a.rarity - b.rarity;
         return a.text.localeCompare(b.text);
       });
 
@@ -1398,7 +1397,6 @@ export class Game {
           .filter((info) => !existing.has(info.text))
           .sort((a, b) => {
             if (a.text.length !== b.text.length) return b.text.length - a.text.length;
-            if (a.rarity !== b.rarity) return a.rarity - b.rarity;
             return a.text.localeCompare(b.text);
           });
         for (const info of fallback) {

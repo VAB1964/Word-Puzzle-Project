@@ -181,4 +181,16 @@ describe("multiplayer scoring rules", () => {
       expect(credits.every((credit) => credit === null || typeof credit.ownerId === "string")).toBe(true);
     }
   });
+
+  it("records invalid guesses in failedGuesses without duplicates", () => {
+    const players = [participant("Alice", 0)];
+    const runtime = createPuzzleRuntime(crossword);
+
+    const first = submitGuess(crossword, runtime, players, "Alice", "ploted");
+    const second = submitGuess(crossword, runtime, players, "Alice", "PLOTED");
+
+    expect(first.changed).toBe(false);
+    expect(second.changed).toBe(false);
+    expect(runtime.failedGuesses).toEqual(["ploted"]);
+  });
 });

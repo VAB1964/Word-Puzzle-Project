@@ -510,19 +510,18 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       const result = submitGuess(state.puzzle!, state.runtime!, state.participants, participantId, command.guess);
       const events: PresentationEvent[] = [];
       if (!result.changed) {
+        events.push(
+          this.event(
+            state,
+            "guess-rejected",
+            result.error ?? `The word "${command.guess.trim().toUpperCase()}" is not in the puzzle and is not a bonus word.`,
+            actor.id
+          )
+        );
         if (this.shouldEndTurnOnGuessAttempt(state)) {
-          events.push(
-            this.event(
-              state,
-              "guess-rejected",
-              result.error ?? `The word "${command.guess.trim().toUpperCase()}" is not in the puzzle and is not a bonus word.`,
-              actor.id
-            )
-          );
           events.push(...this.advanceTurn(state, "attempt-ended"));
-          return events;
         }
-        throw new ProtocolError("GUESS_REJECTED", result.error ?? "Guess rejected.");
+        return events;
       }
       if (result.kind === "bonus") {
         events.push(
