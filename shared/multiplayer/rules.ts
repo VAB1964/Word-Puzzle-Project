@@ -1,13 +1,15 @@
 import {
   addCreditToParticipant,
   createPositionCredit,
+  emptyScore,
   totalCreditValue
 } from "./scoring";
 import type {
   HintKind,
   Participant,
   PuzzleDefinition,
-  PuzzleRuntime
+  PuzzleRuntime,
+  ScoreBreakdown
 } from "./types";
 
 export const HINT_COSTS: Record<HintKind, number> = {
@@ -29,6 +31,7 @@ export interface PuzzleActionResult {
   solvedWords: string[];
   claimedBonusWord?: string;
   pointsAwarded: number;
+  scoreAwarded: ScoreBreakdown;
   hintCreditsAwarded: number;
   error?: string;
 }
@@ -66,7 +69,8 @@ const awardPosition = (
   participants: Participant[],
   actorId: string,
   wordId: string,
-  position: number
+  position: number,
+  scoreAwarded?: ScoreBreakdown
 ) => {
   const word = puzzle.words.find((candidate) => candidate.id === wordId);
   const actor = getParticipant(participants, actorId);
@@ -77,6 +81,7 @@ const awardPosition = (
   const credit = createPositionCredit(word, actorId, position);
   ledger[position] = credit;
   addCreditToParticipant(actor, credit);
+  if (scoreAwarded) addToBreakdown(scoreAwarded, credit.base, credit.gem, credit.bonus);
   return totalCreditValue(credit);
 };
 
@@ -106,14 +111,14 @@ const completeVisibleWords = (
   actorId: string
 ) => {
   const solved: string[] = [];
-  let points = 0;
+  const scoreAwarded = emptyScore();
   let hints = 0;
   const completed = new Set(runtime.completedWordIds);
 
   for (const word of puzzle.words) {
     if (completed.has(word.id) || !isWordVisible(puzzle, runtime, word.id)) continue;
     for (let position = 0; position < word.cells.length; position += 1) {
-      points += awardPosition(puzzle, runtime, participants, actorId, word.id, position);
+      awardPosition(puzzle, runtime, participants, actorId, word.id, position, scoreAwarded);
     }
     completed.add(word.id);
     runtime.completedWordIds.push(word.id);
@@ -123,7 +128,7 @@ const completeVisibleWords = (
 
   const actor = getParticipant(participants, actorId);
   if (actor && hints > 0) actor.hintCredits += hints;
-  return { solved, points, hints };
+  return { solved, scoreAwarded, hints };
 };
 
 export const submitGuess = (
@@ -141,17 +146,19 @@ export const submitGuess = (
   const word = puzzle.words.find((candidate) => candidate.answer.toLowerCase() === guess);
   if (word) {
     if (runtime.completedWordIds.includes(word.id)) return failure("That word is already complete.");
-    let points = 0;
+    const scoreAwarded = emptyScore();
     for (let position = 0; position < word.cells.length; position += 1) {
       revealPosition(puzzle, runtime, actorId, word.id, position);
-      points += awardPosition(puzzle, runtime, participants, actorId, word.id, position);
+      awardPosition(puzzle, runtime, participants, actorId, word.id, position, scoreAwarded);
     }
     const completed = completeVisibleWords(puzzle, runtime, participants, actorId);
+    mergeBreakdown(scoreAwarded, completed.scoreAwarded);
     return {
       changed: true,
       kind: "word",
       solvedWords: completed.solved,
-      pointsAwarded: points + completed.points,
+      pointsAwarded: scoreAwarded.total,
+      scoreAwarded,
       hintCreditsAwarded: completed.hints
     };
   }
@@ -167,11 +174,12 @@ export const submitGuess = (
       solvedWords: [],
       claimedBonusWord: guess,
       pointsAwarded: 0,
+      scoreAwarded: emptyScore(),
       hintCreditsAwarded: award
     };
   }
 
-  return failure("That word is not in this puzzle.");
+  return failure(`The word "${guess.toUpperCase()}" is not in the puzzle and is not a bonus word.`);
 };
 
 export interface HintRequest {
@@ -238,24 +246,27 @@ export const useHint = (
   if (targets.length === 0) return failure("That hint has no eligible target.");
 
   actor.hintCredits -= cost;
-  let points = 0;
+  const scoreAwarded = emptyScore();
   for (const target of targets) {
     revealPosition(puzzle, runtime, actorId, target.wordId, target.position);
-    points += awardPosition(
+    awardPosition(
       puzzle,
       runtime,
       participants,
       actorId,
       target.wordId,
-      target.position
+      target.position,
+      scoreAwarded
     );
   }
   const completed = completeVisibleWords(puzzle, runtime, participants, actorId);
+  mergeBreakdown(scoreAwarded, completed.scoreAwarded);
   return {
     changed: true,
     kind: "hint",
     solvedWords: completed.solved,
-    pointsAwarded: points + completed.points,
+    pointsAwarded: scoreAwarded.total,
+    scoreAwarded,
     hintCreditsAwarded: completed.hints
   };
 };
@@ -268,6 +279,21 @@ const failure = (error: string): PuzzleActionResult => ({
   kind: "none",
   solvedWords: [],
   pointsAwarded: 0,
+  scoreAwarded: emptyScore(),
   hintCreditsAwarded: 0,
   error
 });
+
+const addToBreakdown = (score: ScoreBreakdown, base: number, gem: "none" | "emerald" | "diamond" | "ruby", bonus: number) => {
+  score.letters += base;
+  if (gem !== "none") score[gem] += bonus;
+  score.total = score.letters + score.emerald + score.diamond + score.ruby;
+};
+
+const mergeBreakdown = (target: ScoreBreakdown, source: ScoreBreakdown) => {
+  target.letters += source.letters;
+  target.emerald += source.emerald;
+  target.diamond += source.diamond;
+  target.ruby += source.ruby;
+  target.total = target.letters + target.emerald + target.diamond + target.ruby;
+};

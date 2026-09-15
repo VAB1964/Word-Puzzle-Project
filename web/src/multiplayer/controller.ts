@@ -50,6 +50,9 @@ export class MultiplayerController {
   private audioUnlocked = false;
   private processedEventSequences = new Set<number>();
   private animationLayer: HTMLDivElement | null = null;
+  private turnOrderPopup: { roundNumber: number; names: string[]; hideAt: number } | null = null;
+  private uiTicker: number | null = null;
+  private shownTurnOrderKey: string | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -64,10 +67,24 @@ export class MultiplayerController {
     root.addEventListener("click", (event) => this.handleClick(event));
     root.addEventListener("change", (event) => this.handleChange(event));
     window.addEventListener("keydown", this.handleKeyDown);
+    this.uiTicker = window.setInterval(() => {
+      if (!this.snapshot) return;
+      const activeCountdown =
+        this.snapshot.turnState &&
+        this.snapshot.settings.playMode === "Turn Based" &&
+        this.snapshot.turnState.turnEndsAt !== null;
+      // Keep ticking while popup object exists so expired popups get one final render pass and disappear.
+      const showingTurnPopup = this.turnOrderPopup !== null;
+      if (activeCountdown || showingTurnPopup) this.render();
+    }, 250);
   }
 
   destroy() {
     window.removeEventListener("keydown", this.handleKeyDown);
+    if (this.uiTicker !== null) {
+      window.clearInterval(this.uiTicker);
+      this.uiTicker = null;
+    }
     if (this.animationLayer) {
       this.animationLayer.remove();
       this.animationLayer = null;
@@ -94,18 +111,24 @@ export class MultiplayerController {
       this.wheelLetters = snapshot.puzzle?.baseLetters.split("") ?? [];
       this.clearGuess();
       this.showBonusList = false;
+      this.shownTurnOrderKey = null;
+      this.feedback = "";
     }
-    const latest = events[events.length - 1];
+    this.maybeShowTurnOrderFromSnapshot(snapshot, previousSnapshot);
+    const latest = [...events]
+      .reverse()
+      .find((event) => event.type !== "turn-order" && event.type !== "turn-advanced");
     if (latest) this.feedback = latest.text;
     this.render();
     this.ensureAnimationLayer();
-    this.processPresentationEvents(events, snapshot, previousSnapshot);
+    const uiChanged = this.processPresentationEvents(events, snapshot, previousSnapshot);
     if (
       previousStatus === "playing" &&
       (snapshot.status === "puzzle-summary" || snapshot.status === "completed")
     ) {
       this.playSound("win");
     }
+    if (uiChanged) this.render();
   }
 
   private render() {
@@ -129,7 +152,7 @@ export class MultiplayerController {
         <header class="mp-room-header">
           <button class="mp-link-button" data-action="leave">Leave</button>
           <strong>Room ${escapeHtml(snapshot.roomCode)}</strong>
-          <span>${escapeHtml(snapshot.settings.mode)} · ${escapeHtml(snapshot.settings.difficulty)}</span>
+          <span>${escapeHtml(snapshot.settings.mode)} · ${escapeHtml(snapshot.settings.playMode)} · ${escapeHtml(String(snapshot.settings.turnTimeLimit))} · ${escapeHtml(snapshot.settings.difficulty)}</span>
           <button class="mp-link-button" data-action="copy-invite">Copy Invite</button>
         </header>
         ${
@@ -160,7 +183,7 @@ export class MultiplayerController {
                   ? `<article class="mp-seat" style="--player-color:${participant.color}">
                       <span class="mp-color-dot"></span>
                       <div><strong>${escapeHtml(participant.name)}</strong>
-                      <small>${participant.kind === "ai" ? escapeHtml(participant.aiLevel ?? "AI") : participant.connected ? "Human · connected" : "Human · disconnected"}</small></div>
+                      <small>${participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : participant.connected ? "Human · connected" : "Human · disconnected"}</small></div>
                       <span>${participant.ready ? "Ready" : "Not ready"}</span>
                       ${
                         host && participant.kind === "ai"
@@ -173,10 +196,25 @@ export class MultiplayerController {
               .join("")}
           </div>
           <div class="mp-settings">
-            <label>Mode
+            <label>Style
               <select data-setting="mode" ${host ? "" : "disabled"}>
                 <option ${snapshot.settings.mode === "Casual" ? "selected" : ""}>Casual</option>
                 <option ${snapshot.settings.mode === "Crossword" ? "selected" : ""}>Crossword</option>
+              </select>
+            </label>
+            <label>Mode
+              <select data-setting="playMode" ${host ? "" : "disabled"}>
+                <option ${snapshot.settings.playMode === "Free for All" ? "selected" : ""}>Free for All</option>
+                <option ${snapshot.settings.playMode === "Turn Based" ? "selected" : ""}>Turn Based</option>
+              </select>
+            </label>
+            <label>Time
+              <select data-setting="turnTimeLimit" ${
+                host && snapshot.settings.playMode === "Turn Based" ? "" : "disabled"
+              }>
+                ${["Not Timed", 30, 25, 20, 15, 10]
+                  .map((value) => `<option ${snapshot.settings.turnTimeLimit === value ? "selected" : ""}>${value}</option>`)
+                  .join("")}
               </select>
             </label>
             <label>Difficulty
@@ -214,12 +252,19 @@ export class MultiplayerController {
   private renderPlay(snapshot: RoomSnapshot, hintCredits: number, host: boolean) {
     const puzzle = snapshot.puzzle;
     if (!puzzle) return `<main class="mp-paper"><h1>Preparing puzzle…</h1></main>`;
+    const localTurn = this.isLocalTurn(snapshot);
+    const controlsDisabled =
+      snapshot.settings.playMode === "Turn Based" &&
+      (!localTurn || this.isTurnOrderPopupActive());
     return `
       ${this.renderScores(snapshot)}
       <div class="mp-play-status">
         <span>Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</span>
-        <span>Hint credits: <strong>${hintCredits}</strong></span>
+        <span style="color:${escapeHtml(this.activeTurnColor(snapshot))};font-weight:800;">${escapeHtml(this.roundTurnText(snapshot))}</span>
+        <span>Hint Credits: <strong>${hintCredits}</strong></span>
+        <span>${escapeHtml(this.timeStatusText(snapshot))}</span>
       </div>
+      ${this.renderTurnOrderPopup()}
       ${
         snapshot.paused
           ? this.renderPause(snapshot, host)
@@ -233,21 +278,23 @@ export class MultiplayerController {
                 <div class="mp-wheel">${this.wheelLetters
                   .map(
                     (letter, index) =>
-                      `<button style="--wheel-index:${index};--wheel-count:${this.wheelLetters.length}" data-action="letter" data-index="${index}" class="${this.selectedIndices.includes(index) ? "selected" : ""}">${escapeHtml(letter)}</button>`
+                      `<button style="--wheel-index:${index};--wheel-count:${this.wheelLetters.length}" data-action="letter" data-index="${index}" class="${this.selectedIndices.includes(index) ? "selected" : ""}" ${controlsDisabled ? "disabled" : ""}>${escapeHtml(letter)}</button>`
                   )
                   .join("")}</div>
                 <div class="mp-control-row">
-                  <button data-action="clear">Clear</button>
-                  <button data-action="shuffle">Shuffle</button>
-                  <button class="mp-submit" data-action="submit">Submit</button>
+                  <button data-action="clear" ${controlsDisabled ? "disabled" : ""}>Clear</button>
+                  <button data-action="shuffle" ${controlsDisabled ? "disabled" : ""}>Shuffle</button>
+                  <button class="mp-submit" data-action="submit" ${controlsDisabled ? "disabled" : ""}>Submit</button>
                 </div>
                 <div class="mp-hints">
                   ${HINTS.map(
                     (hint) =>
-                      `<button data-action="hint" data-hint="${hint.kind}" ${hintCredits < hint.cost ? "disabled" : ""}>${hint.label}<small>${hint.cost}</small></button>`
+                      `<button data-action="hint" data-hint="${hint.kind}" ${
+                        hintCredits < hint.cost || controlsDisabled ? "disabled" : ""
+                      }>${hint.label}<small>${hint.cost}</small></button>`
                   ).join("")}
                 </div>
-                <button data-action="skip">Request Skip</button>
+                <button data-action="skip" ${controlsDisabled ? "disabled" : ""}>Request Skip</button>
               </aside>
             </main>`
       }
@@ -255,16 +302,95 @@ export class MultiplayerController {
       ${this.showBonusList ? this.renderBonusListPopup(snapshot) : ""}`;
   }
 
+  private renderTurnOrderPopup() {
+    if (!this.turnOrderPopup || this.turnOrderPopup.hideAt <= Date.now()) {
+      this.turnOrderPopup = null;
+      return "";
+    }
+    return `<div class="mp-turn-order-popup" role="alert" aria-live="assertive">
+      <h3>Round ${this.turnOrderPopup.roundNumber}</h3>
+      <ol>
+        ${this.turnOrderPopup.names.map((name) => `<li>${escapeHtml(name)}</li>`).join("")}
+      </ol>
+    </div>`;
+  }
+
+  private isLocalTurn(snapshot: RoomSnapshot) {
+    if (snapshot.settings.playMode !== "Turn Based") return true;
+    return snapshot.turnState?.activeParticipantId === snapshot.localParticipantId;
+  }
+
+  private roundTurnText(snapshot: RoomSnapshot) {
+    if (snapshot.settings.playMode !== "Turn Based" || !snapshot.turnState) {
+      return "Free for All";
+    }
+    const active = snapshot.participants.find(
+      (participant) => participant.id === snapshot.turnState?.activeParticipantId
+    );
+    return `Round ${snapshot.turnState.roundNumber}: ${(active?.name ?? "Player")}'s Turn`;
+  }
+
+  private activeTurnColor(snapshot: RoomSnapshot) {
+    if (snapshot.settings.playMode !== "Turn Based" || !snapshot.turnState) return "#fff5dc";
+    return (
+      snapshot.participants.find((participant) => participant.id === snapshot.turnState?.activeParticipantId)?.color ??
+      "#fff5dc"
+    );
+  }
+
+  private timeStatusText(snapshot: RoomSnapshot) {
+    if (snapshot.settings.turnTimeLimit === "Not Timed") return "Not Timed";
+    if (snapshot.settings.playMode !== "Turn Based" || !snapshot.turnState || snapshot.turnState.turnEndsAt === null) {
+      return `${snapshot.settings.turnTimeLimit}s`;
+    }
+    const secondsRemaining = Math.max(0, Math.ceil((snapshot.turnState.turnEndsAt - Date.now()) / 1000));
+    return `${secondsRemaining}s`;
+  }
+
+  private turnOrderText(snapshot: RoomSnapshot) {
+    if (snapshot.settings.playMode !== "Turn Based" || !snapshot.turnState) return "";
+    const names = snapshot.turnState.turnOrder
+      .map((id) => snapshot.participants.find((participant) => participant.id === id)?.name ?? "Player")
+      .join(" -> ");
+    return `Turn order (Round ${snapshot.turnState.roundNumber}): ${names}`;
+  }
+
+  private maybeShowTurnOrderFromSnapshot(snapshot: RoomSnapshot, previousSnapshot: RoomSnapshot | null) {
+    if (snapshot.settings.playMode !== "Turn Based" || !snapshot.turnState) return;
+    const key = `${snapshot.puzzle?.id ?? "none"}`;
+    if (this.shownTurnOrderKey === key) return;
+    const shouldShow =
+      previousSnapshot?.status !== "playing" ||
+      previousSnapshot?.puzzle?.id !== snapshot.puzzle?.id;
+    if (!shouldShow) return;
+    const names = snapshot.turnState.turnOrder.map(
+      (id) => snapshot.participants.find((participant) => participant.id === id)?.name ?? "Player"
+    );
+    this.turnOrderPopup = {
+      roundNumber: snapshot.turnState.roundNumber,
+      names,
+      hideAt: Date.now() + 3000
+    };
+    this.shownTurnOrderKey = key;
+  }
+
+  private isTurnOrderPopupActive() {
+    return Boolean(this.turnOrderPopup && this.turnOrderPopup.hideAt > Date.now());
+  }
+
   private renderScores(snapshot: RoomSnapshot) {
+    const activeTurnId = snapshot.turnState?.activeParticipantId ?? "";
     return `<div class="mp-score-strip">${[...snapshot.participants]
       .sort((left, right) => left.seat - right.seat)
       .map((participant) => {
-        return `<article style="--player-color:${participant.color}" data-participant-id="${participant.id}">
+        const activeClass =
+          snapshot.settings.playMode === "Turn Based" && participant.id === activeTurnId ? "mp-active-turn" : "";
+        return `<article class="${activeClass}" style="--player-color:${participant.color}" data-participant-id="${participant.id}">
           <div class="mp-player-identity">
             <span class="mp-color-dot"></span>
             <strong>${escapeHtml(participant.name)}</strong>
             <span class="mp-player-level">${
-              participant.kind === "ai" ? escapeHtml(participant.aiLevel ?? "AI") : "Human"
+              participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human"
             }</span>
           </div>
           <b class="mp-score-total" data-score-field="total">${participant.score.total}</b>
@@ -289,7 +415,7 @@ export class MultiplayerController {
         cells.set(key, entry);
       });
     }
-    return `<div class="mp-board" style="--rows:${puzzle.rows};--cols:${puzzle.cols}">
+    return `<div class="mp-board-scroll" role="region" aria-label="Puzzle board" tabindex="0"><div class="mp-board" style="--rows:${puzzle.rows};--cols:${puzzle.cols}">
       ${[...cells.entries()]
         .map(([key, cell]) => {
           const visible = puzzle.visibleCells[key];
@@ -312,7 +438,7 @@ export class MultiplayerController {
           </button>`;
         })
         .join("")}
-    </div>`;
+    </div></div>`;
   }
 
   private renderBonusInfo(snapshot: RoomSnapshot) {
@@ -400,7 +526,7 @@ export class MultiplayerController {
             return `<article style="--player-color:${participant.color}">
               <b>#${rank}</b><span class="mp-color-dot"></span>
               <strong>${escapeHtml(participant.name)}</strong>
-              <span>${participant.kind === "ai" ? escapeHtml(participant.aiLevel ?? "AI") : "Human"}</span>
+              <span>${participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human"}</span>
               <small>L ${participant.score.letters} · E ${participant.score.emerald} · D ${participant.score.diamond} · R ${participant.score.ruby}</small>
               <em>${participant.score.total}</em>
             </article>`;
@@ -422,6 +548,15 @@ export class MultiplayerController {
     const action = button.dataset.action;
     this.playSound("click");
     const local = snapshot.participants.find((participant) => participant.id === snapshot.localParticipantId);
+    const turnLocked =
+      snapshot.settings.playMode === "Turn Based" &&
+      (!this.isLocalTurn(snapshot) || this.isTurnOrderPopupActive()) &&
+      ["letter", "clear", "shuffle", "submit", "hint", "board-cell", "skip"].includes(action ?? "");
+    if (turnLocked) {
+      this.setError("Wait for your turn.");
+      this.playSound("error");
+      return;
+    }
     if (action === "leave") return this.onLeave();
     if (action === "copy-invite") {
       const invite = `${window.location.origin}/wordpuzzle/room/${snapshot.roomCode}`;
@@ -507,6 +642,11 @@ export class MultiplayerController {
     if (!select || !snapshot) return;
     const settings = { ...snapshot.settings };
     if (select.dataset.setting === "mode") settings.mode = select.value as typeof settings.mode;
+    if (select.dataset.setting === "playMode") settings.playMode = select.value as typeof settings.playMode;
+    if (select.dataset.setting === "turnTimeLimit") {
+      settings.turnTimeLimit =
+        select.value === "Not Timed" ? "Not Timed" : (Number(select.value) as typeof settings.turnTimeLimit);
+    }
     if (select.dataset.setting === "difficulty") {
       settings.difficulty = select.value as typeof settings.difficulty;
     }
@@ -520,6 +660,12 @@ export class MultiplayerController {
     this.unlockAudio();
     const snapshot = this.snapshot;
     if (!snapshot || snapshot.status !== "playing" || snapshot.paused) return;
+    if (
+      snapshot.settings.playMode === "Turn Based" &&
+      (!this.isLocalTurn(snapshot) || this.isTurnOrderPopupActive())
+    ) {
+      return;
+    }
     if (event.key === "Enter") {
       const guess = this.currentGuess();
       if (guess.length >= 3 && this.client.send({ type: "submit-guess", guess })) {
@@ -568,6 +714,7 @@ export class MultiplayerController {
     snapshot: RoomSnapshot,
     previousSnapshot: RoomSnapshot | null
   ) {
+    let uiChanged = false;
     const newCompletedWordIds = this.collectNewlyCompletedWordIds(snapshot, previousSnapshot);
     const pendingWordIds = [...newCompletedWordIds];
 
@@ -578,7 +725,12 @@ export class MultiplayerController {
       if (event.type === "word-solved") this.playSound("place");
       else if (event.type === "bonus-claimed") this.playSound("hintUsed");
       else if (event.type === "hint-used") this.playSound("hintUsed");
-      else if (event.type === "puzzle-skipped") this.playSound("error");
+      else if (event.type === "puzzle-skipped" || event.type === "guess-rejected") this.playSound("error");
+      else if (event.type === "turn-order") {
+        uiChanged = true;
+      } else if (event.type === "turn-advanced") {
+        uiChanged = true;
+      }
 
       if (!event.actorId || !event.points || event.points <= 0) continue;
       if (event.type !== "word-solved" && event.type !== "hint-used") continue;
@@ -595,6 +747,7 @@ export class MultiplayerController {
       sorted.slice(0, 250).forEach((seq) => keep.add(seq));
       this.processedEventSequences = keep;
     }
+    return uiChanged;
   }
 
   private collectNewlyCompletedWordIds(

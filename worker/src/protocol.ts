@@ -5,14 +5,18 @@ import {
   type CreateRoomRequest,
   type Difficulty,
   type GameMode,
+  type PlayMode,
   type JoinRoomRequest,
-  type RoomSettings
+  type RoomSettings,
+  type TurnTimeLimit
 } from "../../shared/multiplayer/types";
 
 const MAX_MESSAGE_BYTES = 4_096;
 const AI_LEVELS: AiLevel[] = ["High School", "College", "Professional"];
 const MODES: GameMode[] = ["Casual", "Crossword"];
+const PLAY_MODES: PlayMode[] = ["Free for All", "Turn Based"];
 const DIFFICULTIES: Difficulty[] = ["Easy", "Medium", "Hard"];
+const TURN_LIMITS: TurnTimeLimit[] = ["Not Timed", 30, 25, 20, 15, 10];
 
 export class ProtocolError extends Error {
   constructor(
@@ -45,6 +49,12 @@ export const validateSettings = (value: unknown): RoomSettings => {
   }
   if (!DIFFICULTIES.includes(candidate.difficulty as Difficulty)) {
     throw new ProtocolError("INVALID_SETTINGS", "Choose Easy, Medium, or Hard.");
+  }
+  if (!PLAY_MODES.includes(candidate.playMode as PlayMode)) {
+    throw new ProtocolError("INVALID_SETTINGS", "Choose Free for All or Turn Based.");
+  }
+  if (!TURN_LIMITS.includes(candidate.turnTimeLimit as TurnTimeLimit)) {
+    throw new ProtocolError("INVALID_SETTINGS", "Choose Not Timed or a valid turn time.");
   }
   if (![1, 2, 3, 4].includes(candidate.capacity ?? 0)) {
     throw new ProtocolError("INVALID_SETTINGS", "Capacity must be from one to four.");

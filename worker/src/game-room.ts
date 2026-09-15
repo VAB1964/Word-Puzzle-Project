@@ -21,13 +21,26 @@ import {
   type RoomSettings,
   type RoomSnapshot,
   type RoomState,
+  type ScoreBreakdown,
   type ServerMessage,
-  type StoredCommandResult
+  type StoredCommandResult,
+  type TurnState,
+  type TurnTimeLimit
 } from "../../shared/multiplayer/types";
 import { parseCommand, ProtocolError, validateName, validateSettings } from "./protocol";
 
 const WORD_DATA = parseMultiplayerWordData(wordsCsv);
 const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea"];
+const AI_NAMES = [
+  "Ada",
+  "Theo",
+  "Mira",
+  "Jules",
+  "Iris",
+  "Niko",
+  "Sage",
+  "Ember"
+];
 const ACTIVE_EXPIRY_MS = 24 * 60 * 60 * 1_000;
 const COMPLETED_EXPIRY_MS = 60 * 60 * 1_000;
 const HOST_GRACE_MS = 30_000;
@@ -91,6 +104,9 @@ const aiDelay = (level: AiLevel) => {
   return minimum + Math.floor(Math.random() * (maximum - minimum));
 };
 
+const turnDurationMs = (turnTimeLimit: TurnTimeLimit) =>
+  turnTimeLimit === "Not Timed" ? null : turnTimeLimit * 1_000;
+
 export class WordPuzzleRoom extends DurableObject<Env> {
   private state: RoomState | null = null;
   private credentials: CredentialStore = {};
@@ -104,7 +120,9 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       this.ctx.storage.get<CredentialStore>("credentials"),
       this.ctx.storage.get<CommandStore>("commandResults")
     ]);
-    this.state = state ? { ...state, aiIntents: state.aiIntents ?? {} } : null;
+    this.state = state
+      ? { ...state, aiIntents: state.aiIntents ?? {}, turnState: state.turnState ?? null }
+      : null;
     this.credentials = credentials ?? {};
     this.commandResults = commandResults ?? {};
     this.loaded = true;
@@ -133,6 +151,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       participants: [participant],
       puzzle: null,
       runtime: null,
+      turnState: null,
       usedBaseWords: [],
       aiDeadlines: {},
       aiIntents: {},
@@ -403,6 +422,12 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       }
       if (state.paused) throw new ProtocolError("GAME_PAUSED", "The game is paused.");
     };
+    const currentTurnOnly = () => {
+      if (!this.isTurnBased(state)) return;
+      if (!state.turnState || state.turnState.activeParticipantId !== participantId) {
+        throw new ProtocolError("NOT_YOUR_TURN", "Wait for your turn.");
+      }
+    };
 
     if (command.type === "set-ready") {
       lobbyOnly();
@@ -432,7 +457,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       if (state.participants.length >= state.settings.capacity) {
         throw new ProtocolError("ROOM_FULL", "This room is full.");
       }
-      state.participants.push(this.createAi(command.level, this.openSeat(state)));
+      state.participants.push(this.createAi(state, command.level, this.openSeat(state)));
       this.clearHumanReadiness(state);
       return [];
     }
@@ -462,14 +487,28 @@ export class WordPuzzleRoom extends DurableObject<Env> {
         participant.hintCredits = 0;
         participant.continued = false;
       });
-      this.startPuzzle(state);
-      return [];
+      return this.startPuzzle(state);
     }
     if (command.type === "submit-guess") {
       activeOnly();
+      currentTurnOnly();
       const result = submitGuess(state.puzzle!, state.runtime!, state.participants, participantId, command.guess);
-      if (!result.changed) throw new ProtocolError("GUESS_REJECTED", result.error ?? "Guess rejected.");
       const events: PresentationEvent[] = [];
+      if (!result.changed) {
+        if (this.shouldEndTurnOnGuessAttempt(state)) {
+          events.push(
+            this.event(
+              state,
+              "guess-rejected",
+              result.error ?? `The word "${command.guess.trim().toUpperCase()}" is not in the puzzle and is not a bonus word.`,
+              actor.id
+            )
+          );
+          events.push(...this.advanceTurn(state, "attempt-ended"));
+          return events;
+        }
+        throw new ProtocolError("GUESS_REJECTED", result.error ?? "Guess rejected.");
+      }
       if (result.kind === "bonus") {
         events.push(
           this.event(
@@ -484,28 +523,37 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           .map((id) => state.puzzle!.words.find((word) => word.id === id)?.answer.toUpperCase())
           .filter(Boolean)
           .join(", ");
+        const summary = `${actor.name} solved ${solved || "a word"} +${result.pointsAwarded}.`;
+        const text =
+          state.settings.mode === "Crossword"
+            ? `${summary}\n${this.formatAwardBreakdown(result.scoreAwarded)}`
+            : summary;
         events.push(
           this.event(
             state,
             "word-solved",
-            `${actor.name} solved ${solved || "a word"} +${result.pointsAwarded}.`,
+            text,
             actor.id,
             result.pointsAwarded
           )
         );
       }
       this.finishPuzzleIfNeeded(state);
+      if (this.shouldEndTurnOnGuessAttempt(state) && state.status === "playing") {
+        events.push(...this.advanceTurn(state, "word-complete"));
+      }
       return events;
     }
     if (command.type === "use-hint") {
       activeOnly();
+      currentTurnOnly();
       const result = useHint(state.puzzle!, state.runtime!, state.participants, participantId, command);
       if (!result.changed) throw new ProtocolError("HINT_REJECTED", result.error ?? "Hint rejected.");
       const solved = result.solvedWords
         .map((id) => state.puzzle!.words.find((word) => word.id === id)?.answer.toUpperCase())
         .filter(Boolean);
       this.finishPuzzleIfNeeded(state);
-      return [
+      const events = [
         this.event(
           state,
           "hint-used",
@@ -516,6 +564,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           result.pointsAwarded
         )
       ];
+      return events;
     }
     if (command.type === "continue") {
       if (state.status !== "puzzle-summary") {
@@ -530,11 +579,12 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           state.status = "completed";
           state.puzzle = null;
           state.runtime = null;
+          state.turnState = null;
           state.aiDeadlines = {};
           state.aiIntents = {};
         } else {
           state.puzzleIndex += 1;
-          this.startPuzzle(state);
+          return this.startPuzzle(state);
         }
       }
       return [];
@@ -552,6 +602,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
         state.participants.forEach((participant) => {
           participant.continued = participant.kind === "ai";
         });
+        state.turnState = null;
         state.aiDeadlines = {};
         state.aiIntents = {};
         state.skipVote = null;
@@ -567,6 +618,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       }
       target.kind = "ai";
       target.aiLevel = command.level;
+      target.name = this.nextAiName(state, command.level);
       target.connected = true;
       target.ready = true;
       target.replaced = true;
@@ -600,6 +652,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       state.status = "ended";
       state.puzzle = null;
       state.runtime = null;
+      state.turnState = null;
       state.aiDeadlines = {};
       state.aiIntents = {};
       return [];
@@ -615,6 +668,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       state.puzzleIndex = 0;
       state.puzzle = null;
       state.runtime = null;
+      state.turnState = null;
       state.usedBaseWords = [];
       state.aiDeadlines = {};
       state.aiIntents = {};
@@ -656,6 +710,13 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       }
     }
     if (next.status === "playing" && !next.paused && next.puzzle && next.runtime) {
+      if (
+        this.isTurnBased(next) &&
+        next.turnState?.turnEndsAt &&
+        next.turnState.turnEndsAt <= now
+      ) {
+        events.push(...this.advanceTurn(next, "timer-expired"));
+      }
       const due = next.participants.filter(
         (participant) =>
           participant.kind === "ai" &&
@@ -671,21 +732,30 @@ export class WordPuzzleRoom extends DurableObject<Env> {
             ? next.puzzle.words.find((candidate) => candidate.id === intent.wordId)
             : undefined;
         if (!word) continue;
+        if (this.isTurnBased(next) && next.turnState?.activeParticipantId !== ai.id) continue;
         const result = submitGuess(next.puzzle, next.runtime, next.participants, ai.id, word.answer);
         if (result.changed) {
           const solved = result.solvedWords
             .map((id) => next.puzzle!.words.find((candidate) => candidate.id === id)?.answer.toUpperCase())
             .filter(Boolean)
             .join(", ");
+          const summary = `${ai.name} solved ${solved || word.answer.toUpperCase()} +${result.pointsAwarded}.`;
+          const text =
+            next.settings.mode === "Crossword"
+              ? `${summary}\n${this.formatAwardBreakdown(result.scoreAwarded)}`
+              : summary;
           events.push(
             this.event(
               next,
               "word-solved",
-              `${ai.name} solved ${solved || word.answer.toUpperCase()} +${result.pointsAwarded}.`,
+              text,
               ai.id,
               result.pointsAwarded
             )
           );
+        }
+        if (this.shouldEndTurnOnGuessAttempt(next) && next.status === "playing") {
+          events.push(...this.advanceTurn(next, "word-complete"));
         }
         this.finishPuzzleIfNeeded(next);
       }
@@ -697,7 +767,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     await this.broadcast(events);
   }
 
-  private startPuzzle(state: RoomState) {
+  private startPuzzle(state: RoomState): PresentationEvent[] {
     const seed = `${state.sessionId}:${state.puzzleIndex}:${crypto.randomUUID()}`;
     const used = new Set(state.usedBaseWords);
     state.puzzle = generateMultiplayerPuzzle(
@@ -719,12 +789,21 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     state.participants.forEach((participant) => {
       participant.continued = participant.kind === "ai";
     });
+    const events: PresentationEvent[] = [];
+    if (this.isTurnBased(state)) {
+      state.turnState = this.createInitialTurnState(state);
+      events.push(this.createTurnOrderEvent(state, `Round ${state.puzzleIndex + 1} turn order`));
+    } else {
+      state.turnState = null;
+    }
     this.scheduleAi(state);
+    return events;
   }
 
   private finishPuzzleIfNeeded(state: RoomState) {
     if (!state.puzzle || !state.runtime || !puzzleIsComplete(state.puzzle, state.runtime)) return;
     state.status = "puzzle-summary";
+    state.turnState = null;
     state.aiDeadlines = {};
     state.aiIntents = {};
     state.participants.forEach((participant) => {
@@ -732,9 +811,148 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     });
   }
 
+  private isTurnBased(state: RoomState) {
+    return state.settings.playMode === "Turn Based";
+  }
+
+  private shouldEndTurnOnGuessAttempt(state: RoomState) {
+    return this.isTurnBased(state);
+  }
+
+  private createInitialTurnState(state: RoomState): TurnState {
+    const orderedBySeat = [...state.participants]
+      .sort((left, right) => left.seat - right.seat)
+      .map((participant) => participant.id);
+    const starter =
+      state.puzzleIndex === 0
+        ? orderedBySeat[Math.floor(Math.random() * orderedBySeat.length)]
+        : this.pickLowestScoreStarter(state);
+    const turnOrder = this.turnOrderStartingFrom(orderedBySeat, starter);
+    return this.buildTurnState(turnOrder, state.puzzleIndex + 1, 0, Date.now(), state.settings.turnTimeLimit);
+  }
+
+  private turnOrderStartingFrom(orderBySeat: string[], starterId: string) {
+    const startIndex = Math.max(0, orderBySeat.indexOf(starterId));
+    return [...orderBySeat.slice(startIndex), ...orderBySeat.slice(0, startIndex)];
+  }
+
+  private pickLowestScoreStarter(state: RoomState) {
+    const bySeat = [...state.participants].sort((left, right) => left.seat - right.seat);
+    return bySeat.reduce((lowest, candidate) => {
+      if (!lowest) return candidate;
+      if (candidate.score.total !== lowest.score.total) {
+        return candidate.score.total < lowest.score.total ? candidate : lowest;
+      }
+      return candidate.seat < lowest.seat ? candidate : lowest;
+    }, bySeat[0])?.id ?? bySeat[0]?.id ?? "";
+  }
+
+  private buildTurnState(
+    turnOrder: string[],
+    roundNumber: number,
+    currentTurnIndex: number,
+    startedAt: number,
+    turnTimeLimit: TurnTimeLimit
+  ): TurnState {
+    const duration = turnDurationMs(turnTimeLimit);
+    const idx = Math.max(0, Math.min(currentTurnIndex, Math.max(0, turnOrder.length - 1)));
+    return {
+      roundNumber,
+      turnOrder,
+      currentTurnIndex: idx,
+      turnsTakenInRound: 0,
+      activeParticipantId: turnOrder[idx],
+      turnStartedAt: startedAt,
+      turnEndsAt: duration ? startedAt + duration : null
+    };
+  }
+
+  private createTurnOrderEvent(state: RoomState, prefix: string) {
+    const turnState = state.turnState;
+    if (!turnState) return this.event(state, "turn-order", `${prefix}: unavailable.`);
+    const names = turnState.turnOrder
+      .map((id) => state.participants.find((participant) => participant.id === id)?.name ?? "Unknown")
+      .join(" -> ");
+    return this.event(state, "turn-order", `${prefix}: ${names}.`);
+  }
+
+  private formatAwardBreakdown(score: ScoreBreakdown) {
+    return [
+      `Letters: ${score.letters}`,
+      `💚: ${score.emerald}`,
+      `💎: ${score.diamond}`,
+      `♦️: ${score.ruby}`
+    ].join("\n");
+  }
+
+  private advanceTurn(state: RoomState, reason: "timer-expired" | "word-complete" | "attempt-ended") {
+    if (!this.isTurnBased(state) || !state.turnState) return [] as PresentationEvent[];
+    const current = state.turnState;
+    const currentParticipant =
+      state.participants.find((participant) => participant.id === current.activeParticipantId)?.name ?? "Player";
+    const turnOrder = current.turnOrder;
+    const roundNumber = current.roundNumber;
+    let turnsTaken = current.turnsTakenInRound + 1;
+    const nextIndex = (current.currentTurnIndex + 1) % turnOrder.length;
+    const events: PresentationEvent[] = [];
+    if (nextIndex === 0) turnsTaken = 0;
+
+    const startedAt = Date.now();
+    const duration = turnDurationMs(state.settings.turnTimeLimit);
+    const activeParticipantId = turnOrder[nextIndex];
+    state.turnState = {
+      roundNumber,
+      turnOrder,
+      currentTurnIndex: nextIndex,
+      turnsTakenInRound: turnsTaken,
+      activeParticipantId,
+      turnStartedAt: startedAt,
+      turnEndsAt: duration ? startedAt + duration : null
+    };
+    const nextParticipant =
+      state.participants.find((participant) => participant.id === activeParticipantId)?.name ??
+      "Player";
+    const reasonText =
+      reason === "timer-expired"
+        ? `${currentParticipant}'s timer expired.`
+        : reason === "attempt-ended"
+          ? `${currentParticipant}'s turn ended after their attempt.`
+          : `${currentParticipant}'s turn ended.`;
+    events.push(this.event(state, "turn-advanced", `${reasonText} ${nextParticipant} is up next.`));
+    state.aiDeadlines = {};
+    state.aiIntents = {};
+    this.scheduleAi(state);
+    return events;
+  }
+
   private scheduleAi(state: RoomState) {
     if (state.status !== "playing" || state.paused || !state.puzzle || !state.runtime) return;
     const now = Date.now();
+    if (this.isTurnBased(state) && state.turnState) {
+      state.aiDeadlines = {};
+      state.aiIntents = {};
+      const active = state.participants.find((participant) => participant.id === state.turnState!.activeParticipantId);
+      if (!active || active.kind !== "ai") return;
+      const incomplete = state.puzzle.words.filter((word) => !state.runtime!.completedWordIds.includes(word.id));
+      if (incomplete.length === 0) return;
+      const level = active.aiLevel ?? "College";
+      const preferred =
+        level === "High School"
+          ? incomplete.filter((word) => word.rarity <= 2 && word.answer.length <= 5)
+          : level === "College"
+            ? incomplete.filter((word) => word.rarity <= 3)
+            : incomplete;
+      const candidates = preferred.length > 0 ? preferred : incomplete;
+      const word = candidates[Math.floor(Math.random() * candidates.length)];
+      const softDelay = aiDelay(level);
+      const turnRemaining = state.turnState.turnEndsAt
+        ? Math.max(500, state.turnState.turnEndsAt - now - 500)
+        : softDelay;
+      const at = now + Math.min(softDelay, turnRemaining);
+      state.aiDeadlines[active.id] = at;
+      state.aiIntents[active.id] = { at, puzzleId: state.puzzle.id, type: "submit-guess", wordId: word.id };
+      return;
+    }
     for (const participant of state.participants) {
       if (participant.kind === "ai" && !state.aiDeadlines[participant.id]) {
         const incomplete = state.puzzle.words.filter(
@@ -771,6 +989,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     const deadlines = [
       expiry,
       state.hostTransferAt ?? Number.POSITIVE_INFINITY,
+      state.turnState?.turnEndsAt ?? Number.POSITIVE_INFINITY,
       ...Object.values(state.aiDeadlines)
     ].filter((deadline) => Number.isFinite(deadline) && deadline > Date.now());
     if (deadlines.length > 0) await this.ctx.storage.setAlarm(Math.min(...deadlines));
@@ -817,6 +1036,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
               skipped: state.runtime.skipped
             }
           : null,
+      turnState: state.turnState ? structuredClone(state.turnState) : null,
       paused: state.paused,
       pauseReason: state.pauseReason,
       disconnectedParticipantId: state.disconnectedParticipantId,
@@ -911,10 +1131,10 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     };
   }
 
-  private createAi(level: AiLevel, seat: number): Participant {
+  private createAi(state: RoomState, level: AiLevel, seat: number): Participant {
     return {
       id: randomId("ai"),
-      name: `${level} AI`,
+      name: this.nextAiName(state, level),
       color: COLORS[seat],
       seat,
       kind: "ai",
@@ -927,6 +1147,23 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       score: emptyScore(),
       continued: true
     };
+  }
+
+  private nextAiName(state: RoomState, level: AiLevel) {
+    const used = new Set(state.participants.map((participant) => participant.name.toLowerCase()));
+    for (const baseName of AI_NAMES) {
+      const candidate = `${baseName} AI`;
+      if (!used.has(candidate.toLowerCase())) return candidate;
+    }
+    let suffix = 2;
+    while (suffix < 100) {
+      for (const baseName of AI_NAMES) {
+        const candidate = `${baseName} AI ${suffix}`;
+        if (!used.has(candidate.toLowerCase())) return candidate;
+      }
+      suffix += 1;
+    }
+    return `${level} AI`;
   }
 
   private clearHumanReadiness(state: RoomState) {

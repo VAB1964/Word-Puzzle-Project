@@ -296,7 +296,7 @@ select {
   align-items: center;
   justify-content: center;
   gap: 1.2rem;
-  width: min(74rem, calc(100% - 2rem));
+  width: min(110rem, calc(100% - 2rem));
   min-height: 3rem;
   margin: 0 auto 1rem;
   padding: 0.4rem 1rem;
@@ -402,6 +402,7 @@ select {
   color: #52663e;
   font-weight: 700;
   text-align: center;
+  white-space: pre-line;
 }
 
 .mp-connection-banner {
@@ -421,7 +422,7 @@ select {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: 0.65rem;
-  width: min(76rem, 100%);
+  width: min(112rem, calc(100% - 1rem));
   margin: 0 auto 0.65rem;
 }
 
@@ -436,6 +437,12 @@ select {
   border-radius: 0.65rem;
   background: rgba(255, 246, 216, 0.94);
   box-shadow: 0.12rem 0.35rem 0.8rem rgba(25, 15, 7, 0.45);
+}
+
+.mp-score-strip article.mp-active-turn {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--player-color) 48%, transparent),
+    0.12rem 0.35rem 0.8rem rgba(25, 15, 7, 0.45);
 }
 
 .mp-score-fx-layer {
@@ -623,8 +630,9 @@ select {
 
 .mp-play-status {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  width: min(74rem, 100%);
+  width: min(110rem, calc(100% - 1rem));
   box-sizing: border-box;
   margin: 0 auto 0.65rem;
   padding: 0.4rem 0.8rem;
@@ -633,11 +641,48 @@ select {
   background: rgba(49, 38, 23, 0.88);
 }
 
+.mp-turn-order-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 120;
+  width: min(34rem, calc(100% - 2rem));
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(179, 144, 94, 0.8);
+  border-radius: 0.55rem;
+  color: #fff5dc;
+  background: rgba(38, 29, 17, 0.95);
+  text-align: center;
+  font: 800 1.08rem/1.35 Georgia, "Times New Roman", serif;
+  letter-spacing: 0.01em;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 0 2px rgba(236, 201, 137, 0.18),
+    0 0.5rem 1.3rem rgba(20, 12, 6, 0.62);
+}
+
+.mp-turn-order-popup h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.25rem;
+}
+
+.mp-turn-order-popup ol {
+  margin: 0;
+  padding-left: 1.35rem;
+  text-align: left;
+}
+
+.mp-turn-order-popup li + li {
+  margin-top: 0.18rem;
+}
+
 .mp-game-layout {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
+  grid-template-columns: minmax(0, 2.6fr) minmax(16.5rem, 1fr);
   gap: 1rem;
-  width: min(76rem, 100%);
+  width: min(112rem, calc(100% - 1rem));
   margin: auto;
 }
 
@@ -647,11 +692,21 @@ select {
   padding: 1.25rem;
 }
 
+.mp-board-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.35rem;
+  -webkit-overflow-scrolling: touch;
+}
+
 .mp-board {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(1.75rem, 2.7rem));
   grid-template-rows: repeat(var(--rows), minmax(1.75rem, 2.7rem));
   gap: 0.25rem;
+  width: max-content;
+  margin-inline: auto;
   justify-content: center;
   align-content: center;
   min-height: 24rem;
@@ -714,7 +769,7 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
-  width: min(76rem, 100%);
+  width: min(112rem, calc(100% - 1rem));
   margin: 0.7rem auto 0;
   padding: 0.55rem 0.85rem;
 }
@@ -729,7 +784,7 @@ select {
 }
 
 .mp-bonus-popup {
-  width: min(76rem, 100%);
+  width: min(112rem, calc(100% - 1rem));
   margin: 0.7rem auto 0;
   padding: 0.9rem;
 }
@@ -852,6 +907,27 @@ select {
 
 .mp-ranking em {
   font: 700 1.6rem Georgia, serif;
+}
+
+@media (min-width: 1600px) {
+  .mp-room-header {
+    width: min(128rem, calc(100% - 2rem));
+  }
+
+  .mp-score-strip,
+  .mp-game-layout,
+  .mp-bonus-info,
+  .mp-bonus-popup {
+    width: min(130rem, calc(100% - 1rem));
+  }
+
+  .mp-play-status {
+    width: min(128rem, calc(100% - 1rem));
+  }
+
+  .mp-game-layout {
+    grid-template-columns: minmax(0, 3.2fr) minmax(16rem, 1fr);
+  }
 }
 
 @media (max-width: 760px) {

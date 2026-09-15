@@ -1,6 +1,8 @@
 export const MULTIPLAYER_PROTOCOL_VERSION = 1;
 
 export type GameMode = "Casual" | "Crossword";
+export type PlayMode = "Free for All" | "Turn Based";
+export type TurnTimeLimit = "Not Timed" | 30 | 25 | 20 | 15 | 10;
 export type Difficulty = "Easy" | "Medium" | "Hard";
 export type AiLevel = "High School" | "College" | "Professional";
 export type GemType = "none" | "diamond" | "ruby" | "emerald";
@@ -34,8 +36,20 @@ export interface Participant {
 
 export interface RoomSettings {
   mode: GameMode;
+  playMode: PlayMode;
+  turnTimeLimit: TurnTimeLimit;
   difficulty: Difficulty;
   capacity: 1 | 2 | 3 | 4;
+}
+
+export interface TurnState {
+  roundNumber: number;
+  turnOrder: string[];
+  currentTurnIndex: number;
+  turnsTakenInRound: number;
+  activeParticipantId: string;
+  turnStartedAt: number;
+  turnEndsAt: number | null;
 }
 
 export interface PuzzleCellRef {
@@ -114,7 +128,10 @@ export interface PresentationEvent {
     | "participant-returned"
     | "participant-replaced"
     | "host-changed"
-    | "puzzle-skipped";
+    | "puzzle-skipped"
+    | "guess-rejected"
+    | "turn-order"
+    | "turn-advanced";
   actorId?: string;
   text: string;
   points?: number;
@@ -149,6 +166,7 @@ export interface RoomState {
   participants: Participant[];
   puzzle: PuzzleDefinition | null;
   runtime: PuzzleRuntime | null;
+  turnState: TurnState | null;
   usedBaseWords: string[];
   aiDeadlines: Record<string, number>;
   aiIntents: Record<string, AiIntent>;
@@ -175,6 +193,7 @@ export interface RoomSnapshot {
   puzzleCount: number;
   participants: Participant[];
   puzzle: PublicPuzzle | null;
+  turnState: TurnState | null;
   paused: boolean;
   pauseReason: PauseReason;
   disconnectedParticipantId: string | null;
