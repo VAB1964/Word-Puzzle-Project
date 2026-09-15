@@ -531,10 +531,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           .filter(Boolean)
           .join(", ");
         const summary = `${actor.name} solved ${solved || "a word"} +${result.pointsAwarded}.`;
-        const text =
-          state.settings.mode === "Crossword"
-            ? `${summary}\n${this.formatAwardBreakdown(result.scoreAwarded)}`
-            : summary;
+        const text = `${summary}\n${this.formatAwardBreakdown(result.scoreAwarded)}`;
         events.push(
           this.event(
             state,
@@ -747,10 +744,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
             .filter(Boolean)
             .join(", ");
           const summary = `${ai.name} solved ${solved || word.answer.toUpperCase()} +${result.pointsAwarded}.`;
-          const text =
-            next.settings.mode === "Crossword"
-              ? `${summary}\n${this.formatAwardBreakdown(result.scoreAwarded)}`
-              : summary;
+          const text = `${summary}\n${this.formatAwardBreakdown(result.scoreAwarded)}`;
           events.push(
             this.event(
               next,
@@ -1004,10 +998,15 @@ export class WordPuzzleRoom extends DurableObject<Env> {
 
   private snapshotFor(state: RoomState, localParticipantId: string): RoomSnapshot {
     const completed = new Set(state.runtime?.completedWordIds ?? []);
+    const rarityGem = (rarity: number) =>
+      rarity >= 4 ? "diamond" : rarity === 3 ? "ruby" : rarity === 2 ? "emerald" : "none";
     const normalizeWordGems = (word: { answer: string; gems?: string[] }) =>
       Array.isArray(word.gems) && word.gems.length > 0
         ? word.gems
-        : Array.from({ length: word.answer.length }, () => "none" as const);
+        : Array.from(
+            { length: word.answer.length },
+            () => rarityGem((word as { rarity?: number }).rarity ?? 0) as "none" | "emerald" | "ruby" | "diamond"
+          );
     return {
       protocolVersion: MULTIPLAYER_PROTOCOL_VERSION,
       roomCode: state.code,

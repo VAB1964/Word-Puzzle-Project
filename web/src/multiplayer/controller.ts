@@ -27,8 +27,11 @@ const escapeHtml = (value: string | number) =>
 const cellKey = (row: number, col: number) => `${row},${col}`;
 const GEM_RANK: Record<string, number> = { none: 0, emerald: 1, ruby: 2, diamond: 3 };
 const GEM_BONUS: Record<string, number> = { none: 0, emerald: 5, ruby: 10, diamond: 15 };
-const safeWordGems = (word: { gems?: string[]; length: number }) =>
-  Array.isArray(word.gems) && word.gems.length > 0 ? word.gems : Array.from({ length: word.length }, () => "none");
+const rarityGem = (rarity: number) => (rarity >= 4 ? "diamond" : rarity === 3 ? "ruby" : rarity === 2 ? "emerald" : "none");
+const safeWordGems = (word: { gems?: string[]; length: number; rarity?: number }) =>
+  Array.isArray(word.gems) && word.gems.length > 0
+    ? word.gems
+    : Array.from({ length: word.length }, () => rarityGem(word.rarity ?? 0));
 const gemArtwork = (gem: string) =>
   gem === "emerald" ? Assets.sapphire : gem === "ruby" ? Assets.ruby : gem === "diamond" ? Assets.diamond : "";
 
