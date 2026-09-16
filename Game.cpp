@@ -1243,7 +1243,7 @@ void Game::m_rebuild() {
     // --- Sub-word Processing (Generate ONCE, Filter Unique, Sort, Truncate) ---
     std::vector<WordInfo> final_solutions;
     if (m_base != "ERROR") {
-        m_allPotentialSolutions = Words::subWords(m_base, m_fullWordList);
+        m_allPotentialSolutions = Words::subWords(m_base, m_fullWordList, true);
         std::cout << "DEBUG: Generating final grid words for selected base letters (current m_base: '" << m_base << "')." << std::endl;
         std::vector<WordInfo> filtered_sub_solutions; // Initial filtering target
         std::vector<int> allowedSubRarities;

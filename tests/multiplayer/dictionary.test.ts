@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadProcessedWordList } from "../../web/src/data/words";
+import { loadProcessedWordList, subWords, puzzleWordCandidates } from "../../web/src/data/words";
 import { generateMultiplayerPuzzle, parseMultiplayerWordData } from "../../shared/multiplayer/puzzles";
 
 const csv = readFileSync(new URL("../../words_processed.csv", import.meta.url), "utf8");
@@ -31,6 +31,29 @@ describe("published dictionary", () => {
     expect(words.get("train")?.definition).toContain("railway");
     expect(words.get("orange")?.definition).toContain("citrus fruit");
     expect(words.get("abs")?.definition).toContain("abdominal muscles");
+  });
+
+  it("includes modesty, some, and most in the single-player candidate pool", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(csv)));
+    const words = await loadProcessedWordList("/words.csv");
+    for (const letters of ["modesty", "ytsedom"]) {
+      const possible = subWords(letters, words, true).map((word) => word.text);
+      for (const word of ["modesty", "some", "most", "toy", "dye"]) {
+        expect(possible, letters).toContain(word);
+      }
+      expect(possible).not.toContain("moss");
+    }
+    for (const [rarities, minimumLength] of [[[1, 2], 3], [[1, 2, 3], 3], [[2, 3, 4], 4]] as const) {
+      const candidates = puzzleWordCandidates("modesty", words, [...rarities], minimumLength);
+      for (const word of ["some", "most", "toy", "dye"]) expect(candidates.all.map((w) => w.text)).toContain(word);
+      expect(candidates.board.every((w) => w.text.length >= minimumLength && [...rarities].some((r) => r === w.rarity))).toBe(true);
+      if (minimumLength === 4) {
+        expect(candidates.board.map((w) => w.text)).not.toContain("some");
+        expect(candidates.board.map((w) => w.text)).not.toContain("most");
+      }
+    }
+    // Root-analysis callers retain their original exclusion behavior.
+    expect(subWords("modesty", words).map((word) => word.text)).not.toContain("modesty");
   });
 
   it("ships identical web/Worker and standalone dictionaries", () => {
@@ -72,6 +95,18 @@ describe("published dictionary", () => {
           }
           if (difficulty === "Easy") expect(puzzle.words.every((w) => w.rarity <= 2)).toBe(true);
           if (difficulty === "Medium") expect(puzzle.words.every((w) => w.rarity <= 3)).toBe(true);
+          const expected = data.filter((word) => {
+            const letters = [...available];
+            return [...word.text].every((letter) => {
+              const index = letters.indexOf(letter);
+              if (index < 0) return false;
+              letters.splice(index, 1);
+              return true;
+            });
+          }).map((word) => word.text).sort();
+          const represented = [...puzzle.words.map((word) => word.answer), ...puzzle.bonusWords];
+          expect(represented.slice().sort()).toEqual(expected);
+          expect(new Set(represented).size).toBe(represented.length);
           const cells = new Map<string, string>();
           for (const word of puzzle.words) {
             word.cells.forEach((cell, letterIndex) => {

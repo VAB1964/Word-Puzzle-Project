@@ -128,7 +128,7 @@ import {
   rectContains,
   shuffle
 } from "./core/utils";
-import { loadProcessedWordList, sortForGrid, subWords, withLength } from "./data/words";
+import { loadProcessedWordList, sortForGrid, puzzleWordCandidates, withLength } from "./data/words";
 import { generateCrossword, Direction, type CrosswordPlacement } from "./data/crossword";
 import { DecorLayer } from "./render/decorLayer";
 import { drawCenteredText, drawRoundedRect, wrapTextForWidth } from "./render/draw";
@@ -1322,7 +1322,6 @@ export class Game {
 
     let finalSolutions: WordInfo[] = [];
     if (this.base !== "ERROR") {
-      const allSubWords = subWords(this.base, this.fullWordList);
       const allowedSubRarities =
         this.selectedDifficulty === DifficultyLevel.Easy
           ? [1, 2]
@@ -1331,23 +1330,11 @@ export class Game {
             : this.selectedDifficulty === DifficultyLevel.Hard
               ? [2, 3, 4]
               : [1, 2, 3, 4];
-      const allowedBonusRarities =
-        this.selectedDifficulty === DifficultyLevel.Easy
-          ? [1, 2, 3, 4]
-          : this.selectedDifficulty === DifficultyLevel.Medium
-            ? [1, 2, 3]
-            : this.selectedDifficulty === DifficultyLevel.Hard
-              ? [2, 3, 4]
-              : [1, 2, 3, 4];
-
-      this.allPotentialSolutions = allSubWords.filter((info) => {
-        if (info.text.length < minSubLengthForDifficulty) return false;
-        return allowedBonusRarities.includes(info.rarity);
-      });
-
-      const filtered = this.allPotentialSolutions.filter((info) => {
-        return allowedSubRarities.includes(info.rarity);
-      });
+      const candidates = puzzleWordCandidates(
+        this.base, this.fullWordList, allowedSubRarities, minSubLengthForDifficulty
+      );
+      this.allPotentialSolutions = candidates.all;
+      const filtered = candidates.board;
 
       const unique = new Map<string, WordInfo>();
       for (const info of filtered) {

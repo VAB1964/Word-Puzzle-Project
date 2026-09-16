@@ -140,7 +140,7 @@ export const isSubWord = (sub: string, base: string) => {
   return true;
 };
 
-export const subWords = (base: string, wordList: WordInfo[]) => {
+export const subWords = (base: string, wordList: WordInfo[], includeBase = false) => {
   if (!base) return [];
   const lowerBase = base.toLowerCase();
   const baseFreq = new Map<string, number>();
@@ -152,7 +152,7 @@ export const subWords = (base: string, wordList: WordInfo[]) => {
   for (const info of wordList) {
     const word = info.text.toLowerCase();
     if (!word || word.length > lowerBase.length) continue;
-    if (word === lowerBase) continue;
+    if (!includeBase && word === lowerBase) continue;
 
     const wordFreq = new Map<string, number>();
     let possible = true;
@@ -175,3 +175,12 @@ export const sortForGrid = (words: WordInfo[]) =>
     }
     return a.text.localeCompare(b.text, undefined, { sensitivity: "base" });
   });
+
+// The complete acceptance pool is independent of board difficulty constraints.
+export const puzzleWordCandidates = (
+  base: string, wordList: WordInfo[], boardRarities: number[], minimumBoardLength: number
+) => {
+  const all = subWords(base, wordList, true).filter((word) => word.text.length >= 3 && word.text.length <= 7);
+  const board = all.filter((word) => word.text.length >= minimumBoardLength && boardRarities.includes(word.rarity));
+  return { all, board };
+};

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import * as crossword from "../../web/src/data/crossword";
+import { describe, expect, it, vi } from "vitest";
 import {
   generateMultiplayerPuzzle,
   type PuzzleWordData
@@ -121,5 +122,46 @@ describe("multiplayer puzzle difficulty", () => {
     expect(puzzle.rows).toBeLessThanOrEqual(5);
     const distinctStartCols = new Set(puzzle.words.map((entry) => entry.cells[0]?.col ?? 0));
     expect(distinctStartCols.size).toBeGreaterThan(1);
+  });
+});
+
+
+describe("complete puzzle and bonus partition", () => {
+  const data = [word("modesty", 3), word("modest", 3), word("some", 1),
+    word("most", 1), word("toy", 1), word("dye", 2), word("mode", 4),
+    word("moss", 2), word("meet", 1)];
+
+  for (const difficulty of ["Medium", "Hard"] as const) {
+    for (const mode of ["Casual", "Crossword"] as const) {
+      it(`accepts all modesty words in ${difficulty} ${mode}`, () => {
+        const puzzle = generateMultiplayerPuzzle(data, mode, difficulty, "modesty", 0, 5, new Set());
+        const represented = [...puzzle.words.map((w) => w.answer), ...puzzle.bonusWords];
+        expect(represented.sort()).toEqual(["modesty", "modest", "some", "most", "toy", "dye", "mode"].sort());
+        if (difficulty === "Hard") {
+          for (const text of ["some", "most", "toy", "dye"]) expect(puzzle.bonusWords).toContain(text);
+          expect(puzzle.words.every((w) => w.rarity >= 2 && w.answer.length >= 4)).toBe(true);
+        } else {
+          expect(puzzle.bonusWords).toContain("mode");
+          expect(puzzle.words.every((w) => w.rarity <= 3)).toBe(true);
+        }
+      });
+    }
+  }
+
+  it("moves selected words that fail crossword placement to bonuses", () => {
+    const original = crossword.generateCrossword;
+    const spy = vi.spyOn(crossword, "generateCrossword").mockImplementation((words) => {
+      const result = original(words);
+      return { ...result, placedWords: result.placedWords.slice(0, 1), placements: result.placements.slice(0, 1) };
+    });
+    try {
+      const puzzle = generateMultiplayerPuzzle(data, "Crossword", "Hard", "placement-loss", 0, 5, new Set());
+      expect(puzzle.words).toHaveLength(1);
+      const represented = [...puzzle.words.map((w) => w.answer), ...puzzle.bonusWords];
+      expect(represented.sort()).toEqual(["modesty", "modest", "some", "most", "toy", "dye", "mode"].sort());
+      expect(puzzle.bonusWords).toContain("modest");
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

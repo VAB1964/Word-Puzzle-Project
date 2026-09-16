@@ -193,8 +193,8 @@ namespace Words {
 
     // *** CORRECTED DEFINITION for subWords ***
     // Finds all words in the dictionary that can be formed from the letters of 'base'
-    // (excluding the base word itself).
-    std::vector<WordInfo> subWords(const std::string& base, const std::vector<WordInfo>& wordList) {
+    // Excludes the exact base by default for root analysis; puzzle generation includes it.
+    std::vector<WordInfo> subWords(const std::string& base, const std::vector<WordInfo>& wordList, bool includeBase) {
         std::vector<WordInfo> result;
         if (base.empty()) { // Handle empty base case
             return result;
@@ -221,8 +221,8 @@ namespace Words {
             std::transform(lowerWord.begin(), lowerWord.end(), lowerWord.begin(),
                 [](unsigned char c) { return std::tolower(c); });
 
-            // Check if it's the base word itself (case-insensitive) - skip if it is
-            if (lowerWord == lowerBase) {
+            // Root-analysis callers can exclude the exact base (case-insensitive).
+            if (!includeBase && lowerWord == lowerBase) {
                 continue;
             }
 
@@ -243,7 +243,7 @@ namespace Words {
                 result.push_back(info); // Add the original WordInfo object
             }
         }
-        std::cout << "DEBUG: Words::subWords found " << result.size() << " valid sub-words for base '" << base << "' (excluding base)." << std::endl; // Add debug output
+        std::cout << "DEBUG: Words::subWords found " << result.size() << " valid sub-words for base '" << base << "'." << std::endl; // Add debug output
         return result;
     }
 
