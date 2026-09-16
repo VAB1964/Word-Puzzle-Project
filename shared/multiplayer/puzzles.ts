@@ -128,11 +128,6 @@ const allowedRarities = (difficulty: Difficulty, lastPuzzle: boolean) => {
   return lastPuzzle ? [2, 3, 4] : [2, 3, 4];
 };
 
-const bonusRaritiesFor = (difficulty: Difficulty, lastPuzzle: boolean) => {
-  if (difficulty === "Easy") return [1, 2, 3, 4];
-  return allowedRarities(difficulty, lastPuzzle);
-};
-
 const gemTierOrder: GemType[] = ["emerald", "ruby", "diamond"];
 
 const maxGemTierIndexForRarity = (rarity: number) => {
@@ -316,18 +311,11 @@ export const generateMultiplayerPuzzle = (
   usedBases.add(baseWord.text);
   const minimumLength = difficulty === "Hard" ? 4 : 3;
   const boardRarities = allowedRarities(difficulty, lastPuzzle);
-  const bonusRarities = bonusRaritiesFor(difficulty, lastPuzzle);
-  const possibleForBoard = data.filter(
-    (word) =>
-      word.text.length >= minimumLength &&
-      boardRarities.includes(word.rarity) &&
-      canSpell(word.text, baseWord.text)
+  const allPossible = data.filter((word) =>
+    word.text.length >= 3 && word.text.length <= 7 && canSpell(word.text, baseWord.text)
   );
-  const possibleForBonus = data.filter(
-    (word) =>
-      word.text.length >= minimumLength &&
-      bonusRarities.includes(word.rarity) &&
-      canSpell(word.text, baseWord.text)
+  const possibleForBoard = allPossible.filter((word) =>
+    word.text.length >= minimumLength && boardRarities.includes(word.rarity)
   );
   const unique = new Map(possibleForBoard.map((word) => [word.text, word]));
   if (!unique.has(baseWord.text)) unique.set(baseWord.text, baseWord);
@@ -337,8 +325,6 @@ export const generateMultiplayerPuzzle = (
       left.text.localeCompare(right.text)
   );
   const selected = ordered.slice(0, limits[mode][difficulty]);
-  const selectedSet = new Set(selected.map((word) => word.text));
-  const bonusWords = possibleForBonus.map((word) => word.text).filter((word) => !selectedSet.has(word));
 
   let placed: Placed[];
   let rows: number;
@@ -354,6 +340,12 @@ export const generateMultiplayerPuzzle = (
     rows = layout.rows;
     cols = layout.cols;
   }
+
+  // A selected word can fail crossword placement. Only final board words are
+  // excluded from bonuses, so every spellable dictionary word remains accepted.
+  const boardSet = new Set(placed.map((entry) => entry.word.text));
+  const bonusWords = [...new Set(allPossible.map((word) => word.text))]
+    .filter((word) => !boardSet.has(word));
 
   const words: PuzzleWordDefinition[] = placed.map((entry, index) => ({
     id: `w${index}`,

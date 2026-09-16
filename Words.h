@@ -27,7 +27,7 @@ namespace Words {
 
     // Function to find all sub-words of 'base' within the loaded list
     // Note: Ensure this function works correctly with the extended WordInfo if it relies on more than text/rarity
-    std::vector<WordInfo> subWords(const std::string& base, const std::vector<WordInfo>& wordList);
+    std::vector<WordInfo> subWords(const std::string& base, const std::vector<WordInfo>& wordList, bool includeBase = false);
 
     // Function to sort WordInfo objects for grid display (by length, then alpha)
     std::vector<WordInfo> sortForGrid(std::vector<WordInfo> v); // Pass by value is okay if you modify copy
