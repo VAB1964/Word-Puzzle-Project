@@ -16,11 +16,12 @@ The exact export arguments and text checksums are in `data/esdb/manifest.json`.
 | Previous cleaned dictionary | 18,242 |
 | Filtered size-60 starting vocabulary | 28,324 |
 | Size-60 words ready for puzzles | 22,005 |
-| Individually approved size-70 words | 12 |
-| Total playable words | 22,017 |
-| Retained from the previous dictionary | 13,408 |
-| Newly playable | 8,609 |
-| Previous words no longer included | 4,834 |
+| Individually approved size-70 words | 14 |
+| Editorial supplements outside filtered ESDB | 1 |
+| Total playable words | 22,020 |
+| Retained from the previous dictionary | 13,409 |
+| Newly playable | 8,611 |
+| Previous words no longer included | 4,833 |
 | Size-60 candidates awaiting definition/usage review | 6,319 |
 
 The complete starting vocabulary is checked in, but membership alone is not
@@ -30,13 +31,20 @@ relationships; it is not a source of full lexical definitions. The existing
 remain outside the playable file until they have a usable meaning and usage
 review. This is a definition-gated adoption, not full playable size-60 coverage.
 
-Every retained entry keeps its prior definition, example, and rarity unchanged.
+Every retained entry keeps its prior definition, example, and rarity unchanged,
+except when a reviewed supplemental entry explicitly replaces its display definition.
 The earlier cleanup is not run again. There are 26 individually reviewed new
 headword definitions, including `aisle`, `awesome`, `every`, and `your`.
 Another 8,583 new words have grammatical definitions from ESDB's attested
 inflection relationships, such as `accepts` and `acted`. These definitions say
 which word and grammatical form they represent; they do not claim to provide
 a newly researched lexical meaning. Examples remain blank for these forms.
+
+The reviewed supplemental entries `zen`, `zee`, and `zees` cover ordinary lowercase
+meanings needed by the game. `zee` and `zees` are individually approved size-70
+spellings; lowercase `zen` is an editorial supplement because the filtered source
+snapshot contains only the excluded proper-name form. This exception does not admit
+other proper names or relax the explicit exclusions in `tools/dictionary_overrides.json`.
 
 No word is created by guessing a suffix. The lemma must already be a defined
 size-60 word. Unsupported inflection types, missing roots, and missing meanings
@@ -54,6 +62,8 @@ selected definition could give `lied` the wrong explanation.
 - Deaccent using the upstream exporter, then require `[a-z]{3,7}`. Do not lowercase
   names. This keeps ordinary `apple` while excluding capitalized-only `Apple`.
 - Preserve explicit exclusions from `tools/dictionary_overrides.json`.
+- Permit only explicitly reviewed lowercase supplements recorded with definitions,
+  ratings, and reasons in `tools/esdb_editorial.json`.
 - Preserve all retained rarity values. An attested new inflection inherits its
   lemma's current rating. This is a provisional familiarity heuristic, not a
   frequency measurement. The 26 new lexical entries have explicit provisional
@@ -73,11 +83,14 @@ change the available puzzle pool and should be playtested.
 The snapshot includes 11,559 extra spellings at level 70 and another 11,135 at
 level 80. They are review candidates, not automatic additions.
 
-Twelve existing rarity-4 words were individually approved from size 70:
+Fourteen words were individually approved from size 70. Twelve existing rarity-4
+words retain their advanced rating:
 `abiotic`, `albedo`, `anomie`, `aril`, `bireme`, `gnosis`, `tmesis`, `xeric`,
 `zeugma`, `xebec`, `agaric`, and `allium`. Each has an existing explanatory
 definition and a recorded reason in `tools/esdb_editorial.json`. Their rarity
 remains 4, which keeps them out of Easy and Medium puzzle answers.
+The familiar American letter name `zee` retains tier 3, and its plural `zees`
+uses the same provisional tier.
 No size-80 additions were approved. All other larger-level candidates are
 explicitly deferred; they have not all received individual lexical review.
 
@@ -140,7 +153,7 @@ Open **http://localhost:5173/wordpuzzle/** and choose Single Player. For multipl
 also start `npm run worker:dev` in a second terminal. Try Casual and Crossword at
 each difficulty, particularly new inflections and their definition popups.
 
-The submitted version passes 18 Python tests and 17 JavaScript/TypeScript tests,
+The submitted version passes 19 Python tests and 28 JavaScript/TypeScript tests,
 including 30 generated puzzles covering both modes and all three difficulties.
 Typecheck, the web build, and Worker dry-run packaging pass. The published CSV
 matches the reproducible build, and both runtime dictionary copies are identical.

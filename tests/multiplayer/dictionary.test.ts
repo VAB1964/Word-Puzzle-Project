@@ -56,16 +56,40 @@ describe("published dictionary", () => {
     expect(subWords("modesty", words).map((word) => word.text)).not.toContain("modesty");
   });
 
+  it("accepts zen, zee, and zees as board or bonus words for SNEEZED", () => {
+    const available = [..."sneezed"];
+    const sneezedWords = data.filter((word) => {
+      const remaining = [...available];
+      return [...word.text].every((letter) => {
+        const index = remaining.indexOf(letter);
+        if (index < 0) return false;
+        remaining.splice(index, 1);
+        return true;
+      });
+    });
+
+    for (const mode of ["Casual", "Crossword"] as const) {
+      const puzzle = generateMultiplayerPuzzle(sneezedWords, mode, "Medium", `sneezed-${mode}`, 0, 1, new Set());
+      expect([...puzzle.baseLetters].sort().join("")).toBe([..."SNEEZED"].sort().join(""));
+      const boardWords = new Set(puzzle.words.map((word) => word.answer));
+      const bonusWords = new Set(puzzle.bonusWords);
+      for (const word of ["zen", "zee", "zees"]) {
+        expect(boardWords.has(word) || bonusWords.has(word), `${word} in ${mode}`).toBe(true);
+      }
+    }
+  });
+
   it("ships identical web/Worker and standalone dictionaries", () => {
     expect(readFileSync(new URL("../../Standalone/words_processed.csv", import.meta.url), "utf8")).toBe(csv);
   });
 
-  it("uses American size-60 vocabulary plus individually approved larger-level words", () => {
+  it("uses American size-60 vocabulary plus explicitly reviewed editorial words", () => {
     const base = new Set(readFileSync(new URL("../../data/esdb/american-60.txt", import.meta.url), "utf8").trim().split(/\r?\n/));
     const editorial = JSON.parse(readFileSync(new URL("../../tools/esdb_editorial.json", import.meta.url), "utf8"));
     const approved = new Set(Object.keys(editorial.larger_level_approvals));
+    const supplemental = new Set(Object.keys(editorial.supplemental_entries));
     const words = new Map(data.map((word) => [word.text, word]));
-    expect(data.every((word) => base.has(word.text) || approved.has(word.text))).toBe(true);
+    expect(data.every((word) => base.has(word.text) || approved.has(word.text) || supplemental.has(word.text))).toBe(true);
     for (const word of ["color", "center", "honor", "theater", "aisle", "aisles", "awesome", "accepts", "acted"]) {
       expect(words.has(word), word).toBe(true);
     }
@@ -73,6 +97,7 @@ describe("published dictionary", () => {
       expect(words.has(word), word).toBe(false);
     }
     for (const word of approved) expect(words.get(word)?.rarity, word).toBe(4);
+    for (const word of supplemental) expect(words.has(word), word).toBe(true);
     const pending = readFileSync(new URL("../../docs/esdb-audit/pending-definitions.csv", import.meta.url), "utf8").trim().split(/\r?\n/).slice(1);
     expect(pending.every((row) => !words.has(row.split(",")[0]))).toBe(true);
   });

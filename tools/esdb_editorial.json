@@ -50,6 +50,29 @@
       "reason": "Established rhetorical term useful to advanced word players; retains tier 4."
     }
   },
+  "supplemental_entries": {
+    "zen": {
+      "rarity": "3",
+      "pos": "noun",
+      "Definition": "A state of calm attentiveness.",
+      "Sentence": "",
+      "reason": "Reviewed lowercase ordinary meaning; added editorially because the filtered ESDB snapshot contains only the excluded proper-name form."
+    },
+    "zee": {
+      "rarity": "3",
+      "pos": "noun",
+      "Definition": "The letter Z.",
+      "Sentence": "",
+      "reason": "Reviewed American name for the letter Z; restored from ESDB size 70 with its established tier 3 rating."
+    },
+    "zees": {
+      "rarity": "3",
+      "pos": "noun",
+      "Definition": "Plural of zee: the letter Z.",
+      "Sentence": "",
+      "reason": "Reviewed plural of zee; added from ESDB size 70 with the same provisional tier 3 rating as its lemma."
+    }
+  },
   "new_definitions": {
     "acreage": {
       "rarity": "2",

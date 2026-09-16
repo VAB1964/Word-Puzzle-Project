@@ -73,6 +73,7 @@ def build(baseline, base_words, larger_levels, forms, editorial, excluded):
     old = {row["word"]: row for row in baseline}
     approved = editorial["larger_level_approvals"]
     additions = editorial["new_definitions"]
+    supplemental = editorial.get("supplemental_entries", {})
     for word, decision in approved.items():
         if word not in larger_levels or word in base_words or word not in old:
             raise ValueError(f"Larger-level approval is not an existing extension word: {word}")
@@ -81,7 +82,11 @@ def build(baseline, base_words, larger_levels, forms, editorial, excluded):
     for word, row in additions.items():
         if word not in base_words or word in old or not row["reason"]:
             raise ValueError(f"Editorial addition is not a new size-60 word: {word}")
-    if (set(approved) | set(additions)) & excluded:
+    for word, row in supplemental.items():
+        if (not LETTERS.fullmatch(word) or word in base_words or
+                word in approved or word in additions or not row["reason"]):
+            raise ValueError(f"Invalid supplemental editorial entry: {word}")
+    if (set(approved) | set(additions) | set(supplemental)) & excluded:
         raise ValueError("An editorial approval conflicts with an explicit exclusion")
     eligible = (base_words | set(approved)) - excluded
     result = {word: dict(old[word]) for word in eligible & old.keys()}
@@ -94,6 +99,15 @@ def build(baseline, base_words, larger_levels, forms, editorial, excluded):
         result[word] = {"word": word, **{field: str(row[field]) for field in FIELDS[1:]}}
         provenance[word] = {"word": word, "esdb_level": 60, "definition_source": "editorial",
                             "rarity_basis": "provisional-editorial", "lemma": ""}
+    for word, row in supplemental.items():
+        result[word] = {"word": word, **{field: str(row[field]) for field in FIELDS[1:]}}
+        provenance[word] = {
+            "word": word, "esdb_level": larger_levels.get(word, ""),
+            "definition_source": "editorial-supplement",
+            "rarity_basis": "preserved" if word in old and old[word]["rarity"] == str(row["rarity"])
+                            else "provisional-editorial",
+            "lemma": "",
+        }
     # Resolve against lexical entries only. No recursive suffix guessing or cycles.
     known = {word: row for word, row in result.items() if word in base_words}
     by_word = defaultdict(list)
@@ -114,15 +128,19 @@ def build(baseline, base_words, larger_levels, forms, editorial, excluded):
                           "larger-level-not-approved" if word in larger_levels else "outside-filtered-American-60-80"}
                for word in sorted(old.keys() - result.keys())]
     review = [{"word": word, "esdb_level": level,
-               "decision": "approved" if word in approved else "deferred",
+               "decision": "approved" if word in approved or word in supplemental else "deferred",
                "existing_rarity": old.get(word, {}).get("rarity", ""),
                "existing_definition": old.get(word, {}).get("Definition", ""),
-               "reason": approved[word]["reason"] if word in approved else "Not individually approved; not added to puzzles."}
+               "reason": (approved[word]["reason"] if word in approved else supplemental[word]["reason"])
+                         if word in approved or word in supplemental
+                         else "Not individually approved; not added to puzzles."}
               for word, level in sorted(larger_levels.items())]
     summary = {
         "baseline_words": len(old), "size60_candidates": len(base_words),
         "playable_words": len(rows), "size60_playable": sum(w in base_words for w in result),
-        "larger_level_approved": len(approved), "pending_size60": len(pending),
+        "larger_level_approved": sum(word in result for word in larger_levels),
+        "supplemental_outside_esdb": sum(word not in base_words and word not in larger_levels for word in supplemental),
+        "pending_size60": len(pending),
         "retained_words": len(old.keys() & result.keys()), "added_words": len(result.keys() - old.keys()),
         "removed_words": len(removed),
         "definition_sources": dict(sorted(Counter(p["definition_source"] for p in provenance.values()).items())),

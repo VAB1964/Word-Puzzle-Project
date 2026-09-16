@@ -64,6 +64,18 @@ class EsdbPolicyTests(unittest.TestCase):
         self.assertEqual(rows, [])
         self.assertEqual(pending[0]["reason"], "explicit-editorial-exclusion")
 
+    def test_adds_reviewed_supplements_without_weakening_explicit_exclusions(self):
+        supplemental = {
+            "zen": {**entry("zen", definition="A state of calm attentiveness."), "reason": "Reviewed."}
+        }
+        editorial = {**EMPTY, "supplemental_entries": supplemental}
+        rows, _, _, _, provenance, summary = build([], set(), {}, [], editorial, set())
+        self.assertEqual(rows, [entry("zen", definition="A state of calm attentiveness.")])
+        self.assertEqual(provenance[0]["definition_source"], "editorial-supplement")
+        self.assertEqual(summary["supplemental_outside_esdb"], 1)
+        with self.assertRaisesRegex(ValueError, "conflicts with an explicit exclusion"):
+            build([], set(), {}, [], editorial, {"zen"})
+
     def test_refuses_stale_editorial_approvals(self):
         editorial = {**EMPTY, "larger_level_approvals": {"xeric": {"level": 80, "reason": "Review"}}}
         with self.assertRaisesRegex(ValueError, "Incorrect larger-level"):
@@ -99,8 +111,9 @@ class PublishedEsdbTests(unittest.TestCase):
         self.assertEqual(summary, json.loads((ROOT / "docs/esdb-audit/summary.json").read_text()))
         self.assertEqual((ROOT / "Standalone/words_processed.csv").read_bytes(), (ROOT / "words_processed.csv").read_bytes())
         old = {row["word"]: row for row in baseline}
+        supplemental = set(editorial.get("supplemental_entries", {}))
         for row in rows:
-            if row["word"] in old:
+            if row["word"] in old and row["word"] not in supplemental:
                 self.assertEqual(row, old[row["word"]])
         self.assertEqual(len(base), 28324)
         self.assertEqual(sum(level == 70 for level in larger.values()), 11559)

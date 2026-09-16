@@ -1,22 +1,24 @@
 {
   "baseline_words": 18242,
   "size60_candidates": 28324,
-  "playable_words": 22017,
+  "playable_words": 22020,
   "size60_playable": 22005,
-  "larger_level_approved": 12,
+  "larger_level_approved": 14,
+  "supplemental_outside_esdb": 1,
   "pending_size60": 6319,
-  "retained_words": 13408,
-  "added_words": 8609,
-  "removed_words": 4834,
+  "retained_words": 13409,
+  "added_words": 8611,
+  "removed_words": 4833,
   "definition_sources": {
     "cleaned-dictionary": 13408,
     "editorial": 26,
+    "editorial-supplement": 3,
     "esdb-inflection": 8583
   },
   "rarity_counts": {
     "1": 1418,
     "2": 4821,
-    "3": 10456,
+    "3": 10459,
     "4": 5322
   },
   "removed_easiest_words": [
