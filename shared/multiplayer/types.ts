@@ -42,6 +42,7 @@ export interface RoomSettings {
   difficulty: Difficulty;
   capacity: 1 | 2 | 3 | 4;
   puzzlesPerRound: PuzzlesPerRound;
+  enabledPowerUps: Record<HintKind, boolean>;
 }
 
 export interface TurnState {

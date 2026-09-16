@@ -95,7 +95,7 @@ describe("multiplayer scoring rules", () => {
         }
       ]
     };
-    const players = [participant("Alice", 0, 10), participant("Bob", 1)];
+    const players = [participant("Alice", 0, 20), participant("Bob", 1)];
     const runtime = createPuzzleRuntime(puzzle);
 
     const hint = useHint(puzzle, runtime, players, "Alice", {
@@ -109,7 +109,7 @@ describe("multiplayer scoring rules", () => {
     expect(solve.pointsAwarded).toBe(24);
     expect(players[0].score.total).toBe(6);
     expect(players[1].score.total).toBe(24);
-    expect(players[0].hintCredits).toBe(8);
+    expect(players[0].hintCredits).toBe(15);
   });
 
   it("awards a room-wide bonus word only to its first claimant", () => {
@@ -138,7 +138,7 @@ describe("multiplayer scoring rules", () => {
   });
 
   it("does not charge for a hint with no eligible target", () => {
-    const players = [participant("Alice", 0, 10)];
+    const players = [participant("Alice", 0, 30)];
     const runtime = createPuzzleRuntime(crossword);
     submitGuess(crossword, runtime, players, "Alice", "cat");
     submitGuess(crossword, runtime, players, "Alice", "car");
@@ -151,7 +151,7 @@ describe("multiplayer scoring rules", () => {
   });
 
   it("full-word hint can target a chosen word", () => {
-    const players = [participant("Alice", 0, 10)];
+    const players = [participant("Alice", 0, 30)];
     const runtime = createPuzzleRuntime(crossword);
 
     const result = useHint(crossword, runtime, players, "Alice", {
@@ -164,7 +164,7 @@ describe("multiplayer scoring rules", () => {
     expect(runtime.visibleCells["0,0"]).toBeTruthy();
     expect(runtime.visibleCells["1,0"]).toBeTruthy();
     expect(runtime.visibleCells["2,0"]).toBeTruthy();
-    expect(players[0].hintCredits).toBe(5);
+    expect(players[0].hintCredits).toBe(15);
   });
 
   it("never exceeds the defined puzzle maximum and keeps totals consistent", () => {

@@ -13,10 +13,10 @@ import type {
 } from "./types";
 
 export const HINT_COSTS: Record<HintKind, number> = {
-  letter: 2,
-  random: 3,
-  "full-word": 5,
-  "first-of-each": 7
+  letter: 5,
+  random: 10,
+  "full-word": 15,
+  "first-of-each": 20
 };
 
 export const GEM_HINT_REWARDS: Record<number, number> = {
@@ -200,10 +200,14 @@ export const useHint = (
   participants: Participant[],
   actorId: string,
   request: HintRequest,
-  random: () => number = Math.random
+  random: () => number = Math.random,
+  enabledPowerUps?: Partial<Record<HintKind, boolean>>
 ): PuzzleActionResult => {
   const actor = getParticipant(participants, actorId);
   if (!actor) return failure("Participant not found.");
+  if (enabledPowerUps && enabledPowerUps[request.hint] === false) {
+    return failure("That power-up is disabled for this session.");
+  }
   const cost = HINT_COSTS[request.hint];
   if (actor.hintCredits < cost) return failure("Not enough hint credits.");
 

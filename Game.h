@@ -35,6 +35,7 @@
 #include <map>
 #include <memory> 
 #include <cstdint>
+#include <array>
 
 enum class GameMode { Casual, Crossword };
 
@@ -66,7 +67,7 @@ private:
     const std::string HINT_DESC_REVEAL_FIRST = "\nThis hint lets you pick any\nempty letter to reveal.";
     const std::string HINT_DESC_REVEAL_RANDOM = "\nThis hint will reveal one\n random letter for each word.";
     const std::string HINT_DESC_REVEAL_LAST = "\nThis hint will reveal the last word\n that hasn't been revealed.";
-    const std::string HINT_DESC_REVEAL_FIRST_OF_EACH = "\nThis hint will reveal the first\n unrevealed letter for every word.";
+    const std::string HINT_DESC_REVEAL_FIRST_OF_EACH = "\nThis hint reveals the next\n letter in every unsolved word.";
 
     std::unique_ptr<sf::Text> m_bonusWordsInHintZoneText;
 
@@ -340,6 +341,14 @@ private:
     float m_bonusWordsPopupScrollOffset;   // current scroll position (design units) for bonus words popup
     float m_bonusWordsPopupMaxScrollOffset; // max scroll (set during render when content is taller than popup)
 
+    std::array<bool, 4> m_powerUpEnabled = { true, true, true, true };
+    std::array<sf::FloatRect, 4> m_powerUpToggleRegions;
+    sf::FloatRect m_powerUpOptionsViewport;
+    float m_powerUpOptionsScrollOffset = 0.f;
+    float m_powerUpOptionsMaxScrollOffset = 0.f;
+    bool m_hintTurnEndedBySolve = false;
+    bool m_waitingToEndTurnOnHintSolve = false;
+
     // --- Bonus List Complete Effect ---
     bool m_bonusListCompleteEffectActive;
     float m_bonusListCompleteAnimTimer;
@@ -357,6 +366,8 @@ private:
 
     void m_renderBonusWordsPopup(sf::RenderTarget& target);
     bool isGridSolution(const std::string& wordText) const;
+    bool m_isHintEnabled(HintType type) const;
+    void m_refreshPowerUpOptionRegions();
 
     void m_loadResources();
     void m_processEvents();

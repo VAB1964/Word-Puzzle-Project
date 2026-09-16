@@ -135,7 +135,7 @@ import { drawCenteredText, drawRoundedRect, wrapTextForWidth } from "./render/dr
 import { applyView, createViewTransform, screenToWorld, type ViewTransform } from "./render/view";
 import { VoiceCommentary } from "./core/voiceCommentary";
 
-const HINT_LABELS = ["Letter", "Random", "Full Word", "1st of Each"];
+const HINT_LABELS = ["Letter", "Random", "Full Word", "1st Ltr All"];
 const HINT_FRAME_VERTICAL_SPACING = 7;
 const HINT_FRAME_MIN_HEIGHT = 20;
 const HINT_ZONE_SIDE_PADDING = 4;
@@ -159,7 +159,7 @@ const HINT_DESCRIPTIONS = [
   "This hint lets you pick any empty letter to reveal.",
   "This hint will reveal one random letter for each word.",
   "This hint will reveal the last word that hasn't been revealed.",
-  "This hint will reveal the first unrevealed letter for every word."
+  "This hint reveals the next letter in every unsolved word."
 ];
 const LETTER_HINT_TARGET_TILE_SCALE_BASE = 0.92;
 const LETTER_HINT_TARGET_TILE_SCALE_PULSE_AMPLITUDE = 0.02;
@@ -247,6 +247,8 @@ export class Game {
   private hoveredSolvedWordIndex = -1;
   private isAwaitingLetterHintTarget = false;
   private letterHintTargetPulseTime = 0;
+  private hintTurnEndedBySolve = false;
+  private waitingToEndTurnOnHintSolve = false;
 
   private dragging = false;
   private path: number[] = [];
@@ -716,6 +718,10 @@ export class Game {
 
     for (let i = 0; i < this.hintClickableRegions.length; i += 1) {
       if (rectContains(this.hintClickableRegions[i], world)) {
+        if (this.hintTurnEndedBySolve) {
+          this.playSound("error");
+          return;
+        }
         this.hintFrameClickAnimTimers[i] = 0.15;
         if (i === 0) {
           if (this.hintPoints >= HINT_COSTS[i] && this.hasAnyValidLetterHintTarget()) {
@@ -750,6 +756,8 @@ export class Game {
         effectiveHitRadius += WHEEL_FIRST_LETTER_INNER_SIDE_EXTRA;
       }
       if (distSq(world, pos) < effectiveHitRadius * effectiveHitRadius) {
+        this.hintTurnEndedBySolve = false;
+        this.waitingToEndTurnOnHintSolve = false;
         this.dragging = true;
         this.path = [i];
         this.currentGuess = this.base[i].toUpperCase();
@@ -1423,6 +1431,8 @@ export class Game {
     this.hintPointAnims = [];
     this.gridFlourishes = [];
     this.clearPendingLetterHintTarget();
+    this.hintTurnEndedBySolve = false;
+    this.waitingToEndTurnOnHintSolve = false;
     this.gameState = GState.Playing;
     this.bonusWordsCacheIsValid = false;
     this.bonusWordsPopupScrollOffset = 0;
@@ -3161,6 +3171,9 @@ export class Game {
       }
       return true;
     });
+    if (this.waitingToEndTurnOnHintSolve && !this.letterAnims.some((anim) => anim.target === AnimTarget.Grid)) {
+      this.waitingToEndTurnOnHintSolve = false;
+    }
   }
 
   private updateScoreFlourishes(dt: number) {
@@ -3254,6 +3267,8 @@ export class Game {
     }
 
     const lettersToReveal: Array<{ wordIdx: number; charIdx: number; letter: string }> = [];
+    let shouldEndTurnOnResolve = false;
+    let deferTurnEndUntilWordCompletion = false;
 
     if (type === HintType.RevealFirst) {
       for (let w = 0; w < this.grid.length; w += 1) {
@@ -3277,6 +3292,7 @@ export class Game {
           lettersToReveal.push({ wordIdx: w, charIdx: idx, letter: this.sorted[w].text[idx] });
         }
       }
+      deferTurnEndUntilWordCompletion = true;
     } else if (type === HintType.RevealLast) {
       for (let w = this.grid.length - 1; w >= 0; w -= 1) {
         if (this.found.has(this.sorted[w].text)) continue;
@@ -3287,6 +3303,7 @@ export class Game {
         }
         if (lettersToReveal.length) break;
       }
+      shouldEndTurnOnResolve = true;
     } else if (type === HintType.RevealFirstOfEach) {
       for (let w = 0; w < this.grid.length; w += 1) {
         if (this.found.has(this.sorted[w].text)) continue;
@@ -3295,6 +3312,7 @@ export class Game {
           lettersToReveal.push({ wordIdx: w, charIdx: idx, letter: this.sorted[w].text[idx] });
         }
       }
+      deferTurnEndUntilWordCompletion = true;
     }
 
     if (lettersToReveal.length === 0) {
@@ -3327,6 +3345,13 @@ export class Game {
       });
       delay -= 0.03;
     }
+
+    if (shouldEndTurnOnResolve) {
+      this.hintTurnEndedBySolve = true;
+      this.clearDragState();
+      this.clearPendingLetterHintTarget();
+    }
+    this.waitingToEndTurnOnHintSolve = deferTurnEndUntilWordCompletion;
   }
 
   private clearPendingLetterHintTarget() {
@@ -3410,6 +3435,11 @@ export class Game {
     const gridWord = this.grid[wordIdx].join("").toUpperCase();
     if (gridWord === solution.toUpperCase()) {
       this.found.add(solution);
+      if (this.waitingToEndTurnOnHintSolve) {
+        this.hintTurnEndedBySolve = true;
+        this.clearDragState();
+        this.clearPendingLetterHintTarget();
+      }
       this.voiceCommentary.onWordFound(solution, this.sorted[wordIdx].rarity);
       const baseScore = solution.length * 10;
       const rarityBonus = this.sorted[wordIdx].rarity > 1 ? this.sorted[wordIdx].rarity * 25 : 0;

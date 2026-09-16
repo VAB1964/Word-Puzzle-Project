@@ -347,6 +347,41 @@ select {
   gap: 0.65rem;
 }
 
+.mp-powerups {
+  margin: 0;
+  padding: 0.55rem;
+  border: 1px solid rgba(122, 92, 54, 0.45);
+  border-radius: 0.45rem;
+}
+
+.mp-powerups legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+}
+
+.mp-powerups-scroll {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 7.5rem;
+  padding-right: 0.2rem;
+  overflow-y: auto;
+}
+
+.mp-powerup-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.mp-powerup-option input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  min-height: 1rem;
+  margin: 0;
+}
+
 .mp-seat {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -918,15 +953,43 @@ select {
 .mp-hints button {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 0.5rem;
 }
 
 .mp-hints small {
   display: grid;
   place-items: center;
-  min-width: 1.25rem;
+  min-width: 3.7rem;
+  padding: 0.1rem 0.35rem;
+  font-weight: 700;
   border-radius: 50%;
   background: rgba(80, 61, 34, 0.13);
+}
+
+.mp-hint-badge {
+  border-radius: 0.45rem !important;
+  letter-spacing: 0.01em;
+}
+
+.mp-hints button.is-off .mp-hint-badge {
+  color: #f2c8c8;
+  background: rgba(125, 30, 30, 0.38);
+}
+
+.mp-hints button.is-turn .mp-hint-badge {
+  color: #f7e0b0;
+  background: rgba(95, 75, 24, 0.4);
+}
+
+.mp-hints button.is-credits .mp-hint-badge {
+  color: #d2dcf5;
+  background: rgba(40, 56, 92, 0.36);
+}
+
+.mp-hints button.is-ready .mp-hint-badge {
+  color: #355623;
+  background: rgba(110, 152, 77, 0.3);
 }
 
 .mp-summary,

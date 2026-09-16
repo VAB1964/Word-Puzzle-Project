@@ -9,11 +9,11 @@ import { Assets } from "../assets";
 import { MultiplayerClient } from "./client";
 
 const AI_LEVELS: AiLevel[] = ["High School", "College", "Professional"];
-const HINTS: Array<{ kind: HintKind; label: string; cost: number }> = [
-  { kind: "letter", label: "Letter", cost: 2 },
-  { kind: "random", label: "Random", cost: 3 },
-  { kind: "full-word", label: "Full Word", cost: 5 },
-  { kind: "first-of-each", label: "1st of Each", cost: 7 }
+const HINTS: Array<{ kind: HintKind; label: string; cost: number; description: string }> = [
+  { kind: "letter", label: "Letter", cost: 5, description: "Pick one unrevealed tile and reveal exactly that letter." },
+  { kind: "random", label: "Random", cost: 10, description: "Reveal one random unrevealed letter in every unsolved word." },
+  { kind: "full-word", label: "Full Word", cost: 15, description: "Reveal every unrevealed letter in one word." },
+  { kind: "first-of-each", label: "1st Ltr All", cost: 20, description: "Reveal the next unrevealed letter in every unsolved word." }
 ];
 
 const escapeHtml = (value: string | number) =>
@@ -255,6 +255,23 @@ export class MultiplayerController {
                 ${[3, 4, 5, 6, 7].map((value) => `<option ${snapshot.settings.puzzlesPerRound === value ? "selected" : ""}>${value}</option>`).join("")}
               </select>
             </label>
+            <fieldset class="mp-powerups">
+              <legend>Enabled Power Ups</legend>
+              <div class="mp-powerups-scroll">
+                ${HINTS.map(
+                  (hint) => `
+                    <label class="mp-powerup-option" title="${escapeHtml(hint.description)}">
+                      <input
+                        type="checkbox"
+                        data-setting-hint="${hint.kind}"
+                        ${snapshot.settings.enabledPowerUps[hint.kind] ? "checked" : ""}
+                        ${host ? "" : "disabled"}
+                      >
+                      <span>${hint.label}</span>
+                    </label>`
+                ).join("")}
+              </div>
+            </fieldset>
             ${
               host && snapshot.participants.length < snapshot.settings.capacity
                 ? `<div class="mp-ai-controls">
@@ -316,10 +333,34 @@ export class MultiplayerController {
                 </div>
                 <div class="mp-hints">
                   ${HINTS.map(
-                    (hint) =>
-                      `<button data-action="hint" data-hint="${hint.kind}" ${
-                        hintCredits < hint.cost || controlsDisabled ? "disabled" : ""
-                      }>${hint.label}<small>${hint.cost}</small></button>`
+                    (hint) => {
+                      const disabledBySettings = !snapshot.settings.enabledPowerUps[hint.kind];
+                      const disabledByTurn = controlsDisabled;
+                      const disabledByCredits = hintCredits < hint.cost;
+                      const disabled = disabledBySettings || disabledByTurn || disabledByCredits;
+
+                      let reasonClass = "is-ready";
+                      let badge = `${hint.cost}`;
+                      let title = `${hint.description}\nCost ${hint.cost}`;
+
+                      if (disabledBySettings) {
+                        reasonClass = "is-off";
+                        badge = "OFF";
+                        title = `${hint.description}\nDisabled by room settings`;
+                      } else if (disabledByTurn) {
+                        reasonClass = "is-turn";
+                        badge = "TURN";
+                        title = `${hint.description}\nWait for your turn`;
+                      } else if (disabledByCredits) {
+                        reasonClass = "is-credits";
+                        badge = `${hintCredits}/${hint.cost}`;
+                        title = `${hint.description}\nNeed ${hint.cost} credits`;
+                      }
+
+                      return `<button data-action="hint" data-hint="${hint.kind}" class="${reasonClass}" title="${escapeHtml(title)}" ${
+                        disabled ? "disabled" : ""
+                      }>${hint.label}<small class="mp-hint-badge ${reasonClass}">[${escapeHtml(badge)}]</small></button>`;
+                    }
                   ).join("")}
                 </div>
                 <button data-action="skip" ${controlsDisabled ? "disabled" : ""}>Request Skip</button>
@@ -680,6 +721,11 @@ export class MultiplayerController {
       }
     } else if (action === "hint") {
       const hint = button.dataset.hint as HintKind;
+      if (!snapshot.settings.enabledPowerUps[hint]) {
+        this.playSound("error");
+        this.setError("That power-up is disabled for this session.");
+        return;
+      }
       if (hint === "letter") {
         this.awaitingLetterHint = true;
         this.awaitingFullWordHint = false;
@@ -741,8 +787,22 @@ export class MultiplayerController {
   }
 
   private handleChange(event: Event) {
-    const select = (event.target as HTMLElement).closest<HTMLSelectElement>("[data-setting]");
+    const hintToggle = (event.target as HTMLElement).closest<HTMLInputElement>("[data-setting-hint]");
     const snapshot = this.snapshot;
+    if (hintToggle && snapshot) {
+      const settings = {
+        ...snapshot.settings,
+        enabledPowerUps: {
+          ...snapshot.settings.enabledPowerUps
+        }
+      };
+      const hint = hintToggle.dataset.settingHint as HintKind;
+      settings.enabledPowerUps[hint] = hintToggle.checked;
+      this.client.send({ type: "update-settings", settings, expectedRevision: snapshot.revision });
+      return;
+    }
+
+    const select = (event.target as HTMLElement).closest<HTMLSelectElement>("[data-setting]");
     if (!select || !snapshot) return;
     const settings = { ...snapshot.settings };
     if (select.dataset.setting === "mode") settings.mode = select.value as typeof settings.mode;

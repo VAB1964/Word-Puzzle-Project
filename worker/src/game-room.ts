@@ -107,6 +107,13 @@ const aiDelay = (level: AiLevel) => {
 const turnDurationMs = (turnTimeLimit: TurnTimeLimit) =>
   turnTimeLimit === "Not Timed" ? null : turnTimeLimit * 1_000;
 
+const defaultEnabledPowerUps = () => ({
+  letter: true,
+  random: true,
+  "full-word": true,
+  "first-of-each": true
+});
+
 export class WordPuzzleRoom extends DurableObject<Env> {
   private state: RoomState | null = null;
   private credentials: CredentialStore = {};
@@ -125,7 +132,8 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           ...state,
           settings: {
             ...state.settings,
-            puzzlesPerRound: state.settings.puzzlesPerRound ?? 3
+            puzzlesPerRound: state.settings.puzzlesPerRound ?? 3,
+            enabledPowerUps: state.settings.enabledPowerUps ?? defaultEnabledPowerUps()
           },
           aiIntents: state.aiIntents ?? {},
           turnState: state.turnState ?? null
@@ -558,7 +566,15 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     if (command.type === "use-hint") {
       activeOnly();
       currentTurnOnly();
-      const result = useHint(state.puzzle!, state.runtime!, state.participants, participantId, command);
+      const result = useHint(
+        state.puzzle!,
+        state.runtime!,
+        state.participants,
+        participantId,
+        command,
+        Math.random,
+        state.settings.enabledPowerUps
+      );
       if (!result.changed) throw new ProtocolError("HINT_REJECTED", result.error ?? "Hint rejected.");
       const solved = result.solvedWords
         .map((id) => state.puzzle!.words.find((word) => word.id === id)?.answer.toUpperCase())
@@ -575,7 +591,11 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           result.pointsAwarded
         )
       ];
-      if (command.hint === "full-word" && this.shouldEndTurnOnGuessAttempt(state) && state.status === "playing") {
+      const shouldEndTurnForHint =
+        command.hint === "full-word" ||
+        (command.hint === "random" && result.solvedWords.length > 0) ||
+        (command.hint === "first-of-each" && result.solvedWords.length > 0);
+      if (shouldEndTurnForHint && this.shouldEndTurnOnGuessAttempt(state) && state.status === "playing") {
         events.push(...this.advanceTurn(state, "attempt-ended"));
       }
       return events;

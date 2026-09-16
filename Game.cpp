@@ -369,6 +369,13 @@ Game::Game() :
     m_bonusWordsCacheIsValid(false),
     m_bonusWordsPopupScrollOffset(0.f),
     m_bonusWordsPopupMaxScrollOffset(0.f),
+    m_powerUpEnabled({ true, true, true, true }),
+    m_powerUpToggleRegions(),
+    m_powerUpOptionsViewport(sf::FloatRect()),
+    m_powerUpOptionsScrollOffset(0.f),
+    m_powerUpOptionsMaxScrollOffset(0.f),
+    m_hintTurnEndedBySolve(false),
+    m_waitingToEndTurnOnHintSolve(false),
     m_showDebugZones(false),
     m_bonusListCompleteEffectActive(false),
     m_bonusListCompleteAnimTimer(0.f),
@@ -591,6 +598,14 @@ void Game::m_updateAnims(float dt)
             return false; // Keep animation active
         }),
         m_anims.end());
+
+    if (m_waitingToEndTurnOnHintSolve) {
+        const bool hasPendingGridAnim = std::any_of(m_anims.begin(), m_anims.end(),
+            [](const LetterAnim& a) { return a.target == AnimTarget::Grid; });
+        if (!hasPendingGridAnim) {
+            m_waitingToEndTurnOnHintSolve = false;
+        }
+    }
 }
 
 
@@ -732,7 +747,7 @@ void Game::m_loadResources() {
     m_hintRevealLastButtonText->setFillColor(sf::Color::White);
     m_hintRevealLastCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_LAST), 16);
     m_hintRevealLastCostText->setFillColor(sf::Color::White);
-    m_hintRevealFirstOfEachButtonText = std::make_unique<sf::Text>(m_font, "1st of Each", 18);
+    m_hintRevealFirstOfEachButtonText = std::make_unique<sf::Text>(m_font, "1st Ltr All", 18);
     m_hintRevealFirstOfEachButtonText->setFillColor(sf::Color::White);
     m_hintRevealFirstOfEachCostText = std::make_unique<sf::Text>(m_font, "Cost: " + std::to_string(HINT_COST_REVEAL_FIRST_OF_EACH), 16);
     m_hintRevealFirstOfEachCostText->setFillColor(sf::Color::White);
@@ -1464,6 +1479,8 @@ void Game::m_rebuild() {
     m_hintPointsTextFlourishTimer = 0.f;
     m_clearDragState();
     m_clearPendingLetterHintTarget();
+    m_hintTurnEndedBySolve = false;
+    m_waitingToEndTurnOnHintSolve = false;
     m_gameState = GState::Playing;
 
     // --- Reset Score/Hints ---
@@ -1955,7 +1972,12 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         m_easyButtonShape.setRadius(scaledButtonRadius_menu_val); m_mediumButtonShape.setRadius(scaledButtonRadius_menu_val); m_hardButtonShape.setRadius(scaledButtonRadius_menu_val); m_returnButtonShape.setRadius(scaledButtonRadius_menu_val);
         sf::FloatRect ctb_casual_menu = m_casualMenuTitle->getLocalBounds();
         float sths_c_casual_menu = ctb_casual_menu.size.y + ctb_casual_menu.position.y + scaledButtonSpacing_menu;
-        float tbh_c_casual_menu = 4 * scaledButtonSize_menu_vec.y + 3 * scaledButtonSpacing_menu;
+        const float optionsHeaderHeight = S(this, 28.f);
+        const float optionsViewportHeight = S(this, 148.f);
+        const float optionsGapBeforeHeader = S(this, 12.f);
+        const float optionsGapHeaderToViewport = S(this, 6.f);
+        const float optionsGapViewportToReturn = scaledButtonSpacing_menu;
+        float tbh_c_casual_menu = (4.f * scaledButtonSize_menu_vec.y) + (3.f * scaledButtonSpacing_menu) + optionsGapBeforeHeader + optionsHeaderHeight + optionsGapHeaderToViewport + optionsViewportHeight + optionsGapViewportToReturn;
         float scmh_casual_menu = scaledMenuPadding_menu + sths_c_casual_menu + tbh_c_casual_menu + scaledMenuPadding_menu + S(this, MENU_PANEL_EXTRA_HEIGHT_DESIGN);
         float scmw_casual_menu = std::max(scaledButtonSize_menu_vec.x, ctb_casual_menu.size.x + ctb_casual_menu.position.x) + 2 * scaledMenuPadding_menu + S(this, MENU_PANEL_EXTRA_WIDTH_DESIGN);
         m_casualMenuBg.setSize(sf::Vector2f(scmw_casual_menu, scmh_casual_menu)); m_casualMenuBg.setRadius(scaledMenuRadius_menu_val);
@@ -1978,7 +2000,19 @@ void Game::m_updateLayout(sf::Vector2u windowSize) {
         centerTextOnButton_lambda_menu(m_mediumButtonText, m_mediumButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
         m_hardButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_hardButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
         if (m_hardButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_hardButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_hardButtonSpr->setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu)); m_hardButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
-        centerTextOnButton_lambda_menu(m_hardButtonText, m_hardButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + scaledButtonSpacing_menu;
+        centerTextOnButton_lambda_menu(m_hardButtonText, m_hardButtonShape); ccy_casual_menu += scaledButtonSize_menu_vec.y + optionsGapBeforeHeader + optionsHeaderHeight + optionsGapHeaderToViewport;
+
+        m_powerUpOptionsViewport = sf::FloatRect(
+            { cmbp_casual_menu_pos.x - (scaledButtonSize_menu_vec.x * 0.5f), ccy_casual_menu },
+            { scaledButtonSize_menu_vec.x, optionsViewportHeight }
+        );
+        const float optionsContentHeight =
+            (4.f * S(this, 30.f)) + (3.f * S(this, 8.f)) + (2.f * S(this, 8.f));
+        m_powerUpOptionsMaxScrollOffset = std::max(0.f, optionsContentHeight - optionsViewportHeight);
+        m_powerUpOptionsScrollOffset = std::max(0.f, std::min(m_powerUpOptionsScrollOffset, m_powerUpOptionsMaxScrollOffset));
+        m_refreshPowerUpOptionRegions();
+
+        ccy_casual_menu += optionsViewportHeight + optionsGapViewportToReturn;
         m_returnButtonShape.setOrigin(sf::Vector2f(scaledButtonSize_menu_vec.x / 2.f, 0.f)); m_returnButtonShape.setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu));
         if (m_returnButtonSpr && m_menuButtonTexture.getSize().x > 0) { sf::Vector2u mbt = m_menuButtonTexture.getSize(); m_returnButtonSpr->setOrigin(sf::Vector2f(static_cast<float>(mbt.x) / 2.f, 0.f)); m_returnButtonSpr->setPosition(sf::Vector2f(cmbp_casual_menu_pos.x, ccy_casual_menu)); m_returnButtonSpr->setScale(sf::Vector2f(scaledButtonSize_menu_vec.x / static_cast<float>(mbt.x), scaledButtonSize_menu_vec.y / static_cast<float>(mbt.y))); }
         centerTextOnButton_lambda_menu(m_returnButtonText, m_returnButtonShape);
@@ -2310,6 +2344,35 @@ void Game::m_clearPendingLetterHintTarget() {
     m_isAwaitingLetterHintTarget = false;
 }
 
+bool Game::m_isHintEnabled(HintType type) const {
+    std::size_t idx = 0;
+    switch (type) {
+    case HintType::RevealFirst: idx = 0; break;
+    case HintType::RevealRandom: idx = 1; break;
+    case HintType::RevealLast: idx = 2; break;
+    case HintType::RevealFirstOfEach: idx = 3; break;
+    default: return false;
+    }
+    return idx < m_powerUpEnabled.size() && m_powerUpEnabled[idx];
+}
+
+void Game::m_refreshPowerUpOptionRegions() {
+    const float rowHorizontalInset = S(this, 12.f);
+    const float rowTopPadding = S(this, 8.f);
+    const float rowHeight = S(this, 30.f);
+    const float rowGap = S(this, 8.f);
+    const float rowWidth = std::max(0.f, m_powerUpOptionsViewport.size.x - (2.f * rowHorizontalInset));
+    float rowY = m_powerUpOptionsViewport.position.y + rowTopPadding - m_powerUpOptionsScrollOffset;
+
+    for (std::size_t i = 0; i < m_powerUpToggleRegions.size(); ++i) {
+        m_powerUpToggleRegions[i] = sf::FloatRect(
+            { m_powerUpOptionsViewport.position.x + rowHorizontalInset, rowY },
+            { rowWidth, rowHeight }
+        );
+        rowY += rowHeight + rowGap;
+    }
+}
+
 bool Game::m_isValidLetterHintTargetTile(int wordIdx, int charIdx) const {
     if (wordIdx < 0 || charIdx < 0) {
         return false;
@@ -2397,9 +2460,29 @@ void Game::m_handleMainMenuEvents(const sf::Event& event) {
 }
 
 void Game::m_handleCasualMenuEvents(const sf::Event& event) {
+    if (const auto* wheel = event.getIf<sf::Event::MouseWheelScrolled>()) {
+        sf::Vector2f mp = m_window.mapPixelToCoords(wheel->position);
+        if (m_powerUpOptionsViewport.contains(mp)) {
+            m_powerUpOptionsScrollOffset -= wheel->delta * S(this, 24.f);
+            m_powerUpOptionsScrollOffset = std::max(0.f, std::min(m_powerUpOptionsScrollOffset, m_powerUpOptionsMaxScrollOffset));
+            m_refreshPowerUpOptionRegions();
+            return;
+        }
+    }
+
     if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
         if (mb->button != sf::Mouse::Button::Left) return;
         sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
+
+        if (m_powerUpOptionsViewport.contains(mp)) {
+            for (std::size_t i = 0; i < m_powerUpToggleRegions.size() && i < m_powerUpEnabled.size(); ++i) {
+                if (m_powerUpToggleRegions[i].contains(mp)) {
+                    m_powerUpEnabled[i] = !m_powerUpEnabled[i];
+                    if (m_clickSound) m_clickSound->play();
+                    return;
+                }
+            }
+        }
 
         DifficultyLevel selected = DifficultyLevel::None; // Temp variable
         int puzzles = 0;
@@ -2535,14 +2618,150 @@ void Game::m_renderCasualMenu(const sf::Vector2f& mousePos) {
     m_window.draw(*m_hardButtonText);
     if (m_returnButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_returnButtonSpr); else m_window.draw(m_returnButtonShape);
     m_window.draw(*m_returnButtonText);
+    const sf::Text::Style normalStyle = sf::Text::Regular;
+    sf::Text optionsTitle(m_font, "Enabled Power Ups", static_cast<unsigned int>(std::max(10.f, S(this, 22.f))));
+    optionsTitle.setStyle(sf::Text::Bold);
+    optionsTitle.setFillColor(m_currentTheme.menuTitleText);
+    sf::FloatRect titleBounds = optionsTitle.getLocalBounds();
+    optionsTitle.setOrigin({
+        titleBounds.position.x + titleBounds.size.x * 0.5f,
+        titleBounds.position.y
+        });
+    optionsTitle.setPosition({
+        m_powerUpOptionsViewport.position.x + m_powerUpOptionsViewport.size.x * 0.5f,
+        m_powerUpOptionsViewport.position.y - S(this, 34.f)
+        });
+    m_window.draw(optionsTitle);
 
-    // TODO: Draw pop-up if hovering
+    sf::RectangleShape viewportFrame(m_powerUpOptionsViewport.size);
+    viewportFrame.setPosition(m_powerUpOptionsViewport.position);
+    viewportFrame.setFillColor(sf::Color(25, 25, 30, 180));
+    viewportFrame.setOutlineColor(sf::Color(200, 170, 120, 210));
+    viewportFrame.setOutlineThickness(S(this, 1.2f));
+    m_window.draw(viewportFrame);
+
+    const std::array<std::string, 4> optionLabels = {
+        "One Letter",
+        "Random Letter",
+        "Full Word",
+        "First Letter All Words"
+    };
+    const std::array<std::string, 4> optionDescriptions = {
+        "Reveal one specific tile you choose.",
+        "Reveal one random letter in each unsolved word.",
+        "Reveal every remaining letter of one word.",
+        "Reveal the next available letter in all unsolved words."
+    };
+
+    m_refreshPowerUpOptionRegions();
+    const sf::View previousView = m_window.getView();
+    sf::View clipView = previousView;
+    const sf::FloatRect vp = previousView.getViewport();
+    const float vpLeft = vp.position.x + (m_powerUpOptionsViewport.position.x / static_cast<float>(REF_W)) * vp.size.x;
+    const float vpTop = vp.position.y + (m_powerUpOptionsViewport.position.y / static_cast<float>(REF_H)) * vp.size.y;
+    const float vpW = (m_powerUpOptionsViewport.size.x / static_cast<float>(REF_W)) * vp.size.x;
+    const float vpH = (m_powerUpOptionsViewport.size.y / static_cast<float>(REF_H)) * vp.size.y;
+    clipView.setViewport(sf::FloatRect({ vpLeft, vpTop }, { vpW, vpH }));
+    m_window.setView(clipView);
+
+    int hoveredOptionIndex = -1;
+    for (std::size_t i = 0; i < m_powerUpToggleRegions.size() && i < m_powerUpEnabled.size(); ++i) {
+        const sf::FloatRect row = m_powerUpToggleRegions[i];
+        if ((row.position.y + row.size.y) < m_powerUpOptionsViewport.position.y || row.position.y > (m_powerUpOptionsViewport.position.y + m_powerUpOptionsViewport.size.y)) {
+            continue;
+        }
+
+        const bool rowHovered = row.contains(mousePos);
+        if (rowHovered) {
+            hoveredOptionIndex = static_cast<int>(i);
+        }
+        sf::RectangleShape rowBg(row.size);
+        rowBg.setPosition(row.position);
+        rowBg.setFillColor(rowHovered ? sf::Color(75, 60, 38, 220) : sf::Color(52, 42, 28, 205));
+        rowBg.setOutlineThickness(S(this, 1.f));
+        rowBg.setOutlineColor(sf::Color(210, 180, 120, 170));
+        m_window.draw(rowBg);
+
+        const float checkboxSize = S(this, 18.f);
+        sf::RectangleShape checkbox({ checkboxSize, checkboxSize });
+        checkbox.setPosition({ row.position.x + S(this, 10.f), row.position.y + (row.size.y - checkboxSize) * 0.5f });
+        checkbox.setFillColor(sf::Color(18, 18, 18, 240));
+        checkbox.setOutlineThickness(S(this, 1.f));
+        checkbox.setOutlineColor(sf::Color(220, 220, 220, 230));
+        m_window.draw(checkbox);
+
+        if (m_powerUpEnabled[i]) {
+            sf::Text mark(m_font, "X", static_cast<unsigned int>(std::max(10.f, S(this, 15.f))));
+            mark.setStyle(sf::Text::Bold);
+            mark.setFillColor(sf::Color(120, 255, 140, 240));
+            sf::FloatRect markBounds = mark.getLocalBounds();
+            mark.setOrigin({
+                markBounds.position.x + markBounds.size.x * 0.5f,
+                markBounds.position.y + markBounds.size.y * 0.5f
+                });
+            mark.setPosition({ checkbox.getPosition().x + checkboxSize * 0.5f, checkbox.getPosition().y + checkboxSize * 0.5f });
+            m_window.draw(mark);
+        }
+
+        sf::Text label(m_font, optionLabels[i], static_cast<unsigned int>(std::max(10.f, S(this, 17.f))));
+        label.setStyle(normalStyle);
+        label.setFillColor(m_powerUpEnabled[i] ? sf::Color(235, 235, 235) : sf::Color(145, 145, 145));
+        sf::FloatRect labelBounds = label.getLocalBounds();
+        label.setOrigin({ labelBounds.position.x, labelBounds.position.y + labelBounds.size.y * 0.5f });
+        label.setPosition({ checkbox.getPosition().x + checkboxSize + S(this, 12.f), row.position.y + row.size.y * 0.5f });
+        m_window.draw(label);
+    }
+    m_window.setView(previousView);
+
+    if (hoveredOptionIndex >= 0 && hoveredOptionIndex < static_cast<int>(optionDescriptions.size())) {
+        const float tooltipWidth = m_powerUpOptionsViewport.size.x;
+        const float tooltipHeight = S(this, 28.f);
+        const float tooltipX = m_powerUpOptionsViewport.position.x;
+        const float tooltipY = m_powerUpOptionsViewport.position.y + m_powerUpOptionsViewport.size.y + S(this, 4.f);
+
+        sf::RectangleShape tipBg({ tooltipWidth, tooltipHeight });
+        tipBg.setPosition({ tooltipX, tooltipY });
+        tipBg.setFillColor(sf::Color(24, 20, 15, 220));
+        tipBg.setOutlineColor(sf::Color(210, 180, 120, 190));
+        tipBg.setOutlineThickness(S(this, 1.f));
+        m_window.draw(tipBg);
+
+        sf::Text tipText(m_font, optionDescriptions[hoveredOptionIndex], static_cast<unsigned int>(std::max(8.f, S(this, 11.f))));
+        tipText.setFillColor(sf::Color(235, 225, 205));
+        sf::FloatRect tipBounds = tipText.getLocalBounds();
+        tipText.setOrigin({
+            tipBounds.position.x + tipBounds.size.x * 0.5f,
+            tipBounds.position.y + tipBounds.size.y * 0.5f
+            });
+        tipText.setPosition({ tooltipX + tooltipWidth * 0.5f, tooltipY + tooltipHeight * 0.5f });
+        m_window.draw(tipText);
+    }
 }
 
 void Game::m_handleCrosswordMenuEvents(const sf::Event& event) {
+    if (const auto* wheel = event.getIf<sf::Event::MouseWheelScrolled>()) {
+        sf::Vector2f mp = m_window.mapPixelToCoords(wheel->position);
+        if (m_powerUpOptionsViewport.contains(mp)) {
+            m_powerUpOptionsScrollOffset -= wheel->delta * S(this, 24.f);
+            m_powerUpOptionsScrollOffset = std::max(0.f, std::min(m_powerUpOptionsScrollOffset, m_powerUpOptionsMaxScrollOffset));
+            m_refreshPowerUpOptionRegions();
+            return;
+        }
+    }
+
     if (const auto* mb = event.getIf<sf::Event::MouseButtonPressed>()) {
         if (mb->button != sf::Mouse::Button::Left) return;
         sf::Vector2f mp = m_window.mapPixelToCoords(mb->position);
+
+        if (m_powerUpOptionsViewport.contains(mp)) {
+            for (std::size_t i = 0; i < m_powerUpToggleRegions.size() && i < m_powerUpEnabled.size(); ++i) {
+                if (m_powerUpToggleRegions[i].contains(mp)) {
+                    m_powerUpEnabled[i] = !m_powerUpEnabled[i];
+                    if (m_clickSound) m_clickSound->play();
+                    return;
+                }
+            }
+        }
 
         DifficultyLevel selected = DifficultyLevel::None;
         int puzzles = 0;
@@ -2608,6 +2827,125 @@ void Game::m_renderCrosswordMenu(const sf::Vector2f& mousePos) {
     m_window.draw(*m_hardButtonText);
     if (m_returnButtonSpr && m_menuButtonTexture.getSize().x > 0) m_window.draw(*m_returnButtonSpr); else m_window.draw(m_returnButtonShape);
     m_window.draw(*m_returnButtonText);
+
+    const sf::Text::Style normalStyle = sf::Text::Regular;
+    sf::Text optionsTitle(m_font, "Enabled Power Ups", static_cast<unsigned int>(std::max(10.f, S(this, 22.f))));
+    optionsTitle.setStyle(sf::Text::Bold);
+    optionsTitle.setFillColor(m_currentTheme.menuTitleText);
+    sf::FloatRect titleBounds = optionsTitle.getLocalBounds();
+    optionsTitle.setOrigin({
+        titleBounds.position.x + titleBounds.size.x * 0.5f,
+        titleBounds.position.y
+        });
+    optionsTitle.setPosition({
+        m_powerUpOptionsViewport.position.x + m_powerUpOptionsViewport.size.x * 0.5f,
+        m_powerUpOptionsViewport.position.y - S(this, 34.f)
+        });
+    m_window.draw(optionsTitle);
+
+    sf::RectangleShape viewportFrame(m_powerUpOptionsViewport.size);
+    viewportFrame.setPosition(m_powerUpOptionsViewport.position);
+    viewportFrame.setFillColor(sf::Color(25, 25, 30, 180));
+    viewportFrame.setOutlineColor(sf::Color(200, 170, 120, 210));
+    viewportFrame.setOutlineThickness(S(this, 1.2f));
+    m_window.draw(viewportFrame);
+
+    const std::array<std::string, 4> optionLabels = {
+        "One Letter",
+        "Random Letter",
+        "Full Word",
+        "First Letter All Words"
+    };
+    const std::array<std::string, 4> optionDescriptions = {
+        "Reveal one specific tile you choose.",
+        "Reveal one random letter in each unsolved word.",
+        "Reveal every remaining letter of one word.",
+        "Reveal the next available letter in all unsolved words."
+    };
+
+    m_refreshPowerUpOptionRegions();
+    const sf::View previousView = m_window.getView();
+    sf::View clipView = previousView;
+    const sf::FloatRect vp = previousView.getViewport();
+    const float vpLeft = vp.position.x + (m_powerUpOptionsViewport.position.x / static_cast<float>(REF_W)) * vp.size.x;
+    const float vpTop = vp.position.y + (m_powerUpOptionsViewport.position.y / static_cast<float>(REF_H)) * vp.size.y;
+    const float vpW = (m_powerUpOptionsViewport.size.x / static_cast<float>(REF_W)) * vp.size.x;
+    const float vpH = (m_powerUpOptionsViewport.size.y / static_cast<float>(REF_H)) * vp.size.y;
+    clipView.setViewport(sf::FloatRect({ vpLeft, vpTop }, { vpW, vpH }));
+    m_window.setView(clipView);
+
+    int hoveredOptionIndex = -1;
+    for (std::size_t i = 0; i < m_powerUpToggleRegions.size() && i < m_powerUpEnabled.size(); ++i) {
+        const sf::FloatRect row = m_powerUpToggleRegions[i];
+        if ((row.position.y + row.size.y) < m_powerUpOptionsViewport.position.y || row.position.y > (m_powerUpOptionsViewport.position.y + m_powerUpOptionsViewport.size.y)) {
+            continue;
+        }
+
+        const bool rowHovered = row.contains(mousePos);
+        if (rowHovered) {
+            hoveredOptionIndex = static_cast<int>(i);
+        }
+        sf::RectangleShape rowBg(row.size);
+        rowBg.setPosition(row.position);
+        rowBg.setFillColor(rowHovered ? sf::Color(75, 60, 38, 220) : sf::Color(52, 42, 28, 205));
+        rowBg.setOutlineThickness(S(this, 1.f));
+        rowBg.setOutlineColor(sf::Color(210, 180, 120, 170));
+        m_window.draw(rowBg);
+
+        const float checkboxSize = S(this, 18.f);
+        sf::RectangleShape checkbox({ checkboxSize, checkboxSize });
+        checkbox.setPosition({ row.position.x + S(this, 10.f), row.position.y + (row.size.y - checkboxSize) * 0.5f });
+        checkbox.setFillColor(sf::Color(18, 18, 18, 240));
+        checkbox.setOutlineThickness(S(this, 1.f));
+        checkbox.setOutlineColor(sf::Color(220, 220, 220, 230));
+        m_window.draw(checkbox);
+
+        if (m_powerUpEnabled[i]) {
+            sf::Text mark(m_font, "X", static_cast<unsigned int>(std::max(10.f, S(this, 15.f))));
+            mark.setStyle(sf::Text::Bold);
+            mark.setFillColor(sf::Color(120, 255, 140, 240));
+            sf::FloatRect markBounds = mark.getLocalBounds();
+            mark.setOrigin({
+                markBounds.position.x + markBounds.size.x * 0.5f,
+                markBounds.position.y + markBounds.size.y * 0.5f
+                });
+            mark.setPosition({ checkbox.getPosition().x + checkboxSize * 0.5f, checkbox.getPosition().y + checkboxSize * 0.5f });
+            m_window.draw(mark);
+        }
+
+        sf::Text label(m_font, optionLabels[i], static_cast<unsigned int>(std::max(10.f, S(this, 17.f))));
+        label.setStyle(normalStyle);
+        label.setFillColor(m_powerUpEnabled[i] ? sf::Color(235, 235, 235) : sf::Color(145, 145, 145));
+        sf::FloatRect labelBounds = label.getLocalBounds();
+        label.setOrigin({ labelBounds.position.x, labelBounds.position.y + labelBounds.size.y * 0.5f });
+        label.setPosition({ checkbox.getPosition().x + checkboxSize + S(this, 12.f), row.position.y + row.size.y * 0.5f });
+        m_window.draw(label);
+    }
+    m_window.setView(previousView);
+
+    if (hoveredOptionIndex >= 0 && hoveredOptionIndex < static_cast<int>(optionDescriptions.size())) {
+        const float tooltipWidth = m_powerUpOptionsViewport.size.x;
+        const float tooltipHeight = S(this, 28.f);
+        const float tooltipX = m_powerUpOptionsViewport.position.x;
+        const float tooltipY = m_powerUpOptionsViewport.position.y + m_powerUpOptionsViewport.size.y + S(this, 4.f);
+
+        sf::RectangleShape tipBg({ tooltipWidth, tooltipHeight });
+        tipBg.setPosition({ tooltipX, tooltipY });
+        tipBg.setFillColor(sf::Color(24, 20, 15, 220));
+        tipBg.setOutlineColor(sf::Color(210, 180, 120, 190));
+        tipBg.setOutlineThickness(S(this, 1.f));
+        m_window.draw(tipBg);
+
+        sf::Text tipText(m_font, optionDescriptions[hoveredOptionIndex], static_cast<unsigned int>(std::max(8.f, S(this, 11.f))));
+        tipText.setFillColor(sf::Color(235, 225, 205));
+        sf::FloatRect tipBounds = tipText.getLocalBounds();
+        tipText.setOrigin({
+            tipBounds.position.x + tipBounds.size.x * 0.5f,
+            tipBounds.position.y + tipBounds.size.y * 0.5f
+            });
+        tipText.setPosition({ tooltipX + tooltipWidth * 0.5f, tooltipY + tooltipHeight * 0.5f });
+        m_window.draw(tipText);
+    }
 }
 
 // --- Event Handlers for Specific Screens ---
@@ -2730,9 +3068,22 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
 
             for (int i = 0; i < 4; ++i) {
                 if (i < m_hintClickableRegions.size() && m_hintClickableRegions[i].contains(mp)) {
+                    if (m_hintTurnEndedBySolve) {
+                        std::cout << "DEBUG: Hint blocked because previous hint ended the turn." << std::endl;
+                        if (m_errorWordSound) m_errorWordSound->play();
+                        hintButtonClicked = true;
+                        break;
+                    }
 
                     if (i < m_hintFrameClickAnimTimers.size()) {
                         m_hintFrameClickAnimTimers[i] = HINT_FRAME_CLICK_DURATION;
+                    }
+
+                    if (!m_isHintEnabled(HINT_TYPES_EVENT_ARR[i])) {
+                        std::cout << "DEBUG: Clicked disabled hint slot " << i << "." << std::endl;
+                        if (m_errorWordSound) m_errorWordSound->play();
+                        hintButtonClicked = true;
+                        break;
                     }
 
                     if (i == 0) {
@@ -2802,6 +3153,8 @@ void Game::m_handlePlayingEvents(const sf::Event& event) {
                 }
 
                 if (distSq(mp, letterPosition) < effectiveHitRadius * effectiveHitRadius) {
+                    m_hintTurnEndedBySolve = false;
+                    m_waitingToEndTurnOnHintSolve = false;
                     m_dragging = true;
                     m_path.clear();
                     m_path.push_back(static_cast<int>(i));
@@ -3606,13 +3959,15 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
             m_window.draw(*m_hintFrameSprites[i]);
 
             if (i < m_hintIndicatorLightSprs.size() && m_hintIndicatorLightSprs[i]) {
-                bool canAfford = (m_hintPoints >= HINT_COSTS_FOR_LIGHTS[i]);
+                const bool hintEnabled = (i < m_powerUpEnabled.size()) ? m_powerUpEnabled[i] : false;
+                bool canAfford = hintEnabled && (m_hintPoints >= HINT_COSTS_FOR_LIGHTS[i]);
                 m_hintIndicatorLightSprs[i]->setColor(canAfford ? sf::Color::White : sf::Color(70, 70, 70, 180));
                 m_window.draw(*m_hintIndicatorLightSprs[i]);
             }
 
             if (i < hintLabels_render.size() && hintLabels_render[i] && hintLabels_render[i]->get()) {
-                hintLabels_render[i]->get()->setFillColor(m_currentTheme.scoreTextLabel);
+                const bool hintEnabled = (i < m_powerUpEnabled.size()) ? m_powerUpEnabled[i] : false;
+                hintLabels_render[i]->get()->setFillColor(hintEnabled ? m_currentTheme.scoreTextLabel : sf::Color(120, 120, 120, 220));
                 m_window.draw(*(hintLabels_render[i]->get()));
             }
         }
@@ -3629,6 +3984,11 @@ void Game::m_renderGameScreen(const sf::Vector2f& mousePos) {
         case 1: cost = HINT_COST_REVEAL_RANDOM; desc = HINT_DESC_REVEAL_RANDOM; break;
         case 2: cost = HINT_COST_REVEAL_LAST; desc = HINT_DESC_REVEAL_LAST; break;
         case 3: cost = HINT_COST_REVEAL_FIRST_OF_EACH; desc = HINT_DESC_REVEAL_FIRST_OF_EACH; break;
+        }
+        if (m_hoveredHintIndex >= 0 &&
+            m_hoveredHintIndex < static_cast<int>(m_powerUpEnabled.size()) &&
+            !m_powerUpEnabled[m_hoveredHintIndex]) {
+            desc += "\n\nCurrently disabled in menu options.";
         }
         m_popupHintCostText->setString("Cost: " + std::to_string(cost));
         m_popupHintDescriptionText->setString(desc);
@@ -4242,6 +4602,12 @@ void Game::m_renderDebugCircle() {
 void Game::m_activateHint(HintType type) {
     std::cout << "DEBUG: Attempting to activate hint type: " << static_cast<int>(type) << std::endl;
 
+    if (!m_isHintEnabled(type)) {
+        std::cout << "DEBUG: Hint not activated - hint type is disabled in options." << std::endl;
+        if (m_errorWordSound) m_errorWordSound->play();
+        return;
+    }
+
     // --- Common checks: Don't activate if already solved or no blanks left ---
     if (m_gameState == GState::Solved) {
         std::cout << "DEBUG: Hint not activated - Puzzle already solved." << std::endl;
@@ -4272,6 +4638,8 @@ void Game::m_activateHint(HintType type) {
 
     // --- Hint-Specific Logic ---
     std::vector<std::tuple<int, int, char>> lettersToReveal; // Stores {wordIdx, charIdx, char}
+    bool shouldEndTurnOnResolve = false;
+    bool deferTurnEndUntilWordCompletion = false;
 
     switch (type) {
         // ======================================
@@ -4374,6 +4742,7 @@ void Game::m_activateHint(HintType type) {
             if (m_errorWordSound) m_errorWordSound->play();
             return; // Exit if no spots found across all unsolved words
         }
+        deferTurnEndUntilWordCompletion = true;
         break;
     }
     
@@ -4409,6 +4778,7 @@ void Game::m_activateHint(HintType type) {
                 if (m_errorWordSound) m_errorWordSound->play();
                 return;
             }
+            shouldEndTurnOnResolve = true;
         }
         else {
             std::cout << "DEBUG: RevealLast could not find an unsolved word." << std::endl;
@@ -4430,14 +4800,15 @@ void Game::m_activateHint(HintType type) {
                 // Find the *first* blank spot in this specific unsolved word
                 for (std::size_t c = 0; c < m_grid[w].size(); ++c) {
                     if (m_grid[w][c] == '_') { // Found the first blank
-                        if (c < solutionWord.length()) {
-                            firstBlankCharIdxInThisWord = static_cast<int>(c);
-                            break; // Done with this word's blanks, move to reveal this one
-                        }
-                        else {
+                        if (firstBlankCharIdxInThisWord == -1) {
+                            if (c < solutionWord.length()) {
+                                firstBlankCharIdxInThisWord = static_cast<int>(c);
+                            }
+                            else {
                             std::cerr << "WARNING: Hint RevealFirstOfEach - Blank spot index " << c
                                 << " is out of bounds for solutionWord '" << solutionWord
                                 << "' (length " << solutionWord.length() << ") at word index " << w << std::endl;
+                            }
                         }
                     }
                 }
@@ -4475,6 +4846,7 @@ void Game::m_activateHint(HintType type) {
             // m_hintPoints += HINT_COST_REVEAL_FIRST_OF_EACH; // Example refund (if desired)
             return; // Exit without creating animations if no action.
         }
+        deferTurnEndUntilWordCompletion = true;
         break;
     }
 
@@ -4528,6 +4900,13 @@ void Game::m_activateHint(HintType type) {
         std::cout << "DEBUG: No letters to reveal for the activated hint (after processing type)." << std::endl;
         // No sound if nothing happens (already handled by earlier returns if specific hints fail)
     }
+
+    if (shouldEndTurnOnResolve && !lettersToReveal.empty()) {
+        m_hintTurnEndedBySolve = true;
+        m_clearDragState();
+        m_clearPendingLetterHintTarget();
+    }
+    m_waitingToEndTurnOnHintSolve = deferTurnEndUntilWordCompletion && !lettersToReveal.empty();
 }
 
 void Game::m_checkWordCompletion(int wordIdx) {
@@ -4565,6 +4944,11 @@ void Game::m_checkWordCompletion(int wordIdx) {
         if (gridWordUpper == solutionWordUpper) {
             std::cout << "DEBUG: Word '" << solutionWord << "' completed by hint/auto-reveal." << std::endl;
             m_found.insert(solutionWord);
+            if (m_waitingToEndTurnOnHintSolve) {
+                m_hintTurnEndedBySolve = true;
+                m_clearDragState();
+                m_clearPendingLetterHintTarget();
+            }
             m_voiceCommentary.onWordFound(solutionWord, m_sorted[wordIdx].rarity);
 
             int baseScore = static_cast<int>(solutionWord.length()) * 10;

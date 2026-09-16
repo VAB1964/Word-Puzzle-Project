@@ -136,7 +136,13 @@ export const initializeAppEntry = (canvas: HTMLCanvasElement, startSinglePlayer:
         turnTimeLimit: "Not Timed",
         difficulty: "Easy",
         capacity: 4,
-        puzzlesPerRound: 3
+        puzzlesPerRound: 3,
+        enabledPowerUps: {
+          letter: true,
+          random: true,
+          "full-word": true,
+          "first-of-each": true
+        }
       };
       void createRoom({ name, settings })
         .then((result) =>

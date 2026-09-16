@@ -64,6 +64,17 @@ export const validateSettings = (value: unknown): RoomSettings => {
   if (!PUZZLES_PER_ROUND.includes(candidate.puzzlesPerRound as PuzzlesPerRound)) {
     throw new ProtocolError("INVALID_SETTINGS", "Puzzles per round must be from three to seven.");
   }
+  const enabledPowerUps = candidate.enabledPowerUps as RoomSettings["enabledPowerUps"] | undefined;
+  if (
+    !enabledPowerUps ||
+    typeof enabledPowerUps !== "object" ||
+    typeof enabledPowerUps.letter !== "boolean" ||
+    typeof enabledPowerUps.random !== "boolean" ||
+    typeof enabledPowerUps["full-word"] !== "boolean" ||
+    typeof enabledPowerUps["first-of-each"] !== "boolean"
+  ) {
+    throw new ProtocolError("INVALID_SETTINGS", "Power-up settings are required.");
+  }
   return candidate as RoomSettings;
 };
 
