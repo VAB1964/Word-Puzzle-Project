@@ -6,6 +6,7 @@ import type {
   RoomSnapshot
 } from "../../../shared/multiplayer/types";
 import { Assets } from "../assets";
+import { playSpellTone, playWordSuccess, sampleVolume, unlockGameAudio } from "../core/gameAudio";
 import { MultiplayerClient } from "./client";
 
 const AI_LEVELS: AiLevel[] = ["High School", "College", "Professional"];
@@ -62,6 +63,9 @@ export class MultiplayerController {
   private uiTicker: number | null = null;
   private shownTurnOrderKey: string | null = null;
   private startSessionTimeout: number | null = null;
+  private draggingWheel = false;
+  private wheelPointerId: number | null = null;
+  private suppressNextLetterClick = false;
 
   constructor(
     private readonly root: HTMLElement,
@@ -75,6 +79,10 @@ export class MultiplayerController {
     }
     root.addEventListener("click", (event) => this.handleClick(event));
     root.addEventListener("change", (event) => this.handleChange(event));
+    root.addEventListener("pointerdown", this.handleWheelPointerDown);
+    root.addEventListener("pointermove", this.handleWheelPointerMove);
+    root.addEventListener("pointerup", this.handleWheelPointerUp);
+    root.addEventListener("pointercancel", this.handleWheelPointerCancel);
     window.addEventListener("keydown", this.handleKeyDown);
     this.uiTicker = window.setInterval(() => {
       if (!this.snapshot) return;
@@ -90,6 +98,10 @@ export class MultiplayerController {
 
   destroy() {
     window.removeEventListener("keydown", this.handleKeyDown);
+    this.root.removeEventListener("pointerdown", this.handleWheelPointerDown);
+    this.root.removeEventListener("pointermove", this.handleWheelPointerMove);
+    this.root.removeEventListener("pointerup", this.handleWheelPointerUp);
+    this.root.removeEventListener("pointercancel", this.handleWheelPointerCancel);
     if (this.uiTicker !== null) {
       window.clearInterval(this.uiTicker);
       this.uiTicker = null;
@@ -155,6 +167,9 @@ export class MultiplayerController {
   }
 
   private render() {
+    // Replacing the wheel DOM during a drag would release pointer capture and break the gesture.
+    // The pointer-up handler always renders the latest snapshot after the gesture finishes.
+    if (this.draggingWheel) return;
     const snapshot = this.snapshot;
     if (!snapshot) {
       this.root.innerHTML = `
@@ -298,6 +313,11 @@ export class MultiplayerController {
     const puzzle = snapshot.puzzle;
     if (!puzzle) return `<main class="mp-paper"><h1>Preparing puzzle…</h1></main>`;
     const localTurn = this.isLocalTurn(snapshot);
+    const localPlayer = snapshot.participants.find(
+      (participant) => participant.id === snapshot.localParticipantId
+    );
+    const puzzleProgress = ((snapshot.puzzleIndex + 1) / Math.max(1, snapshot.puzzleCount)) * 100;
+    const failedWords = [...puzzle.failedWords].sort((left, right) => left.localeCompare(right));
     const controlsDisabled =
       snapshot.settings.playMode === "Turn Based" &&
       (!localTurn || this.isTurnOrderPopupActive());
@@ -313,24 +333,20 @@ export class MultiplayerController {
       ${
         snapshot.paused
           ? this.renderPause(snapshot, host)
-          : `<main class="mp-game-layout">
+          : `<main class="mp-play-layout">
               <section class="mp-board-panel mp-paper">
-                ${this.renderBoard(puzzle, snapshot)}
+                <div class="mp-board-stage">
+                  ${this.renderBoard(puzzle, snapshot)}
+                  ${this.renderSpellPanel()}
+                </div>
                 ${this.renderFeedbackText(this.feedback)}
               </section>
-              <aside class="mp-controls mp-paper">
-                <div class="mp-guess">${escapeHtml(this.currentGuess()) || "Choose letters"}</div>
-                <div class="mp-wheel">${this.wheelLetters
-                  .map(
-                    (letter, index) =>
-                      `<button style="--wheel-index:${index};--wheel-count:${this.wheelLetters.length}" data-action="letter" data-index="${index}" class="${this.selectedIndices.includes(index) ? "selected" : ""}" ${controlsDisabled ? "disabled" : ""}>${escapeHtml(letter)}</button>`
-                  )
-                  .join("")}</div>
-                <div class="mp-control-row">
-                  <button data-action="clear" ${controlsDisabled ? "disabled" : ""}>Clear</button>
-                  <button data-action="shuffle" ${controlsDisabled ? "disabled" : ""}>Shuffle</button>
-                  <button class="mp-submit" data-action="submit" ${controlsDisabled ? "disabled" : ""}>Submit</button>
-                </div>
+              <section class="mp-sp-lower" aria-label="Puzzle controls">
+                <aside class="mp-hint-panel mp-paper">
+                  <div class="mp-panel-heading">
+                    <strong>Bonus Words: ${puzzle.claimedBonusCount}/${puzzle.bonusWordCount}</strong>
+                    <button class="mp-list-button" data-action="toggle-bonus-list" ${puzzle.bonusWordCount === 0 ? "disabled" : ""}>List</button>
+                  </div>
                 <div class="mp-hints">
                   ${HINTS.map(
                     (hint) => {
@@ -359,15 +375,43 @@ export class MultiplayerController {
 
                       return `<button data-action="hint" data-hint="${hint.kind}" class="${reasonClass}" title="${escapeHtml(title)}" ${
                         disabled ? "disabled" : ""
-                      }>${hint.label}<small class="mp-hint-badge ${reasonClass}">[${escapeHtml(badge)}]</small></button>`;
+                      }><span class="mp-hint-dot" aria-hidden="true"></span><span>${hint.label}</span><small class="mp-hint-badge ${reasonClass}">${escapeHtml(badge)}</small></button>`;
                     }
                   ).join("")}
                 </div>
-                <button data-action="skip" ${controlsDisabled ? "disabled" : ""}>Request Skip</button>
-              </aside>
+                </aside>
+                <div class="mp-wheel-console">
+                  <div class="mp-wheel">
+                    <svg class="mp-wheel-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points=""></polyline></svg>
+                    ${this.wheelLetters
+                    .map(
+                      (letter, index) =>
+                        `<button style="--wheel-index:${index};--wheel-count:${this.wheelLetters.length}" data-action="letter" data-index="${index}" class="${this.selectedIndices.includes(index) ? "selected" : ""}" ${controlsDisabled ? "disabled" : ""} aria-label="Choose ${escapeHtml(letter)}" aria-pressed="${this.selectedIndices.includes(index)}">${escapeHtml(letter)}</button>`
+                    )
+                    .join("")}</div>
+                  <div class="mp-control-row">
+                    <button data-action="clear" ${controlsDisabled ? "disabled" : ""}>Clear</button>
+                    <button data-action="shuffle" ${controlsDisabled ? "disabled" : ""}>↝ Shuffle</button>
+                    <button class="mp-submit" data-action="submit" ${controlsDisabled ? "disabled" : ""}>Submit</button>
+                  </div>
+                  <button class="mp-skip-button" data-action="skip" ${controlsDisabled ? "disabled" : ""}>Request Skip</button>
+                </div>
+                <aside class="mp-progress-panel mp-paper">
+                  <strong class="mp-score-label">${escapeHtml(localPlayer?.name ?? "Your")} Score</strong>
+                  <b class="mp-local-score">${localPlayer?.score.total ?? 0}</b>
+                  <span class="mp-puzzle-label">Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</span>
+                  <div class="mp-puzzle-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${snapshot.puzzleCount}" aria-valuenow="${snapshot.puzzleIndex + 1}">
+                    <span style="width:${puzzleProgress}%"></span>
+                  </div>
+                  <strong class="mp-hint-points">Hint Points: ${hintCredits}</strong>
+                  <div class="mp-failed-summary">
+                    <span>Failed words: <strong>${failedWords.length}</strong></span>
+                    ${failedWords.length > 0 ? `<small>${failedWords.map((word) => escapeHtml(word)).join(", ")}</small>` : ""}
+                  </div>
+                </aside>
+              </section>
             </main>`
       }
-      ${this.renderBonusInfo(snapshot)}
       ${this.showBonusList ? this.renderBonusListPopup(snapshot) : ""}`;
   }
 
@@ -641,13 +685,159 @@ export class MultiplayerController {
     </main>`;
   }
 
+  private canUseWheel() {
+    const snapshot = this.snapshot;
+    if (!snapshot || snapshot.status !== "playing" || snapshot.paused) return false;
+    return !(
+      snapshot.settings.playMode === "Turn Based" &&
+      (!this.isLocalTurn(snapshot) || this.isTurnOrderPopupActive())
+    );
+  }
+
+  private handleWheelPointerDown = (event: PointerEvent) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>(".mp-wheel [data-action='letter']");
+    if (!button || button.disabled || !event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+    if (!this.canUseWheel()) {
+      this.setError("Wait for your turn.");
+      this.playSound("error");
+      return;
+    }
+
+    const index = Number(button.dataset.index);
+    if (!Number.isInteger(index) || index < 0 || index >= this.wheelLetters.length) return;
+
+    this.unlockAudio();
+    event.preventDefault();
+    this.draggingWheel = true;
+    this.wheelPointerId = event.pointerId;
+    this.suppressNextLetterClick = true;
+    this.selectedIndices = [index];
+    this.root.setPointerCapture(event.pointerId);
+    this.root.querySelector(".mp-wheel")?.classList.add("is-interacting");
+    this.syncWheelGesture(event.clientX, event.clientY);
+    playSpellTone(this.selectedIndices.length);
+  };
+
+  private handleWheelPointerMove = (event: PointerEvent) => {
+    if (!this.draggingWheel || event.pointerId !== this.wheelPointerId) return;
+    event.preventDefault();
+
+    const index = this.wheelIndexAtPoint(event.clientX, event.clientY);
+    if (index >= 0) {
+      const existingIndex = this.selectedIndices.indexOf(index);
+      if (existingIndex === -1) {
+        this.selectedIndices.push(index);
+        playSpellTone(this.selectedIndices.length);
+      } else if (
+        this.selectedIndices.length >= 2 &&
+        this.selectedIndices[this.selectedIndices.length - 2] === index
+      ) {
+        this.selectedIndices.pop();
+        playSpellTone(this.selectedIndices.length);
+      }
+    }
+    this.syncWheelGesture(event.clientX, event.clientY);
+  };
+
+  private handleWheelPointerUp = (event: PointerEvent) => {
+    if (!this.draggingWheel || event.pointerId !== this.wheelPointerId) return;
+    event.preventDefault();
+    this.finishWheelGesture(true);
+  };
+
+  private handleWheelPointerCancel = (event: PointerEvent) => {
+    if (!this.draggingWheel || event.pointerId !== this.wheelPointerId) return;
+    this.finishWheelGesture(false);
+  };
+
+  private wheelIndexAtPoint(clientX: number, clientY: number) {
+    let closestIndex = -1;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    const buttons = this.root.querySelectorAll<HTMLButtonElement>(".mp-wheel [data-action='letter']");
+    buttons.forEach((button) => {
+      const rect = button.getBoundingClientRect();
+      const dx = clientX - (rect.left + rect.width / 2);
+      const dy = clientY - (rect.top + rect.height / 2);
+      const distance = Math.hypot(dx, dy);
+      // Keep the hit circle close to the visible letter so neighbors stay distinct.
+      const hitRadius = Math.max(rect.width, rect.height) * 0.58;
+      const index = Number(button.dataset.index);
+      if (distance <= hitRadius && distance < closestDistance && Number.isInteger(index)) {
+        closestIndex = index;
+        closestDistance = distance;
+      }
+    });
+    return closestIndex;
+  }
+
+  private syncWheelGesture(pointerX?: number, pointerY?: number) {
+    const wheel = this.root.querySelector<HTMLElement>(".mp-wheel");
+    if (!wheel) return;
+
+    const buttons = wheel.querySelectorAll<HTMLButtonElement>("[data-action='letter']");
+    buttons.forEach((button) => {
+      const selected = this.selectedIndices.includes(Number(button.dataset.index));
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+
+    this.syncSpellPanel();
+    const wheelRect = wheel.getBoundingClientRect();
+    const points = this.selectedIndices
+      .map((index) => wheel.querySelector<HTMLButtonElement>(`[data-index="${index}"]`))
+      .filter((button): button is HTMLButtonElement => Boolean(button))
+      .map((button) => {
+        const rect = button.getBoundingClientRect();
+        const x = ((rect.left + rect.width / 2 - wheelRect.left) / wheelRect.width) * 100;
+        const y = ((rect.top + rect.height / 2 - wheelRect.top) / wheelRect.height) * 100;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      });
+    if (pointerX !== undefined && pointerY !== undefined) {
+      const x = ((pointerX - wheelRect.left) / wheelRect.width) * 100;
+      const y = ((pointerY - wheelRect.top) / wheelRect.height) * 100;
+      points.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+    }
+    wheel.querySelector("polyline")?.setAttribute("points", points.join(" "));
+  }
+
+  private finishWheelGesture(submit: boolean) {
+    const pointerId = this.wheelPointerId;
+    if (pointerId !== null && this.root.hasPointerCapture(pointerId)) {
+      this.root.releasePointerCapture(pointerId);
+    }
+    this.draggingWheel = false;
+    this.wheelPointerId = null;
+
+    const guess = this.currentGuess();
+    if (submit && guess.length >= 3) {
+      if (this.client.send({ type: "submit-guess", guess })) {
+        this.clearGuess();
+      } else {
+        this.playSound("error");
+      }
+    } else {
+      this.clearGuess();
+    }
+    this.render();
+
+    // Pointer gestures can synthesize a click after pointer-up. Ignore only that
+    // click so keyboard activation of individual letters continues to work.
+    window.setTimeout(() => {
+      this.suppressNextLetterClick = false;
+    }, 0);
+  }
+
   private handleClick(event: Event) {
     this.unlockAudio();
     const button = (event.target as HTMLElement).closest<HTMLElement>("[data-action]");
     const snapshot = this.snapshot;
     if (!button || !snapshot) return;
     const action = button.dataset.action;
-    this.playSound("click");
+    if (action === "letter" && this.suppressNextLetterClick && event instanceof MouseEvent && event.detail > 0) {
+      this.suppressNextLetterClick = false;
+      return;
+    }
+    if (action !== "letter") this.playSound("click");
     const local = snapshot.participants.find((participant) => participant.id === snapshot.localParticipantId);
     const turnLocked =
       snapshot.settings.playMode === "Turn Based" &&
@@ -704,6 +894,7 @@ export class MultiplayerController {
       const selectedIndex = this.selectedIndices.indexOf(index);
       if (selectedIndex >= 0) this.selectedIndices.splice(selectedIndex, 1);
       else this.selectedIndices.push(index);
+      playSpellTone(this.selectedIndices.length);
       this.render();
     } else if (action === "clear") {
       this.clearGuess();
@@ -844,8 +1035,8 @@ export class MultiplayerController {
       return;
     }
     if (event.key === "Backspace") {
-      this.playSound("click");
       this.selectedIndices.pop();
+      playSpellTone(this.selectedIndices.length);
       this.render();
       return;
     }
@@ -855,14 +1046,33 @@ export class MultiplayerController {
         letter.toUpperCase() === event.key.toUpperCase() && !this.selectedIndices.includes(candidate)
     );
     if (index >= 0) {
-      this.playSound("select");
       this.selectedIndices.push(index);
+      playSpellTone(this.selectedIndices.length);
       this.render();
     }
   };
 
   private currentGuess() {
     return this.selectedIndices.map((index) => this.wheelLetters[index]).join("");
+  }
+
+  private spellPanelTiles(guess: string) {
+    return [...guess]
+      .map((letter) => `<span class="mp-spell-tile">${escapeHtml(letter)}</span>`)
+      .join("");
+  }
+
+  private renderSpellPanel() {
+    const guess = this.currentGuess();
+    return `<div class="mp-spell-panel${guess ? " is-active" : ""}" aria-live="polite">${this.spellPanelTiles(guess)}</div>`;
+  }
+
+  private syncSpellPanel() {
+    const panel = this.root.querySelector<HTMLElement>(".mp-spell-panel");
+    if (!panel) return;
+    const guess = this.currentGuess();
+    panel.classList.toggle("is-active", guess.length > 0);
+    panel.innerHTML = this.spellPanelTiles(guess);
   }
 
   private renderFeedbackText(message: string) {
@@ -897,7 +1107,7 @@ export class MultiplayerController {
       if (this.processedEventSequences.has(event.sequence)) continue;
       this.processedEventSequences.add(event.sequence);
 
-      if (event.type === "word-solved") this.playSound("place");
+      if (event.type === "word-solved") playWordSuccess();
       else if (event.type === "bonus-claimed") this.playSound("hintUsed");
       else if (event.type === "hint-used") this.playSound("hintUsed");
       else if (event.type === "puzzle-skipped" || event.type === "guess-rejected") this.playSound("error");
@@ -1139,7 +1349,6 @@ export class MultiplayerController {
       this.spawnTrailDot(x, y, getComputedStyle(card).getPropertyValue("--player-color") || "#526b3d", gem, true);
     }
 
-    this.playSound("place");
     window.setTimeout(() => {
       card.classList.remove("mp-score-impact-panel");
       total.classList.remove("mp-score-impact-total", "gem-emerald", "gem-ruby", "gem-diamond");
@@ -1157,10 +1366,12 @@ export class MultiplayerController {
   }
 
   private unlockAudio() {
+    unlockGameAudio();
     if (this.audioUnlocked) return;
     this.audioUnlocked = true;
     const firstSound = this.sounds.click;
     if (!firstSound) return;
+    firstSound.volume = sampleVolume("click");
     firstSound.muted = true;
     firstSound.currentTime = 0;
     firstSound
@@ -1178,6 +1389,7 @@ export class MultiplayerController {
   private playSound(name: keyof typeof Assets.sounds) {
     const sound = this.sounds[name];
     if (!sound) return;
+    sound.volume = sampleVolume(name);
     sound.currentTime = 0;
     sound.play().catch(() => undefined);
   }

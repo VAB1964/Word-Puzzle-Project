@@ -19,6 +19,11 @@ import {
   GRID_ZONE_PADDING_X_DESIGN,
   GRID_ZONE_PADDING_Y_DESIGN,
   GRID_ZONE_RECT_DESIGN,
+  GUESS_OVERLAY_PANEL_BOTTOM_GAP,
+  GUESS_OVERLAY_PANEL_PAD_X,
+  GUESS_OVERLAY_PANEL_PAD_Y,
+  GUESS_OVERLAY_TILE_PAD,
+  GUESS_OVERLAY_TILE_SIZE,
   HARD_MAX_SOLUTIONS,
   HARD_MIN_WORD_LENGTH,
   HARD_PUZZLE_COUNT,
@@ -134,6 +139,7 @@ import { DecorLayer } from "./render/decorLayer";
 import { drawCenteredText, drawRoundedRect, wrapTextForWidth } from "./render/draw";
 import { applyView, createViewTransform, screenToWorld, type ViewTransform } from "./render/view";
 import { VoiceCommentary } from "./core/voiceCommentary";
+import { playSpellTone, playWordSuccess, sampleVolume, unlockGameAudio } from "./core/gameAudio";
 
 const HINT_LABELS = ["Letter", "Random", "Full Word", "1st Ltr All"];
 const HINT_FRAME_VERTICAL_SPACING = 7;
@@ -511,6 +517,7 @@ export class Game {
   private attachInput() {
     const onPointerDown = (ev: PointerEvent) => {
       this.hasUserInteracted = true;
+      unlockGameAudio();
       const world = this.eventToWorld(ev);
       this.mousePos = world;
       this.canvas.setPointerCapture(ev.pointerId);
@@ -542,6 +549,8 @@ export class Game {
     };
 
     const onKeyDown = (ev: KeyboardEvent) => {
+      this.hasUserInteracted = true;
+      unlockGameAudio();
       this.handleKeyboardInput(ev);
     };
 
@@ -761,7 +770,7 @@ export class Game {
         this.dragging = true;
         this.path = [i];
         this.currentGuess = this.base[i].toUpperCase();
-        this.playSound("select");
+        playSpellTone(this.path.length);
         return;
       }
     }
@@ -791,10 +800,11 @@ export class Game {
         if (existingIndex === -1) {
           this.path.push(index);
           this.currentGuess += this.base[i].toUpperCase();
-          this.playSound("select");
+          playSpellTone(this.path.length);
         } else if (this.path.length >= 2 && this.path[this.path.length - 2] === index) {
           this.path.pop();
           this.currentGuess = this.currentGuess.slice(0, -1);
+          playSpellTone(this.path.length);
         }
         break;
       }
@@ -834,6 +844,7 @@ export class Game {
           actionTaken = true;
         } else {
           this.found.add(this.sorted[w].text);
+          playWordSuccess();
           this.voiceCommentary.onWordFound(this.sorted[w].text, this.sorted[w].rarity);
           const baseScore = this.currentGuess.length * 10;
           const rarityBonus = this.sorted[w].rarity > 1 ? this.sorted[w].rarity * 25 : 0;
@@ -933,6 +944,7 @@ export class Game {
           this.triggerKeyboardLetterPulse(removedIndex);
         }
       }
+      playSpellTone(this.path.length);
       this.wheelInteractionScaleActive = false;
       return;
     }
@@ -959,7 +971,7 @@ export class Game {
     this.path.push(index);
     this.triggerKeyboardLetterPulse(index);
     this.wheelInteractionScaleActive = false;
-    this.playSound("select");
+    playSpellTone(this.path.length);
     ev.preventDefault();
   }
 
@@ -2022,8 +2034,8 @@ export class Game {
     this.renderLetterAnims(ctx);
     this.renderScoreFlourishes(ctx);
     this.renderHintPointAnims(ctx);
-    this.renderGuessDisplay(ctx);
     this.renderHintZone(ctx);
+    this.renderGuessDisplay(ctx);
     this.renderSolvedWordPopup(ctx);
 
     if (this.gameState === GState.Solved || this.currentScreen === GameScreen.GameOver) {
@@ -2479,25 +2491,43 @@ export class Game {
   private renderGuessDisplay(ctx: CanvasRenderingContext2D) {
     if (!this.currentGuess) return;
     const n = this.currentGuess.length;
-    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
-    const wheelTop = this.wheelCenter.y - this.visualBgRadius * interactionScale;
-    const boardBottom = GRID_ZONE_RECT_DESIGN.y + GRID_ZONE_RECT_DESIGN.height + 20;
-    const availableHeight = Math.max(16, wheelTop - boardBottom - 12);
-    const guessTileSize = Math.min(TILE_SIZE * this.currentGridLayoutScale * 1.25, availableHeight);
-    const guessPad = TILE_PAD * this.currentGridLayoutScale;
-    const totalWidth = n * guessTileSize + (n - 1) * guessPad;
-    const guessRowTop = boardBottom + 4 + (availableHeight - guessTileSize) / 2;
-    const startX = this.wheelCenter.x - totalWidth / 2;
+    const tileSize = GUESS_OVERLAY_TILE_SIZE;
+    const tilePad = GUESS_OVERLAY_TILE_PAD;
+    const tilesWidth = n * tileSize + (n - 1) * tilePad;
+    const panelW = tilesWidth + GUESS_OVERLAY_PANEL_PAD_X * 2;
+    const panelH = tileSize + GUESS_OVERLAY_PANEL_PAD_Y * 2;
+    const gridPanelBottom = GRID_ZONE_RECT_DESIGN.y - 20 + GRID_ZONE_RECT_DESIGN.height + 40;
+    const panelX = clamp(this.wheelCenter.x - panelW / 2, 24, REF_W - 24 - panelW);
+    const panelY = gridPanelBottom - panelH - GUESS_OVERLAY_PANEL_BOTTOM_GAP;
 
+    ctx.save();
+    ctx.shadowColor = "rgba(35, 22, 11, 0.42)";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 6;
+    drawRoundedRect(
+      ctx,
+      panelX,
+      panelY,
+      panelW,
+      panelH,
+      10,
+      { r: 255, g: 248, b: 226 },
+      { r: 177, g: 154, b: 112 },
+      1.5
+    );
+    ctx.restore();
 
+    const startX = panelX + GUESS_OVERLAY_PANEL_PAD_X;
+    const tileY = panelY + GUESS_OVERLAY_PANEL_PAD_Y;
     for (let i = 0; i < n; i += 1) {
-      const x = startX + i * (guessTileSize + guessPad);
-      this.drawLibraryTile(ctx, x, guessRowTop, guessTileSize, false, true);
+      const x = startX + i * (tileSize + tilePad);
+      this.drawLibraryTile(ctx, x, tileY, tileSize, false, true);
       ctx.fillStyle = colorToCss(UI_INK);
-      ctx.font = this.font(Math.max(8, guessTileSize * 0.65), true);
+      ctx.font = this.font(Math.max(8, tileSize * 0.65), true);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(this.currentGuess[i], x + guessTileSize / 2, guessRowTop + guessTileSize / 2);
+      ctx.fillText(this.currentGuess[i], x + tileSize / 2, tileY + tileSize / 2);
     }
   }
 
@@ -3124,6 +3154,8 @@ export class Game {
       if (anim.t >= 1) {
         anim.t = 1;
         if (anim.target === AnimTarget.Grid) {
+          const alreadyFound =
+            Boolean(this.sorted[anim.wordIdx]) && this.found.has(this.sorted[anim.wordIdx].text);
           const gridRow = this.grid[anim.wordIdx];
           if (gridRow && anim.charIdx >= 0 && anim.charIdx < gridRow.length) {
             gridRow[anim.charIdx] = anim.ch;
@@ -3165,7 +3197,7 @@ export class Game {
               }
             }
           }
-          this.playSound("place");
+          if (!alreadyFound) this.playSound("place");
         }
         return false;
       }
@@ -3453,6 +3485,7 @@ export class Game {
         this.spawnHintPointAnimation(this.bonusWordsTextRect, gemHintAward);
       }
 
+      playWordSuccess();
       if (this.found.size === this.solutions.length) {
         this.gameState = GState.Solved;
         this.currentScreen = GameScreen.GameOver;
@@ -3580,6 +3613,7 @@ export class Game {
   private playSound(name: string) {
     const sound = this.sounds[name];
     if (!sound) return;
+    sound.volume = sampleVolume(name);
     sound.currentTime = 0;
     sound.play().catch(() => undefined);
   }
