@@ -15,27 +15,36 @@ The exact export arguments and text checksums are in `data/esdb/manifest.json`.
 | --- | ---: |
 | Previous cleaned dictionary | 18,242 |
 | Filtered size-60 starting vocabulary | 28,324 |
-| Size-60 words ready for puzzles | 22,005 |
+| Size-60 words ready for puzzles | 27,674 |
 | Individually approved size-70 words | 14 |
 | Editorial supplements outside filtered ESDB | 1 |
-| Total playable words | 22,020 |
+| Total playable words | 27,689 |
 | Retained from the previous dictionary | 13,409 |
-| Newly playable | 8,611 |
+| Newly playable | 14,280 |
 | Previous words no longer included | 4,833 |
-| Size-60 candidates awaiting definition/usage review | 6,319 |
+| Size-60 candidates awaiting definition/usage review | 650 |
 
 The complete starting vocabulary is checked in, but membership alone is not
 enough to enter a puzzle. ESDB supplies spellings, parts of speech, and inflection
-relationships; it is not a source of full lexical definitions. The existing
-200,000-row Kaikki CSV is only a partial export. Consequently, 6,319 candidates
-remain outside the playable file until they have a usable meaning and usage
-review. This is a definition-gated adoption, not full playable size-60 coverage.
+relationships; it is not a source of full lexical definitions. A complete Kaikki
+English snapshot downloaded on 2026-09-17 was streamed against the 6,317-word
+review queue. It matched 6,298 spellings; every match was classified and reviewed
+in immutable batches. The source checksum and selected record/sense identifiers
+are retained in the review artifacts and word-provenance audit.
+
+The review approved 4,184 new lexical headwords and unlocked 1,485 attested forms.
+After the earlier migration additions are included, 650 size-60 candidates remain
+outside the playable file. These are definition-gated or intentionally deferred:
+blocked or unsupported senses, grammatical forms without an approved lemma, and
+accent/alternative-spelling references that do not yet carry a useful standalone
+meaning. They are not silently admitted with circular display definitions.
 
 Every retained entry keeps its prior definition, example, and rarity unchanged,
 except when a reviewed supplemental entry explicitly replaces its display definition.
-The earlier cleanup is not run again. There are 26 individually reviewed new
-headword definitions, including `aisle`, `awesome`, `every`, and `your`.
-Another 8,583 new words have grammatical definitions from ESDB's attested
+The earlier cleanup is not run again. There are 27 original individually reviewed
+headword definitions, including `aisle`, `awesome`, `every`, `loader`, and `your`,
+plus the 4,184 batch-reviewed headwords. In total, 10,067 words have grammatical
+definitions from ESDB's attested
 inflection relationships, such as `accepts` and `acted`. These definitions say
 which word and grammatical form they represent; they do not claim to provide
 a newly researched lexical meaning. Examples remain blank for these forms.
@@ -52,6 +61,12 @@ stay in the review queue. A root's lexical definition is not copied into an
 inflection: a spelling such as `lie` has multiple meanings, and copying its
 selected definition could give `lied` the wrong explanation.
 
+The regression suite audits all size-60 relationship records and requires every
+supported plural, verb form, comparative, and superlative of a playable lexical
+entry to be present. This makes grammatical-form coverage exhaustive within the
+pinned ESDB policy, while still leaving genuinely new headwords for definition
+and usage review.
+
 ## Vocabulary and difficulty policy
 
 - Use the upstream American `A` spelling selection and maximum variant level 1.
@@ -64,9 +79,13 @@ selected definition could give `lied` the wrong explanation.
 - Preserve explicit exclusions from `tools/dictionary_overrides.json`.
 - Permit only explicitly reviewed lowercase supplements recorded with definitions,
   ratings, and reasons in `tools/esdb_editorial.json`.
+- Permit batch additions only from validated artifacts in
+  `tools/esdb_approved_batches/`. Each approval records its immutable batch hash,
+  reviewer, timestamp, exact Kaikki source record and sense, definition, and
+  provisional rating. Rejections and deferrals remain recorded but are not playable.
 - Preserve all retained rarity values. An attested new inflection inherits its
   lemma's current rating. This is a provisional familiarity heuristic, not a
-  frequency measurement. The 26 new lexical entries have explicit provisional
+  frequency measurement. The 27 new lexical entries have explicit provisional
   editorial ratings in `tools/esdb_editorial.json`.
 - Never convert size 60/70/80 directly into rarity 2/3/4.
 
@@ -119,6 +138,19 @@ either runtime dictionary. After reviewing a future candidate, copy its CSV to
 both `words_processed.csv` and `Standalone/words_processed.csv`, and its five
 audit files to `docs/esdb-audit/`.
 
+Future definition-review rounds can be prepared with:
+
+```powershell
+python tools/extract_kaikki_candidates.py --kaikki-jsonl path/to/kaikki-English.jsonl --pending docs/esdb-audit/pending-definitions.csv --output-dir esdb-candidate/kaikki-review --source-snapshot YYYY-MM-DD
+python tools/esdb_review_batches.py batch --catalog esdb-candidate/kaikki-review/candidate-catalog.json --output-dir esdb-candidate/review-batches --batch-size 250
+python tools/esdb_review_batches.py validate --batch path/to/batch.json --decisions path/to/decisions.json
+```
+
+The multi-gigabyte Kaikki source is a local build input and is not committed.
+Extraction streams it rather than loading it into memory. Approval validation
+rejects stale/tampered batches, unsourced definitions, blocked usage labels,
+invalid ratings, and incomplete decisions.
+
 Committed audit files:
 
 - `summary.json`: exact before/after totals.
@@ -127,6 +159,8 @@ Committed audit files:
 - `pending-definitions.csv`: every size-60 candidate not yet playable.
 - `larger-level-review.csv`: level, existing meaning/rating if available, and
   approval/defer decision for every larger-level candidate.
+- `definition-review-summary.json`: Kaikki snapshot/checksum, extraction and batch
+  decision totals, independent quality-audit results, and final residual categories.
 
 To regenerate the source snapshot, clone the upstream repository, check out the
 pinned commit above, then run:
@@ -153,7 +187,7 @@ Open **http://localhost:5173/wordpuzzle/** and choose Single Player. For multipl
 also start `npm run worker:dev` in a second terminal. Try Casual and Crossword at
 each difficulty, particularly new inflections and their definition popups.
 
-The submitted version passes 19 Python tests and 28 JavaScript/TypeScript tests,
+The submitted version passes 42 Python tests and 28 JavaScript/TypeScript tests,
 including 30 generated puzzles covering both modes and all three difficulties.
 Typecheck, the web build, and Worker dry-run packaging pass. The published CSV
 matches the reproducible build, and both runtime dictionary copies are identical.

@@ -1,0 +1,2682 @@
+{
+  "artifact_sha256": "5dfd5d636f61db35ce88c6a56b044cc77e5971ecd7caef8ec1322e572a0436cf",
+  "batch_id": "esdb-0011",
+  "batch_sha256": "9786a2c8cab9d189a86776dd24fd8448e807194752905b81e6e5ab2678e68dc0",
+  "decisions": [
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "achiest"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "adjured"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "adjures"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "adorers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "aliases"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "aliyahs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "amerced"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "amerces"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ampules"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "angoras"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "antsier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "aphelia"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "applets"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "apposed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "apposes"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "apprize"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "arguers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "argyles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "arouses"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ashlars"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ashrams"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "assorts"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ataxics"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "attache"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "attunes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bacilli"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "backbit"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bagfuls"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "baggers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ballads"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bantams"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "banyans"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "barbels"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "barhops"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "barrios"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bassets"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "basters"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "bathmat"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "battens"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "beadier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bedlams"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bedpans"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bedsits"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "A lesion caused by unrelieved pressure to any part of the body, especially portions over bony or cartilaginous areas, such as frequently develops on a person confined to a bed by infirmity.",
+        "example": "",
+        "labels": [
+          "dated",
+          "plural-normally"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "5e409a5bf07c0529f568bfa2f3d7c9d2df68c2a38eb97547b746eb3a07306f0d",
+          "source": "Kaikki English"
+        },
+        "sense_id": "df0cdf9eddc06645344bd3780dd930af73f88e0e041c599e523023a3be33b084",
+        "source_line": 179703
+      },
+      "unlocks": [],
+      "word": "bedsore"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "beepers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "beerier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "belabor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bellmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "belugas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bemired"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bemires"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bendier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "benumbs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "beseems"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bestirs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "betaken"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "betakes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "betided"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bevvies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bicarbs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bidders"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "biddies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bilkers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "binders"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "biopics"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "birders"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "birdied"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bittier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "blintze"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "blokish"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "blowier"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "blowjob"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "blowups"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "blueish"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boaters"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boatmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bobbers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bobcats"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boggier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boleros"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "bolivar"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bondmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bonobos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boohoos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bootees"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boozier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "borzois"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bossier"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "Now chiefly in \"bounden duty\": made obligatory; binding.",
+        "example": "That I wad wi' a' my heart; and mickle obliged to your honour for putting me in mind o' my bounden duty.",
+        "labels": [
+          "dated"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "b2740db95efbbf3db0dae08f0c7ded44027bae7c897b12cd4a17efe448cee273",
+          "source": "Kaikki English"
+        },
+        "sense_id": "697e9e3efca08ea0c2abb84540dd5556f1a8383b3fdf07e40d4ad2d6186615b2",
+        "source_line": 184541
+      },
+      "unlocks": [],
+      "word": "bounden"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bowwows"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boxiest"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "boxroom"
+    },
+    {
+      "candidate_flags": [
+        "historical"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "A Mexican national working as an agricultural laborer in the United States from 1942-1964, or similarly a railroad worker from 1942-1945.",
+        "example": "",
+        "labels": [
+          "historical"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "20022e91e94e7b3a5d4803d5030e111da5d106d9c72dcc8e3eafc1bf6c420284",
+          "source": "Kaikki English"
+        },
+        "sense_id": "4f127cbf081d49652d44056a4c4e8658d6666365fe08bceb4733a3d67fc730ba",
+        "source_line": 125748
+      },
+      "unlocks": [],
+      "word": "bracero"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "brazers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "brevets"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bribers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "brinier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "brogans"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bronchi"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "broncos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "budging"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "bugaboo"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "buglers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bulgier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bulkier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bumbags"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "buncoed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "burbled"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "burbles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "burlier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "busbies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "busboys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bushier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bushmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "buskins"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "busters"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "buyouts"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "buzzers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bypaths"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "byroads"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bywords"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cackled"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cadgers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "caducei"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "calculi"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "callers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "campier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "canapes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cancans"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "caplets"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "captcha"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "captors"
+    },
+    {
+      "candidate_flags": [
+        "historical"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "A light, usually lateen-rigged sailing ship used by the Portuguese and Spanish for about 300 years from the 15th century, first for trade and later for voyages of exploration.",
+        "example": "",
+        "labels": [
+          "historical"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "88bb7554639e6310c7d2dacbffa678fabe6c8a7482074ecd2c69857b5359a239",
+          "source": "Kaikki English"
+        },
+        "sense_id": "1837f9bf18d436ed6b276ab74ecbb6d7e7206f7eb96d837e4fc7abbab2617256",
+        "source_line": 121488
+      },
+      "unlocks": [],
+      "word": "caravel"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "The passenger fare charged for riding on a streetcar, bus or similar public transit.",
+        "example": "Anyhow, I'll have to keep out lunch money and carfare, and so will Edith.",
+        "labels": [
+          "countable",
+          "dated",
+          "uncountable",
+          "us"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "030af5e2c114927c084e95b853ddc409411116ddb618d8ebb5ff8b5ae70ee23e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "917ad8c4a63c5a839879ef702b4fe4b2ce110c3f5cad88863a205bc142e9c4de",
+        "source_line": 169088
+      },
+      "unlocks": [],
+      "word": "carfare"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "carrels"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "carters"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "carvers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "casabas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cashews"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cavemen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "caverns"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cavorts"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cellars"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "censers"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "ceteris"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "chaises"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "chalets"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "charier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "chewers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "chichis"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "chimers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "chivied"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "chukkas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "churros"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clacked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clanked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clayier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clinics"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clinked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clomped"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clonked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clopped"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "clunked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "coasted"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "coaxers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cobnuts"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cockers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cockier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "codgers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "coffers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "coheirs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cohered"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "coheres"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "coiners"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "cojones"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "colossi"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "combers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "comfier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "comfits"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "conchie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "confabs"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "confute"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "congaed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "congers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "consuls"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "corbels"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "corkers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cornier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cosigns"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cottars"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cotters"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cougars"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cowered"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "crewmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cricked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cubists"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "culotte"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cupfuls"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "curacao"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "curdles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "curlers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "curlier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "curvier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cuspids"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cutlers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cutlets"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cutouts"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "czarism"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dabbers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dabbles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "damsons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dandled"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dandles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "darners"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "darters"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "dateset"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "daybeds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deacons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deadens"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "debarks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "debases"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "debited"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "decaffs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "declaws"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "decoded"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "decoyed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "defangs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "defunds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "degases"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deicers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "demists"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deploys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deports"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deputed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deputes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "derails"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dewiest"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dialers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "diddled"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "diddles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dieters"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "diggers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "diktats"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dilates"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dillies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dimmers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dingier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dinging"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dinkier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dinkies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dioxins"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dippier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dirndls"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "To amuse oneself divertingly or playfully; in particular, to cavort or gambol.",
+        "example": "",
+        "labels": [
+          "ambitransitive",
+          "dated",
+          "reflexive"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "73a092f521157c7424ed843c59b84ec137563cca407ba306c51043fc30f6096e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "685403ed3267007e78cf922b510064fec39f07f83e5fb78c60a3a9de0e9253f8",
+        "source_line": 130937
+      },
+      "unlocks": [],
+      "word": "disport"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "distill"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "disuses"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "divvied"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dizzier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dobbing"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dockers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dodgems"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dodgers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "dogcart"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doilies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dolmens"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dongles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doodahs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doomers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doormen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dopiest"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dorkier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dosages"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dossers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dotards"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dottier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gunmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "helots"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "helves"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "hereto"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hewers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hiders"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hokier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hoking"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "honers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "honked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hostas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "houris"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "humphs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "icemen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "idlers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "inkier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "inlets"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jelled"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jinked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jokier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "joshed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "joshes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jumbos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jutted"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "kayoed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "kiddos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "kronur"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lanais"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lapels"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lapins"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lawmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lazing"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "legmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "letups"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lianas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lifers"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "limier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "linage"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "livens"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "livest"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "llanos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "locums"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "logons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "loughs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "loured"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "mafias"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "majors"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "mammon"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "manege"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "mantas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "meccas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "mermen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "mewled"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "milers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "misdid"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "misers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "miters"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "modals"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "moolah"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "mopers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "moseys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "movers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "mowers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "muskox"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "nabobs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "naiads"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "narcos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "nomads"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "noshed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "nosier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "noways"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "oglers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "oilmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "oldies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "oozier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "oxbows"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pacers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "panned"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "pantie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "parers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pashas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "penmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pewits"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pilafs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pinier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pinons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pintos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pinups"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pipits"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pitons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pittas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "platys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "plumps"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "plunks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pokier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "polyps"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "poohed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "poppas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "priers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "prowls"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pseuds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pupped"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pwning"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "quints"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "racers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rapers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rebars"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "recons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "redrew"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "redyed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "redyes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "refits"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "regrew"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rehung"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rejigs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "remaps"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "resewn"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "resews"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "reshot"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "resits"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "resown"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "resows"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "retied"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "reties"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "retook"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "retrod"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "revels"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "revues"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "reweds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rewove"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rifted"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rigors"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rinsed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rinses"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "risers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "risque"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "riyals"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "romeos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "romped"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ropers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rovers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rowers"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "rumply"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sabras"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sadhus"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sahibs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "salons"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "sautes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "savers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "savoys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "scalds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "scrags"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "scrips"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "scuffs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "senors"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "serest"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "shirrs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "shoats"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sickos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "sirree"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "skoals"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "skulks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "slayed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "slicks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "slinks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "slippy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sluing"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sobbed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sowers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "squads"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "squaws"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "steeps"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "stenos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "stoups"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "strati"
+    },
+    {
+      "candidate_flags": [
+        "historical"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "The traditional custom of a Hindu woman giving herself up to be cremated on her husband’s funeral pyre as a sign of her devotion.",
+        "example": "",
+        "labels": [
+          "countable",
+          "hinduism",
+          "historical",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "c6f921c46cef9c9cf2e0d0acfcb2dded6c22fd38de95fdfdfc5842e75045fd29",
+          "source": "Kaikki English"
+        },
+        "sense_id": "e748a4d3c63e18956ebec760e7b8ea44fc6eb9ca1ab6d0ffecde7972bb3f76c2",
+        "source_line": 91199
+      },
+      "unlocks": [],
+      "word": "suttee"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "swanks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "swaths"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "swoons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sylphs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tablas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "taigas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "taxers"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "teensy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "telcos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "therms"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tholes"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "thymus"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tidies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tilers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tinges"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "toners"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tonier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "totems"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "toting"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "touche"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "triers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tromps"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "troves"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "trowed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tunics"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tuques"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "twerps"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "umiaks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "unbars"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "unmans"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "unpins"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "unsays"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "unsold"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "unzips"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "verily"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "vireos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wadges"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "wellie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "welted"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "whorls"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wipers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wiving"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wodges"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wooers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "wotcha"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wusses"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "yowled"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "yukked"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "Expressing anger, surprise, assertion etc.",
+        "example": "\"Zounds!\" he exclaimed. \"What the dickens is that?\"",
+        "labels": [
+          "dated"
+        ],
+        "pos": "intj",
+        "provenance": {
+          "record_id": "7bcb95f5ef0058e6b3a1e1e467fdb60118b5b279aba3922912b6bb2549241aa0",
+          "source": "Kaikki English"
+        },
+        "sense_id": "945ec5f4464d5343746b346818ef34b5656d49c8894dcda05ff7a28d3f0ed51b",
+        "source_line": 30237
+      },
+      "unlocks": [],
+      "word": "zounds"
+    }
+  ],
+  "reviewed_at": "2026-09-18T04:17:51.789Z",
+  "reviewer": {
+    "id": "quality-correction-agent",
+    "kind": "agent"
+  },
+  "schema_version": 1
+}

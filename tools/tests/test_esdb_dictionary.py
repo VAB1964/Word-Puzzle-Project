@@ -8,7 +8,9 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from build_esdb_dictionary import BASELINE, ROOT, build, inflection, load_snapshot
+from build_esdb_dictionary import (BASELINE, ROOT, build, inflection,
+                                   load_approved_batches, load_snapshot)
+from esdb_review_batches import digest
 
 
 def entry(word, pos="noun", rarity="2", definition="A useful meaning."):
@@ -89,6 +91,56 @@ class EsdbPolicyTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "checksum mismatch"):
                 load_snapshot(path)
 
+    def test_loads_batch_approval_and_attributes_its_attested_forms(self):
+        artifact = {
+            "schema_version": 1,
+            "batch_id": "esdb-0001",
+            "batch_sha256": "a" * 64,
+            "reviewer": {"kind": "agent", "id": "editorial-reviewer"},
+            "reviewed_at": "2026-09-17T12:00:00Z",
+            "decisions": [{
+                "word": "loader", "decision": "approve", "reason": "Common modern noun.",
+                "rarity": 2, "candidate_tier": "safe", "candidate_flags": [],
+                "unlocks": ["loaders"],
+                "sense": {
+                    "sense_id": "kaikki:1", "pos": "noun",
+                    "definition": "A person or device that loads something.", "labels": [],
+                    "provenance": {"source": "kaikki", "record_id": "record-1"},
+                },
+            }],
+        }
+        artifact["artifact_sha256"] = digest(artifact)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / "esdb-0001.json").write_text(json.dumps(artifact), encoding="utf-8")
+            approvals = load_approved_batches(path)
+        forms = [{"word": "loaders", "lemma": "loader", "esdb_pos": "ns"}]
+        rows, _, _, _, provenance, summary = build(
+            [], {"loader", "loaders"}, {}, forms, EMPTY, set(), approvals)
+        playable = {row["word"]: row for row in rows}
+        sources = {row["word"]: row for row in provenance}
+        self.assertEqual(playable["loader"]["Definition"], artifact["decisions"][0]["sense"]["definition"])
+        self.assertEqual(playable["loaders"]["Definition"], "Plural of loader.")
+        self.assertEqual(sources["loader"]["definition_source"], "reviewed-batch")
+        self.assertEqual(sources["loaders"]["approval_batch"], "esdb-0001")
+        self.assertEqual(sources["loaders"]["definition_source_name"], "kaikki")
+        self.assertEqual(sources["loaders"]["definition_record_id"], "record-1")
+        self.assertEqual(sources["loaders"]["definition_sense_id"], "kaikki:1")
+        self.assertEqual(summary["approved_batch_forms"], 1)
+
+    def test_rejects_tampered_or_duplicate_batch_approvals(self):
+        artifact = {
+            "schema_version": 1, "batch_id": "esdb-0001", "batch_sha256": "a" * 64,
+            "reviewer": {"kind": "agent", "id": "reviewer"},
+            "reviewed_at": "2026-09-17T12:00:00+00:00", "decisions": [],
+            "artifact_sha256": "tampered",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / "bad.json").write_text(json.dumps(artifact), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+                load_approved_batches(path)
+
 
 class PublishedEsdbTests(unittest.TestCase):
     def test_published_dictionary_and_audits_match_the_reproducible_build(self):
@@ -98,7 +150,9 @@ class PublishedEsdbTests(unittest.TestCase):
         overrides = json.loads((ROOT / "tools/dictionary_overrides.json").read_text())
         excluded = {word for word, row in overrides["words"].items() if row.get("exclude")}
         base, larger, forms = load_snapshot(ROOT / "data/esdb")
-        rows, pending, removed, review, provenance, summary = build(baseline, base, larger, forms, editorial, excluded)
+        approvals = load_approved_batches(ROOT / "tools/esdb_approved_batches")
+        rows, pending, removed, review, provenance, summary = build(
+            baseline, base, larger, forms, editorial, excluded, approvals)
         summary["baseline_commit"] = BASELINE
         for filename, expected in [("words_processed.csv", rows),
                                    ("docs/esdb-audit/pending-definitions.csv", pending),
@@ -106,8 +160,11 @@ class PublishedEsdbTests(unittest.TestCase):
                                    ("docs/esdb-audit/larger-level-review.csv", review),
                                    ("docs/esdb-audit/word-provenance.csv", provenance)]:
             with (ROOT / filename).open(encoding="utf-8", newline="") as handle:
-                actual = list(csv.DictReader(handle))
-            self.assertEqual(actual, [{k: str(v) for k, v in row.items()} for row in expected], filename)
+                reader = csv.DictReader(handle)
+                actual = list(reader)
+                fieldnames = reader.fieldnames or []
+            normalized = [{field: str(row.get(field, "")) for field in fieldnames} for row in expected]
+            self.assertEqual(actual, normalized, filename)
         self.assertEqual(summary, json.loads((ROOT / "docs/esdb-audit/summary.json").read_text()))
         self.assertEqual((ROOT / "Standalone/words_processed.csv").read_bytes(), (ROOT / "words_processed.csv").read_bytes())
         old = {row["word"]: row for row in baseline}
@@ -118,6 +175,33 @@ class PublishedEsdbTests(unittest.TestCase):
         self.assertEqual(len(base), 28324)
         self.assertEqual(sum(level == 70 for level in larger.values()), 11559)
         self.assertEqual(sum(level == 80 for level in larger.values()), 11135)
+
+    def test_every_attested_form_of_a_playable_lexical_entry_is_included(self):
+        raw = subprocess.check_output(["git", "show", f"{BASELINE}:words_processed.csv"], cwd=ROOT, text=True, encoding="utf-8")
+        baseline = list(csv.DictReader(io.StringIO(raw)))
+        editorial = json.loads((ROOT / "tools/esdb_editorial.json").read_text())
+        overrides = json.loads((ROOT / "tools/dictionary_overrides.json").read_text())
+        excluded = {word for word, row in overrides["words"].items() if row.get("exclude")}
+        base, larger, forms = load_snapshot(ROOT / "data/esdb")
+        approvals = load_approved_batches(ROOT / "tools/esdb_approved_batches")
+        rows, pending, _, _, provenance, _ = build(
+            baseline, base, larger, forms, editorial, excluded, approvals)
+        playable = {row["word"]: row for row in rows}
+        sources = {row["word"]: row["definition_source"] for row in provenance}
+        lexical = {
+            word: row for word, row in playable.items()
+            if word in base and sources[word] != "esdb-inflection"
+        }
+        by_word = {}
+        for relation in forms:
+            by_word.setdefault(relation["word"], []).append(relation)
+        missing = [
+            row["word"] for row in pending
+            if inflection(row["word"], by_word.get(row["word"], []), lexical)
+        ]
+        self.assertEqual(missing, [])
+        self.assertIn("loader", playable)
+        self.assertEqual(playable["loaders"]["Definition"], "Plural of loader.")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "source": {
+    "name": "Kaikki English",
+    "snapshot": "2026-09-17",
+    "url": "https://kaikki.org/dictionary/English/",
+    "sha256": "e38fe0e9b53e3387673fe46429a02b3dcecfd3e5bf5771d7766c5afa6fd41f25",
+    "license": "CC BY-SA 4.0"
+  },
+  "extraction": {
+    "pending_candidates": 6317,
+    "kaikki_entries_scanned": 1492836,
+    "matched_entries": 8822,
+    "matched_words": 6298,
+    "unmatched_words": 19,
+    "classification": {
+      "safe": 1317,
+      "ambiguous": 3270,
+      "manual": 1730
+    },
+    "lemmas_with_unlocks": 1427,
+    "forms_identified": 1768
+  },
+  "initial_review": {
+    "batches": 13,
+    "approve": 4160,
+    "reject": 116,
+    "defer": 2041
+  },
+  "residual_review": {
+    "batches": 2,
+    "candidates_reexamined": 146,
+    "approve": 24,
+    "reject": 0,
+    "defer": 122
+  },
+  "quality_audit": {
+    "initial_required_corrections": 118,
+    "corrected_sense_selections": 9,
+    "deferred_unsafe_malformed_or_relation_only_approvals": 117,
+    "final_required_corrections": 0,
+    "remaining_nonblocking_register_or_homograph_warnings": 49
+  },
+  "published_result": {
+    "reviewed_batch_headwords": 4184,
+    "attested_forms_from_reviewed_headwords": 1485,
+    "newly_covered_from_review": 5669,
+    "pending_size60": 650,
+    "pending_categories": {
+      "hard_blocked_or_unmatched": 117,
+      "explicitly_rejected": 113,
+      "grammatical_only_awaiting_missing_lemma": 193,
+      "potentially_usable_but_deferred": 227
+    }
+  }
+}

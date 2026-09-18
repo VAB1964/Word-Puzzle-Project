@@ -228,6 +228,13 @@
       "Sentence": "",
       "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
     },
+    "loader": {
+      "rarity": "2",
+      "pos": "noun",
+      "Definition": "A person or machine that loads something.",
+      "Sentence": "",
+      "reason": "Reviewed ordinary meaning; provisional game rating chosen independently of ESDB size."
+    },
     "phew": {
       "rarity": "2",
       "pos": "intj",

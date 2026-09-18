@@ -1,0 +1,4162 @@
+{
+  "artifact_sha256": "b2bc55bcccb6171ef5cfece1c9ecbb5b2be08dccbf8eb4362f8f61d7e1ed216d",
+  "batch_id": "esdb-0010",
+  "batch_sha256": "5900834e46d7311bf4fdcb49c7380814258c48280172a9bc184911986a856e75",
+  "decisions": [
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "achier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "admen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ads"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "ahchoo"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "alkyds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "ampule"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "apneas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "arums"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "asanas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ascots"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "aslant"
+    },
+    {
+      "candidate_flags": [
+        "historical"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "A gold coin, minted in the Roman Empire from approximately 100 B.C.E. to 309 C.E., equal to 25 denarii.",
+        "example": "",
+        "labels": [
+          "historical"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "7bf5a23e11a16f0b777c0bf0595f5f76a1ac92fb3c6f18a69852137cda56d4ae",
+          "source": "Kaikki English"
+        },
+        "sense_id": "734d4ef40f0ab8c6399d97be583dd879d430a9933c2c2ba8c6d955ff10d6db8e",
+        "source_line": 110548
+      },
+      "unlocks": [],
+      "word": "aureus"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ayahs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "babels"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "badmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bahts"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "balers"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "ballsy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "barmen"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "berk"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "berks"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "beseem"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "betcha"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "betook"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bevies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "biggie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bijoux"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "binman"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "binmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "blocs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "blowup"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "blowzy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "boccie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bodged"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bodges"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "boxier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "brazed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "brazes"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "bronc"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "broncs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bruins"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "budged"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "budges"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "bumbag"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "bumph"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "burbs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "burghs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "burled"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "bursae"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "buttes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "byres"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "byways"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "cadger"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cairns"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "calked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "canape"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "caners"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "capons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "carbs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "caulks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cavers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ceca"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "cecal"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "cecum"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ceders"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "certs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cilia"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "coders"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "coleys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "comped"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "confab"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "corers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "corms"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cotes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "cottar"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cowers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "cozily"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "crappy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "credos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cricks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "crocks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "crones"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cruets"
+    },
+    {
+      "candidate_flags": [
+        "uncommon"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "An oil lamp; a crusy.",
+        "example": "",
+        "labels": [
+          "uncommon"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "00bf0aa1cdc993d41722c1b087a85d54c8582da1b9c82932f5bbcba9669f7712",
+          "source": "Kaikki English"
+        },
+        "sense_id": "3c342048b4ffa73d72d9299514c98224c969f7b7d29e4a53ca3bc70bdebc4144",
+        "source_line": 120579
+      },
+      "unlocks": [
+        "cruses"
+      ],
+      "word": "cruse"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cruses"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cubers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "curers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "cutey"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cuteys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cuties"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "cutout"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "cutups"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because every available sourced sense is derogatory or offensive.",
+      "word": "dago"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dagoes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dagos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "darers"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "darkie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "darns"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "dataset"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "daubed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "debars"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "decors"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "decoys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "defogs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deiced"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deices"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "deists"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "delis"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "demode"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "depots"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dewier"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "dimply"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dobbed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dobros"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dobs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "dona"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "donas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dopers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dories"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "dotard"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doulas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doxed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doxes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doxing"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doxxed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "doxxes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dozers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dozier"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "drear"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "droids"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dryads"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "duffle"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "dupers"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "durum"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "eave"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "ecu"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ecus"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "edgers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "educed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "educes"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "A mild exclamation of contempt, surprise, outrage, etc.",
+        "example": "",
+        "labels": [
+          "dated"
+        ],
+        "pos": "intj",
+        "provenance": {
+          "record_id": "a0848121e250fd61847da2a121e45caeb87930b2f9c04fcf1be9979702d59a76",
+          "source": "Kaikki English"
+        },
+        "sense_id": "4f9ea8fa88be75838321b50df54fa6961187a5492711c97333f6be516b057e0e",
+        "source_line": 54278
+      },
+      "unlocks": [],
+      "word": "egad"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "eloped"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "elopes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "eluded"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "eludes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "emends"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "emojis"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "emoted"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ems"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "endued"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "endues"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ensued"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ensues"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "envoys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "eolian"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "epics"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "erst"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "eructs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "estrus"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "exons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "exports"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "exults"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "exurbs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fakers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "falser"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fats"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fatsos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fatter"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "favas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "fiance"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "fibber"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fiches"
+    },
+    {
+      "candidate_flags": [
+        "historical"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "A woman's lightweight triangular scarf worn over the shoulders and tied in front, or tucked into a bodice to cover the exposed part of the neck and chest.",
+        "example": "Assistant Van admired her elegant slenderness, the gray tailor-made suit, the smoky fichu and as it wafted away, her long white neck.",
+        "labels": [
+          "historical"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "05b6e54e2b164160bf64e823fddbffaad9490775b229c163b7c2699b90231630",
+          "source": "Kaikki English"
+        },
+        "sense_id": "2484781346b22569610ec9a638ae609d0eff566f5158ecae622d3fab58dcf55d",
+        "source_line": 159559
+      },
+      "unlocks": [
+        "fichus"
+      ],
+      "word": "fichu"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fichus"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "fie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "filers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "finked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "firers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fixers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "floozy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "fluky"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "flunks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "flybys"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fogies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "foists"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "folios"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fossas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fracks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "frills"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "frowzy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "frumps"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fryers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "fuhrer"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fumier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "fusees"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "futzed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gamier"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "A homeless boy; a male street urchin; also (more generally), a cheeky, street-smart boy.",
+        "example": "",
+        "labels": [
+          "also",
+          "attributive",
+          "dated"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "fd8af59ed9c0369c38c15ca67b95ebf068c5708d7083a46d2f86bfc85a0679c5",
+          "source": "Kaikki English"
+        },
+        "sense_id": "899b036a37ae6e084b7d6cb444b992cabdc3ef3180a23cb42405c937ab232a60",
+        "source_line": 130056
+      },
+      "unlocks": [
+        "gamins"
+      ],
+      "word": "gamin"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gamins"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "gamy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "garcon"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gasmen"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "gawd"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gawped"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gayest"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gays"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gazers"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "geddit"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "geodes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ghats"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gibed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gibes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gibing"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "gite"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gites"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "glace"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "glaces"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "glints"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "globs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gluier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gofers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "goths"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "gourds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "groats"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "gulden"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "guvnor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "guvs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "hankie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hanks"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "hansom"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "haply"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hinds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hoers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hoked"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "honky"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "hos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "hotpot"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "icecap"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "idem"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "idles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ids"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "ifs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "inmates"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "innit"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jambs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jatos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "jeez"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jells"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jiffs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "jokey"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "jujus"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "karts"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "kayos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "kepis"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "kiddie"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "kike"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lazed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "lbw"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "lemme"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lilos"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lings"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "lino"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "litchi"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "loony"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "lorn"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "lours"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "mac"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "mach"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "macs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "mafioso"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "mams"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "masas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "matzoh"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "meany"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "mecca"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "menage"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "metier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "milf"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "milfs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "mkay"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "moaned"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "modi"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "mongol"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "moues"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "munis"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "mus"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "nae"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "naifs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "nevi"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "nimbi"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "noels"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "nohow"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "noris"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "nosher"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "nubs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "nus"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "obits"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "oiks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "okras"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "oohed"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "outre"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "pacy"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "paleo"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "panama"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "papist"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "payoff"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pecs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "peke"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pekes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "peons"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "pewit"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "physio"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "pileup"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "piney"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "pinon"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "pinup"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "plugin"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "poohs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "popgun"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "postwar"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "poufs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "prods"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "prof"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "profs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pups"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "pwned"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "pzazz"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "quins"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "reedit"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "resat"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "resew"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rials"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "rigor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "ripoff"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "roans"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "romeo"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "rotis"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "roue"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "roues"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "sabra"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "sahib"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "saute"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "savoy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "scads"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "schizo"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sears"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "seers"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "senor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "senora"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "serer"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "shams"
+    },
+    {
+      "candidate_flags": [
+        "historical"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "An object (especially a ring) formerly used to impress a picture into the sealing wax of a document as a proof of its origin.",
+        "example": "To carry pure death in an earring, a casket, A signet, a fan-mount, a filigree basket!",
+        "labels": [
+          "historical"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "05046f05ab146371372a2b598210b119a69adf93835da25712aa255c5fcaf22f",
+          "source": "Kaikki English"
+        },
+        "sense_id": "3a9ee71c9c9cfcb986693c38cd444e73b5de1d924eaae9fcda12cf006b5c635e",
+        "source_line": 99628
+      },
+      "unlocks": [
+        "signets"
+      ],
+      "word": "signet"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "signor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sims"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "sis"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "sises"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "slabs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "slues"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "sooth"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "sorta"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "souk"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "souks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "spacey"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "spectra"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "spic"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "spics"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "spivs"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "squaw"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "swiz"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "taros"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "thew"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "thuds"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tings"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "tomtit"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "toted"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "townee"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "treys"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "troth"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "trows"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "trugs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "tuneup"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "Synonym of tuna.",
+        "example": "",
+        "labels": [
+          "countable",
+          "dated",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "907421c1d789e8ceb9083b262649c363aeac652c19687638cb7c24a85e712940",
+          "source": "Kaikki English"
+        },
+        "sense_id": "bb6ea454aa5b48c5695a69d14b176d6a8ba8757e7faace9d1cac29a31d543a5a",
+        "source_line": 191277
+      },
+      "unlocks": [
+        "tunnies"
+      ],
+      "word": "tunny"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "turd"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "twas"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "twat"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "tyros"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Of a person, or movement: not handy; inept; clumsy; not dexterous.",
+        "example": "\"Strike your father, eh?\" Syed Omar launched an unhandy cuff, then another.",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "820647176cded4c285a6f467206eca9eee6cb10c3da005a1e8c202c80943a108",
+          "source": "Kaikki English"
+        },
+        "sense_id": "d3053b28bf38798ef17603e564ddbc1ea7ba0bc2aadcd77753ceb57eb7c23ecd",
+        "source_line": 227154
+      },
+      "unlocks": [],
+      "word": "unhandy"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not heard.",
+        "example": "Her cries for help remained unheard.",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "b2e7786e9f10d9fc58a0d18943177cce2b52c6b88bf8aa9721d5247ae6df8ac0",
+          "source": "Kaikki English"
+        },
+        "sense_id": "0002d71eeb0332c9c5471c348503687d15c6096c4d98de3d9c07b5ec0bd9e313",
+        "source_line": 126693
+      },
+      "unlocks": [],
+      "word": "unheard"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "To remove the leaf of a door or a window from its supporting hinges.",
+        "example": "",
+        "labels": [],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "f7b6e2c7cc69c20110ee715891efd24d2662f49e81ccad219b003b9f4d5358b6",
+          "source": "Kaikki English"
+        },
+        "sense_id": "4f605f56e3849407bdf0b860928e320595e64eecb02ef557979abdb0ffb525f0",
+        "source_line": 148179
+      },
+      "unlocks": [],
+      "word": "unhinge"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "To forcibly remove from a horse.",
+        "example": "",
+        "labels": [],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "421e471460a4ef712c5eefd75ceb81fb527c2fc2634a5e1c392d264fae65a0c9",
+          "source": "Kaikki English"
+        },
+        "sense_id": "c78119d9090c215b53abfea6487b9d4f36bc2a286e09128583010a0441c6d447",
+        "source_line": 210750
+      },
+      "unlocks": [],
+      "word": "unhorse"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "To convert, package, or organize into one or more units.",
+        "example": "Pass-through stretch wrappers are used to unitize loads at high speeds.",
+        "labels": [],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "e9b5591f51e6fbfc6f60f5a62d43e9acd9ef796fd01a64f573063fe87ade45cf",
+          "source": "Kaikki English"
+        },
+        "sense_id": "38ce1f47703727c6c3981d0e63429458f77346e46cc9b8d055367ffb03222a4e",
+        "source_line": 223328
+      },
+      "unlocks": [],
+      "word": "unitize"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "With laces untied.",
+        "example": "",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "0d3665392657d23993e0d0dc977119e6e1b20add740351b7f51e5152b85f1a82",
+          "source": "Kaikki English"
+        },
+        "sense_id": "88a4f8a62ae61bb3e78f7fd6dc2de3ba16503ed46097c5a431e4875fef52f479",
+        "source_line": 218594
+      },
+      "unlocks": [],
+      "word": "unlaced"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not carrying anything; unburdened.",
+        "example": "What is the airspeed velocity of an unladen swallow?",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "b8c7a0a13f9c2d067986da1391046f45feb48fd29c85c1636a0863b0eed2ddd7",
+          "source": "Kaikki English"
+        },
+        "sense_id": "8a9a050ba2e2efbafc6c3cd8975cc26704d5b442694cdbd7464338ff6b9556e6",
+        "source_line": 130086
+      },
+      "unlocks": [],
+      "word": "unladen"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "unlit"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "To loosen or undo (something that entangles, fastens, holds, or interlocks).",
+        "example": "I abide not the imposition of hands—take off your grasp from my cloak, or I will find means to make you unloose it.",
+        "labels": [
+          "also",
+          "figuratively",
+          "transitive"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "27ff7390f3504df5ebcd1836c122bcb55670228bb414283f38208e2312a3cf5f",
+          "source": "Kaikki English"
+        },
+        "sense_id": "19383045b99e059d898be04a78adef66e0e931f614550ecf09dd6de53f3f6454",
+        "source_line": 225973
+      },
+      "unlocks": [],
+      "word": "unloose"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not loved.",
+        "example": "Then, too, there was the mute appeal of this wee waif alone and unloved in the midst of the horrors of the savage jungle.",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "773b830501eec0d0e2053e7c0fa8525c5bfd2d5e06807692e23933db78106924",
+          "source": "Kaikki English"
+        },
+        "sense_id": "5c988ce9891b7e5b08ad8a878f076ec84aca2af06cafcdb5d7b99f3b208677ef",
+        "source_line": 128363
+      },
+      "unlocks": [],
+      "word": "unloved"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Unfortunate, marked by misfortune.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "0b413e5d5967a8b597fcd415978a286cd0a5277464660a2d00cf954d549ffa1a",
+          "source": "Kaikki English"
+        },
+        "sense_id": "2cb66ca2eb717482d223455549b721073549e4bff5bd9bfb29e8e18554e51f30",
+        "source_line": 91967
+      },
+      "unlocks": [],
+      "word": "unlucky"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred because the available lexical sense is unsuitable for the general game dictionary.",
+      "word": "unmanly"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Pure, not mixed or combined.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "a5ad376903b90cf1728a0609fa421de00fe72c6e799e70fe38b43e8d15c264db",
+          "source": "Kaikki English"
+        },
+        "sense_id": "2fe221189283f64bf84ba9a426a5cc19c24d1d68eef25f965d7251544014ddec",
+        "source_line": 148121
+      },
+      "unlocks": [],
+      "word": "unmixed"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses",
+        "rare"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not applicable for moral consideration.",
+        "example": "",
+        "labels": [
+          "rare"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "547d6edbd2683d7cc55e0cef5696145139ab5f27663099e3a0b42314238b3f70",
+          "source": "Kaikki English"
+        },
+        "sense_id": "940055cabbf8981da1c16991615015c5b3ad3156f1e8b4c00dc808930557f0e4",
+        "source_line": 184313
+      },
+      "unlocks": [],
+      "word": "unmoral"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not physically moved.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "4dcab1456e49d4b0ca32b7c9e6ecc9ec6a6e507f4d04a6f438616febb7ff5e2a",
+          "source": "Kaikki English"
+        },
+        "sense_id": "161ba53da7105a963ebbfbe3f65445b887385244c7d6cea53f26563992d23278",
+        "source_line": 152474
+      },
+      "unlocks": [],
+      "word": "unmoved"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not having a name.",
+        "example": "",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "6ba702285677ccab1f1ae89b6f36c98e6977a9ac7ea0b5ce0d22238fb2b5034d",
+          "source": "Kaikki English"
+        },
+        "sense_id": "d8ffe94550b5e52e2b295137a11b5a2b10a8d72370cf9a4bc6226e30afa37466",
+        "source_line": 99943
+      },
+      "unlocks": [],
+      "word": "unnamed"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Uneasy and restless; unable to settle.",
+        "example": "But, for the unquiet heart and brain, ⁠A use in measured language lies; ⁠The sad mechanic exercise, Like dull narcotics, numbing pain.",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "0938097c255a244a725663e00d44220a6258fb5cb2eefd5a946ea3bbce411e9e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "5f7cd03004af3e22f2dae29caa43ea103c4e3a4346af0b0b610617184e0b07c2",
+        "source_line": 168241
+      },
+      "unlocks": [],
+      "word": "unquiet"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not rated; having no rating.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "39095c339f8b067cee69714208e8214168a10bc2fdb347f14f6938526129c472",
+          "source": "Kaikki English"
+        },
+        "sense_id": "807526983125128748a949f25ab36cc88badc4c71ad37bc724f6cc72e031771a",
+        "source_line": 184934
+      },
+      "unlocks": [],
+      "word": "unrated"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not ready. Not yet mature; not yet ripe.",
+        "example": "As for our apple supply, this year's crop is unready, and last year's stored crop is now exhausted, so we're temporarily embarrassed, I'm afraid.",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "83fc75ea17c3ceed33a971c20a828990a17f0b08dfb64ae868b1764f48814822",
+          "source": "Kaikki English"
+        },
+        "sense_id": "c05652d50c60e0f4f836a4e59eb875bffda730d16ff06e3144365033ecc86365",
+        "source_line": 184936
+      },
+      "unlocks": [],
+      "word": "unready"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not saved; unredeemed.",
+        "example": "The unsaved must repent, or they will go to Hell!",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "519472780cdd1f860849e0b1a2a22db96038d25c2ed3aa968644d68793a8444e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "09313a60ba6c926a5ada34af0dbb262e71c4f11b45fda576157208566d0f04d8",
+        "source_line": 184965
+      },
+      "unlocks": [],
+      "word": "unsaved"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not spent.",
+        "example": "Almost two-thirds of American consumers have at least one unspent gift card tucked away in a drawer, pocket, wallet or purse.",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "74a6848d2eea1704d2584764f7537161eb6b20865a0ad7dfa59beca68ee6029d",
+          "source": "Kaikki English"
+        },
+        "sense_id": "23b902fc69c48617ead98169526cd9bd7d01eb38779c66c298184a17fc728e54",
+        "source_line": 180985
+      },
+      "unlocks": [],
+      "word": "unspent"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not subject to being taxed.",
+        "example": "During August, clothes costing less than $75 are untaxed, to try to help the poor to buy clothes and the merchants to make money.",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "0956e3b8d78d282e21f375d44c31d9eb996ed40ca714865a27f8d82c9bd16cf5",
+          "source": "Kaikki English"
+        },
+        "sense_id": "1a1df72f8b8f0307875249ba03da8465593cac9bd67c7cf57c4b7ef3ccfaa2e3",
+        "source_line": 231214
+      },
+      "unlocks": [],
+      "word": "untaxed"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not yet tried or tested; unknown.",
+        "example": "The new guy was inexperienced and untried.",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "a5262ebf85bf8f219c2f41d5d34fc38538b5c63204bcffc45abb3953752ec18f",
+          "source": "Kaikki English"
+        },
+        "sense_id": "c224fbfbaaf54fcadbbfdf639283417af3605206f5cebb0c1ecc3abcf0067122",
+        "source_line": 92289
+      },
+      "unlocks": [],
+      "word": "untried"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A lie or falsehood.",
+        "example": "Herald The prince was swept from the sight of the Achaean host—himself, and his ship likewise. ’Tis no untruth I tell.",
+        "labels": [
+          "countable",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "18d3908db57738195aa0a29e8571452b5444c3bec2f8c4a286b8aa323608399f",
+          "source": "Kaikki English"
+        },
+        "sense_id": "c89a9ed0af89d415a4acb2d3b8922c32f19d78141f3fde8894a2f8c05712b6f4",
+        "source_line": 83426
+      },
+      "unlocks": [],
+      "word": "untruth"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "To remove a twist from.",
+        "example": "",
+        "labels": [
+          "transitive"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "5b3680603053bacd9903c77269ba196066c9ca45cbd2e4b871db7861768a5f37",
+          "source": "Kaikki English"
+        },
+        "sense_id": "c36121eb39f4118f88e402a8cdd1991335cea9d4b36403c752ee72364d8f60d2",
+        "source_line": 165265
+      },
+      "unlocks": [],
+      "word": "untwist"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Without a wage.",
+        "example": "",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "f8aa664c776f8c2d0377ddb028d7515398e3f77fc1a26a71e09e629321b10a13",
+          "source": "Kaikki English"
+        },
+        "sense_id": "f8568664cb66c51211d7dcc55a45a33d6f382e0277bd0d7d940230be54b532be",
+        "source_line": 291286
+      },
+      "unlocks": [],
+      "word": "unwaged"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not woven.",
+        "example": "Leaving at least 2½\" of unwoven warp for finishing on both ends, remove the fabric from the loom.",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "a0dfa732886ada7866aa9d692ca00dbe312b126c80b36c06ea74e7c58846f2e4",
+          "source": "Kaikki English"
+        },
+        "sense_id": "ac88416c89be7f08724b969c4de6e40ef133ec143e5b3d2a26767786800c96ba",
+        "source_line": 185070
+      },
+      "unlocks": [],
+      "word": "unwoven"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Not yoked.",
+        "example": "",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "33911a17bea2abac4fa421be085fe4602a27e2e348f6f18b7a9bb87a68d0ea2e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "e1c2c867deace5f7adb5ef18681109d85743235a55d4f5871b94f0a03cc64b99",
+        "source_line": 208436
+      },
+      "unlocks": [],
+      "word": "unyoked"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "updos"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Honest, frank and straightforward.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "4f0fe69d4334aef403cb3cd1dae713cdccba1c5869976b7ab805a37caa12c050",
+          "source": "Kaikki English"
+        },
+        "sense_id": "ebeabae8d847c9d3f746715c91c2b34aecf3fed7b5a16a02e699020972029f57",
+        "source_line": 102929
+      },
+      "unlocks": [],
+      "word": "upfront"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "upped"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Expensive and designed to appeal to affluent consumers.",
+        "example": "For example, a good location for resale, such as an upscale suburb of new homes, will cost more money than a piece of land in an established neighborhood of small, postwar houses.",
+        "labels": [
+          "us"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "ee07f18f31831cee51ad89279bc6c96ae0e92c56d5a6c334e1320ca4f5047d2e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "638c4d0eb4d8b972feb40aa8a370b68a1dcaf3e3ff95b03ea1e5e56740f8fdb0",
+        "source_line": 136185
+      },
+      "unlocks": [],
+      "word": "upscale"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Having a fast tempo.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "32437c25edb23730ffdd77f52d865d58e46f5b4081ca8b6632a010f14adae00c",
+          "source": "Kaikki English"
+        },
+        "sense_id": "826c7e2285b105aa774d53b4b460efa93a5a6b7297a957a3fed2cbd6b42dd664",
+        "source_line": 265577
+      },
+      "unlocks": [],
+      "word": "uptempo"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Emptiness.",
+        "example": "",
+        "labels": [
+          "countable",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "fe64ddad7528d09e1e5abb03c6b0d315e2b9f6c2e657accaa191ff9ed86ef837",
+          "source": "Kaikki English"
+        },
+        "sense_id": "0e29a791d25d3e3f929d35d26be62633371be26a8b68f3a8493f9376a2c2f4ba",
+        "source_line": 147660
+      },
+      "unlocks": [],
+      "word": "vacuity"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A short curtain that usually hangs along the top edge of a window.",
+        "example": "Even the mantelpiece is adorned with a totally unfunctional tasselled valance rather like an altar frontal.",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "270412e1d0a30146aba3d3b5492ccda623ecc1269e6e633f62ce5a840b6bf773",
+          "source": "Kaikki English"
+        },
+        "sense_id": "aa12b1adc7463721aeb51258b17f0a804046bc8c7638a0b0e491ba1dbc32ea9a",
+        "source_line": 139939
+      },
+      "unlocks": [],
+      "word": "valance"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "valency"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "To run away (from); to flee.",
+        "example": "World 6-3: Vamoose the Lava Sluice!",
+        "labels": [
+          "ambitransitive",
+          "slang"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "a94a1a2ac6131a0241caccb25ba3c8b7555d74c6d9817461f3f0974f80f1d94c",
+          "source": "Kaikki English"
+        },
+        "sense_id": "73d2a01f64b6a573cc5c303b927c1e858a86de24226a4eb0bccb98fb1950f435",
+        "source_line": 124835
+      },
+      "unlocks": [],
+      "word": "vamoose"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "vaped"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Random variable.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "bfcc4d894616c7ffe1427437eb6f6be7af8783e238dc1b2f256e228beb54d784",
+          "source": "Kaikki English"
+        },
+        "sense_id": "0d9379c388817c8e95eaf224f2e90c2045dd66ce4957d947ae380a707ababf0b",
+        "source_line": 193059
+      },
+      "unlocks": [],
+      "word": "variate"
+    },
+    {
+      "candidate_flags": [
+        "historical"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved as legitimate size-60 puzzle vocabulary with a clear sourced lexical sense.",
+      "sense": {
+        "definition": "Specifically, a youth acting as a knight's attendant at the beginning of his training for knighthood.",
+        "example": "",
+        "labels": [
+          "historical"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "ac41f67fbd271da12779215f95bd138693526cd5ace16e586481a82eba6cfb84",
+          "source": "Kaikki English"
+        },
+        "sense_id": "8f348b0de8288b735be7304b32cd0d08d0f7043481ad2018f2140d0dec29d433",
+        "source_line": 93123
+      },
+      "unlocks": [
+        "varlets"
+      ],
+      "word": "varlet"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "University.",
+        "example": "",
+        "labels": [
+          "attributive",
+          "countable",
+          "often",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "218460ac2d80adf6cba86754e9ef2a6618c569309c9d9bf5816797b375e04e25",
+          "source": "Kaikki English"
+        },
+        "sense_id": "e096150052d0f2c680d1334e5c3ea90a0409bc41f4d64ec93292083f039b8e4b",
+        "source_line": 127410
+      },
+      "unlocks": [],
+      "word": "varsity"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A secondary scale with finer graduations than the primary scale of a measuring device; the vernier measures between graduations of the larger scale.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "1dd0694d394cc5425e03a54e28a30823b0f4d66f4488e51bb1f867d05c764ac0",
+          "source": "Kaikki English"
+        },
+        "sense_id": "3398b9293f1ea90ba03396b8d3f94f382d5c200aa4bf36898a91c2a93de34758",
+        "source_line": 135755
+      },
+      "unlocks": [],
+      "word": "vernier"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "versa"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "to make or compose verses.",
+        "example": "I'll versify in spite, and do my best.",
+        "labels": [
+          "ambitransitive"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "5d62f805d59ae7baf8053c66ad4cfc7658392d447256d4cbc53a2e7e658dec7e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "c44c9245f855f001b2ac956edb16d99d9405b03f878c50017b6d3d0d49420b65",
+        "source_line": 93798
+      },
+      "unlocks": [],
+      "word": "versify"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "vigor"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Independent quality review selected the clearest ordinary sourced sense for game display.",
+      "sense": {
+        "definition": "A person who plays the viola.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "1b313ca033d1a8f100332ed39fa7d98acf5f297c4c452aab871b57430fe61386",
+          "source": "Kaikki English"
+        },
+        "sense_id": "8dc62cfc369a16d8736b132191eff199e11f4ac169cb5cabb6e9c87904baad68",
+        "source_line": 147738
+      },
+      "unlocks": [],
+      "word": "violist"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "viols"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "In a manner that imparts vitality.",
+        "example": "",
+        "labels": [],
+        "pos": "adv",
+        "provenance": {
+          "record_id": "7069a378585f5cd30d648dbdf6d48e2e9b852ce84a7b6d4510880a82f802fe38",
+          "source": "Kaikki English"
+        },
+        "sense_id": "4d13c713f7909edd617e397ccac841a0849fe3673f31187a1431ead79df6d0a9",
+        "source_line": 147761
+      },
+      "unlocks": [],
+      "word": "vitally"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "To convert into glass or a glass-like substance by heat and fusion.",
+        "example": "",
+        "labels": [
+          "transitive"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "8567067ef31ce6e1729d8c0ed7f8c799660583b84ed86a624ae4b9f3e6fd3617",
+          "source": "Kaikki English"
+        },
+        "sense_id": "10b2a4fc6fc5421fb2062350ff1def1a21876be536da7b0323a74204e0f99cff",
+        "source_line": 109890
+      },
+      "unlocks": [],
+      "word": "vitrify"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "vittles"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "viz"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A word or utterance, especially with reference to its form rather than its meaning.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "ae64cb735a0e6130bdc0f0a981a75108ab971626e27620351461a41116f2b252",
+          "source": "Kaikki English"
+        },
+        "sense_id": "bcca06191725688b25f431e25fa22b428b89071c7266b8b0f72d9bc86d7aa06a",
+        "source_line": 109891
+      },
+      "unlocks": [],
+      "word": "vocable"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "In a vocal manner.",
+        "example": "Passengers complained long and vocally about the timetable changes.",
+        "labels": [],
+        "pos": "adv",
+        "provenance": {
+          "record_id": "ff0882d3aa5779fb71d5c67b0f23d510b99a5e65af6df18be30e9d5852571b1b",
+          "source": "Kaikki English"
+        },
+        "sense_id": "6aab1e21d98dc2935ced94843df9f5eb5d9d7817e123548ba4ccd0b3d18e31c7",
+        "source_line": 139522
+      },
+      "unlocks": [],
+      "word": "vocally"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "voila"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "One who waffles, or changes sides or positions frequently.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "814eaba9556a82c96079139ae7b0f5a2a4c92cb172eb2058a4cca10cf943688b",
+          "source": "Kaikki English"
+        },
+        "sense_id": "cb350427cb93c954fb9e648f24d555837ec33951cbbfb0dec93ad9006ea464ce",
+        "source_line": 134655
+      },
+      "unlocks": [],
+      "word": "waffler"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Droll behaviour characteristic of a wag.",
+        "example": "",
+        "labels": [
+          "countable",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "26cc0c0b85300b80eb33c0aa5ce315733b20c431b2f8c8950db1ba6f4a3d3180",
+          "source": "Kaikki English"
+        },
+        "sense_id": "22f4e13e2e0ccc279d1ec46876f69a75f8de4a8be266c13c19ac481a34b72938",
+        "source_line": 147907
+      },
+      "unlocks": [],
+      "word": "waggery"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Someone who drives a wagon.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "436f707a90b7793188c11925483f85d0d16c920d9c1037d93368cb74f856f57d",
+          "source": "Kaikki English"
+        },
+        "sense_id": "a49aaf011ba73c0813dc0a2d78dc884f09a65bffb8321f77cc7f85811fadc65f",
+        "source_line": 147908
+      },
+      "unlocks": [],
+      "word": "wagoner"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "wain"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wains"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Awake; not sleeping.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "5506894570148974f4ac476e1e89c4255599b049cd27a321330dd3a7c81179af",
+          "source": "Kaikki English"
+        },
+        "sense_id": "45aaa3b58559151338a2492cf08fb1e291fbe20fe39deab437672a9ef22298a7",
+        "source_line": 147915
+      },
+      "unlocks": [],
+      "word": "wakeful"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A sudden stoppage of work.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "85e6e41566509acaf84f3f9e1ee427bb1252c929b350f5f8398116d4c1de8189",
+          "source": "Kaikki English"
+        },
+        "sense_id": "49c231b7c146a900cce9e0c7adb9ead8d47438f46525473e2647bf6c0e6c7beb",
+        "source_line": 147920
+      },
+      "unlocks": [],
+      "word": "walkout"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "One who dances the waltz.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "b96aa0385ab6df180261837b9db7ae5b3bc67590206273c09a45847c0d77a0e0",
+          "source": "Kaikki English"
+        },
+        "sense_id": "390fd912754e20943e00c6eae290b4562c61495f2aa1e6e84c1e0d72d55a9f34",
+        "source_line": 147937
+      },
+      "unlocks": [],
+      "word": "waltzer"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "wanker"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "wanna"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wantons"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Suggestive of the behaviour of a wasp.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "181853d17629f15c765bcb620efd08d2d3f92cc625a7d87c905f7858362d262e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "ce08eee5e32bdd5b19cfd9338d0fcc15425c50c7fd33ecb597215df0b1e84f2a",
+        "source_line": 121968
+      },
+      "unlocks": [],
+      "word": "waspish"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Supplied with water.",
+        "example": "Keep the horses well fed and watered.",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "f28db739d0fdb1ff97262eb4d260f7f46a45f2522206725a0542044dcf4b6887",
+          "source": "Kaikki English"
+        },
+        "sense_id": "5a729c8401d14aa1436707268e1b02ec6cf8e11abf32e68be6e0faf425e3c284",
+        "source_line": 119628
+      },
+      "unlocks": [],
+      "word": "watered"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A small wave; a ripple.",
+        "example": "A little, rubbishy wavelet, full of candy wrappers and orange peel and seaweed, folded over my foot.",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "7ade37953b1831072ce9606945f2cf85b6fddd4eb15517b691aa7c2517500f2e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "be2a1af335d075334dc24e19b6a0a424fa49518bd8431dfc84972bd8732d44c3",
+        "source_line": 149700
+      },
+      "unlocks": [],
+      "word": "wavelet"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A document that lists the final destination (and other details) of each part of a cargo.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "3cf9a05e6efa063c1070503765bab70255aaaa0e8d37249f149aba65a2d3aa8e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "7b8d04595c09c6fb09fa94c7ba0babe25ac04c6ffcad030f6d39535ea12d83a1",
+        "source_line": 149710
+      },
+      "unlocks": [],
+      "word": "waybill"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "In a weary manner; feeling weary.",
+        "example": "\"Yes,\" said Marvin. \"Wearily I sit here, pain and misery my only companions.\"",
+        "labels": [],
+        "pos": "adv",
+        "provenance": {
+          "record_id": "337de7c2ed7c01c4726d6ef92e27fd8a8d916d7b8491f67ed5e9bd05256fdc26",
+          "source": "Kaikki English"
+        },
+        "sense_id": "aa1a5490f54d440a6f39016b865fb35f9b7870e962cadf03f1e22c66b365513d",
+        "source_line": 103077
+      },
+      "unlocks": [],
+      "word": "wearily"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "webcams"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "weepies"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wefts"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "In a weird manner.",
+        "example": "She wore a necklace strung with weirdly-shaped pearls.",
+        "labels": [],
+        "pos": "adv",
+        "provenance": {
+          "record_id": "c1aa06f12d043be33bce61d2858414cffd59c646a4ae0e70f45348893a46cd02",
+          "source": "Kaikki English"
+        },
+        "sense_id": "91e06b4b86d7edb30dd95747cd7b495b622aac721c9b7ec01042b6824d2e23c8",
+        "source_line": 149895
+      },
+      "unlocks": [],
+      "word": "weirdly"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "welsh"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "The act of making reinforcing welts.",
+        "example": "",
+        "labels": [
+          "countable",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "d560aa31ecf32d572b6333012bc1bbcfcdd2ccfc960bef3169c9be65a16fb407",
+          "source": "Kaikki English"
+        },
+        "sense_id": "743c9338e8d99884771465a6a63280e0865be7d0e01257bf339701918343a817",
+        "source_line": 278677
+      },
+      "unlocks": [],
+      "word": "welting"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because every available sourced sense is derogatory or offensive.",
+      "word": "wetback"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "One who, or something which, whacks.",
+        "example": "Joe was just about the best Australian heavyweight at the time, a very tough customer in his own right. He didn't have any science, but he was a mighty whacker.",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "ab1245cf59d32f9ce6538d7a128f4f23e6c46a4d16dd081ed6a47fa2b8440390",
+          "source": "Kaikki English"
+        },
+        "sense_id": "5ce08319c09aa2643a2610449dd0a7425fc9efe85043901fc96e0d6185933410",
+        "source_line": 146450
+      },
+      "unlocks": [],
+      "word": "whacker"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A small unspecified object; bric-a-brac (in plural).",
+        "example": "",
+        "labels": [
+          "countable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "75732f39aa40a763ce02dcff246fbedc91c0236b03cc4e4c814c59d71b7383ab",
+          "source": "Kaikki English"
+        },
+        "sense_id": "62dc635a3c8676c56e0e25adcdd64f54233dae97b55e8d79647ea9765334fa16",
+        "source_line": 94804
+      },
+      "unlocks": [],
+      "word": "whatnot"
+    },
+    {
+      "candidate_flags": [
+        "historical",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Someone who operates a wheel.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "440917c5e0b59477e82d17aaa59532fa72daf66847bceaae1748a9fc5f44e317",
+          "source": "Kaikki English"
+        },
+        "sense_id": "808aa24df3fcee356e1b171c50c1aac83cc1f3aa7552f3441b62738267ef92e3",
+        "source_line": 130115
+      },
+      "unlocks": [],
+      "word": "wheeler"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A person or thing that whips.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "5ee325b10f7f9c842d802bfe2ffe811370edd737006694e800a52b6b4030f694",
+          "source": "Kaikki English"
+        },
+        "sense_id": "b100854ad785ecdb711efcc7009949cab3455f32c7b28c771428d4d9552660dd",
+        "source_line": 135094
+      },
+      "unlocks": [],
+      "word": "whipper"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A dog of a certain breed, similar to a small greyhound, originating in Britain and bred for racing.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "d321dcfcf8fbfd5eb2401240b912b2a2de812d7ff79df701aa535c06a9398c0e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "217aa9cb683aedbe1cbaa1c97cbb157535e3932cab05f43ae9050241dae8a670",
+        "source_line": 101610
+      },
+      "unlocks": [],
+      "word": "whippet"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A rip saw often operated by two people.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "5226eddcc1d07ddbce4cc4969f1b7cae282bcfed25c5e351b2f6262ca6108036",
+          "source": "Kaikki English"
+        },
+        "sense_id": "d48718bfb8284a5d9c222d9bec899001333dc9de2068e2aa76da51e2f79aef6e",
+        "source_line": 130133
+      },
+      "unlocks": [],
+      "word": "whipsaw"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "whirs"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred because the available lexical sense is unsuitable for the general game dictionary.",
+      "word": "whiteys"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A person or animal that whoops.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "7ed99f9cb694cc55d4b25f5c2fbbbbbd21d9140901e7e448b705c4be13080005",
+          "source": "Kaikki English"
+        },
+        "sense_id": "f0da8b951a5b694f144fef8df757485d729334ddb9c613b9c18f5d6ce331c913",
+        "source_line": 146497
+      },
+      "unlocks": [],
+      "word": "whooper"
+    },
+    {
+      "decision": "reject",
+      "reason": "Rejected because the source catalog supplies no usable sourced sense.",
+      "word": "whore"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred because the available lexical sense is unsuitable for the general game dictionary.",
+      "word": "whoring"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "whups"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Anything that wiggles. The larva of a mosquito.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "9d717e0a44433d85f9f36636cebf115f17d8857902e11438ffac8b740c5259db",
+          "source": "Kaikki English"
+        },
+        "sense_id": "029e848c7704c5499bb7e499a4cfb1d1769e7fa091a7362bc3e6ab5f8287869e",
+        "source_line": 152227
+      },
+      "unlocks": [],
+      "word": "wiggler"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wigwags"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Resembling a willow.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "b28aa187885ef9d8322b280fb618b036ad80ee8abc9a710a901627654ed57f5e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "15f324cb251f5867ea342f4f46c1688ce63d105fa7a51368b459836e895369ac",
+        "source_line": 152427
+      },
+      "unlocks": [],
+      "word": "willowy"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Wearing a wimple.",
+        "example": "She put on a white wrapper of Susy's, and, looking like a wimpled nun, followed Polly down stairs.",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "76bbaa01b974cc45efe62aec883f553854a5e308810e38dd26a51e70612ca0ca",
+          "source": "Kaikki English"
+        },
+        "sense_id": "fbcb0952872c317ac699abcf38316f8a93cec98b4de6ec0ad007faec3b4a0e2d",
+        "source_line": 469373
+      },
+      "unlocks": [],
+      "word": "wimpled"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "In a manner of or like the wind.",
+        "example": "",
+        "labels": [
+          "not-comparable"
+        ],
+        "pos": "adv",
+        "provenance": {
+          "record_id": "189ac8717cc1ab535aff9d7719aefd6f5395ab3f7c72de30067352d485ef4642",
+          "source": "Kaikki English"
+        },
+        "sense_id": "061c975d14a8c6b3f6b405d65b144c85a816d6fde045913828d0a34eaeab3fcb",
+        "source_line": 405075
+      },
+      "unlocks": [],
+      "word": "windily"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A row of cut grain or hay allowed to dry in a field.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "1055239febccc133001a8971c3272768c032de7642f5220e814a2b5457b5b900",
+          "source": "Kaikki English"
+        },
+        "sense_id": "362b5d022be67b24571764c12a433fb261c79fe4ad367a0cbe51901882366d04",
+        "source_line": 105771
+      },
+      "unlocks": [],
+      "word": "windrow"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A connection installed on a telephone line or other communications system in order to allow a third party to conduct covert surveillance of conversations.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "459d08060259295da55e34417c505214d00d84787135ee9c3d9ea83daaa8b42d",
+          "source": "Kaikki English"
+        },
+        "sense_id": "edd8bb6ab55b2689ac18bd145ac6f7158256df1c6526150877ba6ed6e4048529",
+        "source_line": 152669
+      },
+      "unlocks": [],
+      "word": "wiretap"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "aware, knowledgeable.",
+        "example": "Sometimes the committing authority, who is usually located in the United States, is the only person who is witting of the CIA officer's true affiliation.",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "5ec60abaf1d79ce568c6a80c890d4bf15feb061a75ed68f33cb15e3095a8a71e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "740b01db917011d5484f376f84cdb85791c327d37636a72f9e79783a2d9f4280",
+        "source_line": 114382
+      },
+      "unlocks": [],
+      "word": "witting"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wived"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Of, like, or pertaining to a wolf.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "fd244f64cf252434db8ff3899894487ecad585641d4a5a9d0f62fd229f82f971",
+          "source": "Kaikki English"
+        },
+        "sense_id": "45a32bc93e4beb239825728d0bb87f33b47f195e1789d8db7740c051dcdc5157",
+        "source_line": 90704
+      },
+      "unlocks": [],
+      "word": "wolfish"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "wonks"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Words collectively, considered in a mass sense.",
+        "example": "",
+        "labels": [
+          "countable",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "471382102830f985770c089d40d0b53caa3f21180d71fe296a52b9e9695b159e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "2fd02e3d74026baa9f25b488e8fbe7da8eb8fcccbc6a4535ef668563646a62c7",
+        "source_line": 152797
+      },
+      "unlocks": [],
+      "word": "wordage"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A person who worries a great deal, especially unnecessarily.",
+        "example": "You are such a worrier! I'm sure everything will turn out all right.",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "5e471d497cd94196b10069db2e3e6cd62c86578a2917ac41732ace162950d2ed",
+          "source": "Kaikki English"
+        },
+        "sense_id": "142d524645266c56c7c311b6e26f1cfd023b5b4b91d2133298d319719dceda94",
+        "source_line": 94526
+      },
+      "unlocks": [],
+      "word": "worrier"
+    },
+    {
+      "candidate_flags": [
+        "historical",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A person or company that dismantles old or wrecked vehicles or other items, to reclaim useful parts.",
+        "example": "",
+        "labels": [
+          "australia"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "ecb9d40c3b1471d19a66cc80530d80eedc744c4a488725796196d68d2366c3c2",
+          "source": "Kaikki English"
+        },
+        "sense_id": "7668d32d90d9453805e1f5816ed3719967f130f80b22d9974c344f728035d269",
+        "source_line": 111568
+      },
+      "unlocks": [],
+      "word": "wrecker"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Having wrinkles.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "cc8eb006b57f659c69f81d151c7ebef78e98a87091940d9fb362f371b1763145",
+          "source": "Kaikki English"
+        },
+        "sense_id": "9d6c3f04f9080245e017db0dff640d61a60e8c2c8356c95e21f7f5b65bfd6c32",
+        "source_line": 152835
+      },
+      "unlocks": [],
+      "word": "wrinkly"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "In violation of a moral or other standard, code, or convention; in an unfair, unjust, dishonest, or immoral manner; wrongly convicted is synonymous with wrongful conviction and miscarriage of justice.",
+        "example": "",
+        "labels": [],
+        "pos": "adv",
+        "provenance": {
+          "record_id": "ee7e1293a8047700a4701e8f0d53a4ddc53b35782eb5d2a5169688563df2465e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "24e8386c82d3b2223cb5a88fd74d8204e3e0464cf648446aa69f909e530104dd",
+        "source_line": 98423
+      },
+      "unlocks": [],
+      "word": "wrongly"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "xis"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "An amount or length measured in yards.",
+        "example": "I used a yardage counter to tell me that I had about 400 yards of each thread.",
+        "labels": [
+          "countable",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "e74bdd2f5b2f83a6220147b2c47c601332d90576069c25458e6a7cde657ff80f",
+          "source": "Kaikki English"
+        },
+        "sense_id": "b4fe59836d8b2114057fd0b98e6ab2e840c83db91211ff19cb9d8669f828654e",
+        "source_line": 101543
+      },
+      "unlocks": [],
+      "word": "yardage"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "yid"
+    },
+    {
+      "decision": "defer",
+      "reason": "Grammatical-only form; defer until its reviewed lemma generates it through ESDB.",
+      "word": "yids"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "A sound that yowls.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "76d3a15a5a1677b9148d1001d41f8567295e86642ff716c74f70dcef77107c05",
+          "source": "Kaikki English"
+        },
+        "sense_id": "9d2d12ed7e2b97a0ab6e09ab5cd3138b006479e323c644d870c73cecd7324ba0",
+        "source_line": 215622
+      },
+      "unlocks": [],
+      "word": "yowling"
+    },
+    {
+      "decision": "defer",
+      "reason": "Independent quality review deferred this unsafe, derogatory, malformed, or relation-only sense.",
+      "word": "yukky"
+    },
+    {
+      "decision": "defer",
+      "reason": "Deferred pending stronger evidence that this rare, regional, or variant spelling suits the game.",
+      "word": "yule"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Approved the clearest ordinary modern lexical sense after reviewing all supplied senses.",
+      "sense": {
+        "definition": "Full of zest. Of food, or an aroma or flavour: pleasantly piquant, pungent, or spicy; zesty.",
+        "example": "",
+        "labels": [],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "1f9b1a67cec5a33cdec0b7de7a84d9c92b2b2fd4e858a4b8016c90369ea3c38c",
+          "source": "Kaikki English"
+        },
+        "sense_id": "c48be520f0530e776ecffc9411e28bdee8670fe8911f3c8c76794951d6b288f1",
+        "source_line": 92832
+      },
+      "unlocks": [],
+      "word": "zestful"
+    }
+  ],
+  "reviewed_at": "2026-09-18T04:17:51.783Z",
+  "reviewer": {
+    "id": "quality-correction-agent",
+    "kind": "agent"
+  },
+  "schema_version": 1
+}

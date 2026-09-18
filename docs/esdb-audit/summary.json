@@ -1,25 +1,26 @@
 {
   "baseline_words": 18242,
   "size60_candidates": 28324,
-  "playable_words": 22020,
-  "size60_playable": 22005,
+  "playable_words": 27689,
+  "size60_playable": 27674,
   "larger_level_approved": 14,
   "supplemental_outside_esdb": 1,
-  "pending_size60": 6319,
+  "pending_size60": 650,
   "retained_words": 13409,
-  "added_words": 8611,
+  "added_words": 14280,
   "removed_words": 4833,
   "definition_sources": {
     "cleaned-dictionary": 13408,
-    "editorial": 26,
+    "editorial": 27,
     "editorial-supplement": 3,
-    "esdb-inflection": 8583
+    "esdb-inflection": 10067,
+    "reviewed-batch": 4184
   },
   "rarity_counts": {
     "1": 1418,
-    "2": 4821,
-    "3": 10459,
-    "4": 5322
+    "2": 5253,
+    "3": 15538,
+    "4": 5480
   },
   "removed_easiest_words": [
     "bam",
@@ -28,6 +29,25 @@
     "india",
     "june",
     "york"
+  ],
+  "approved_batch_headwords": 4184,
+  "approved_batch_forms": 1485,
+  "approved_batches": [
+    "esdb-0001",
+    "esdb-0002",
+    "esdb-0003",
+    "esdb-0004",
+    "esdb-0005",
+    "esdb-0006",
+    "esdb-0007",
+    "esdb-0008",
+    "esdb-0009",
+    "esdb-0010",
+    "esdb-0011",
+    "esdb-0012",
+    "esdb-0013",
+    "esdb-residual-0001",
+    "esdb-residual-0002"
   ],
   "baseline_commit": "88c958927f986cff82f19222d8d7482567b908d3"
 }

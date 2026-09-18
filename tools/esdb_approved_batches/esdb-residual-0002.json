@@ -1,0 +1,286 @@
+{
+  "artifact_sha256": "42bf45f37c257b64c2b483c37b292286a7a01d4adecfd6d4826e1a7005fd1e21",
+  "batch_id": "esdb-residual-0002",
+  "batch_sha256": "8abb3f540128d662440cbbaafc28c69a29d3059e050a7f2d6d341d3324699bbf",
+  "decisions": [
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "attache"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "bolivar"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "canape"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "cottar"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "curacao"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "fiance"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "fiancee"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "fuehrer"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "fuhrer"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "garcon"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "gawd"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "guarani"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "gulden"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "habitue"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "An airport served by jet aircraft.",
+        "example": "",
+        "labels": [
+          "dated"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "79e390e92db4e6b7733919fef88a513da4eac7dfa98a019d2c0fad0f822a516f",
+          "source": "Kaikki English"
+        },
+        "sense_id": "8285066420e0895dc8179b4a37105cb708236bc25d042c348ee57b2156a0f641",
+        "source_line": 139125
+      },
+      "unlocks": [],
+      "word": "jetport"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "kronur"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "lbw"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "linage"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "mafioso"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "manege"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "menage"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "metier"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "moolah"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "naivete"
+    },
+    {
+      "candidate_flags": [
+        "dated"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Someone who noshes; an eater.",
+        "example": "",
+        "labels": [
+          "colloquial",
+          "dated"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "97e2f8c28de76247ec9c281a3e7c60e3dcd7f9bffac1a391ca3630b6602e43a7",
+          "source": "Kaikki English"
+        },
+        "sense_id": "994e4f24521e05a899cdd2952847b88b61962210f64f862d66eb3579fb53de93",
+        "source_line": 399317
+      },
+      "unlocks": [
+        "noshers"
+      ],
+      "word": "nosher"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "outre"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "panama"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "paschal"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "risque"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "sabra"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "sahib"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "savoy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "senor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "senora"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "shariah"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "signor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "slippy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "sooth"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "soupcon"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "stetson"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "touche"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "townee"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "viz"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "voila"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "yule"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "ziplock"
+    }
+  ],
+  "reviewed_at": "2026-09-18T04:20:55.074Z",
+  "reviewer": {
+    "id": "root-residual-review",
+    "kind": "agent"
+  },
+  "schema_version": 1
+}

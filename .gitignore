@@ -377,3 +377,4 @@ web/dist/
 
 # Review output from the ESDB dictionary builder
 /esdb-candidate/
+/data/kaikki.org-dictionary-English.jsonl

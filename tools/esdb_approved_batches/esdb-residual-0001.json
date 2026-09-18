@@ -1,0 +1,1001 @@
+{
+  "artifact_sha256": "d077c70aa8da55cba4352d3c0d101ab8edec7f32682cdfd310668b8365f887e8",
+  "batch_id": "esdb-residual-0001",
+  "batch_sha256": "a28abe3ebb4c518a271ab88a7acdb93c30eca32c5289aee135de25a0aa4723ab",
+  "decisions": [
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "allover"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "artsy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "ascot"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "bests"
+    },
+    {
+      "candidate_flags": [
+        "dated",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Often used in a prediction (chiefly in woe betide) or a wish: to happen to (someone or something); to befall.",
+        "example": "Whether good or ill betide you, trust in yourself.",
+        "labels": [
+          "dated",
+          "literary",
+          "transitive",
+          "usually"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "019c00540321c6b667d0a3c3faa392d1b04e31c52daa741ccd70f3ffbee42b46",
+          "source": "Kaikki English"
+        },
+        "sense_id": "bfe05d2ee6fee6de7a4c107cd7c5f0537c541fb2462853a80377b658f9e95cda",
+        "source_line": 87318
+      },
+      "unlocks": [
+        "betided",
+        "betides"
+      ],
+      "word": "betide"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "blacks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "boohoo"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "boolean"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "bowwow"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "chippie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "chivy"
+    },
+    {
+      "candidate_flags": [
+        "dialectal",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "To grumble, complain.",
+        "example": "Since she had another seat and was quite comfortable, we smiled and let her chunter.",
+        "labels": [
+          "british",
+          "dialectal",
+          "ireland"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "80d54642efb0758277b7aa5028fab9c9a5631f60d369a402d95d11354e267278",
+          "source": "Kaikki English"
+        },
+        "sense_id": "73153592e34fb6083726819a711607f7d337dc09c1f81c20c719395eeb261733",
+        "source_line": 161033
+      },
+      "unlocks": [],
+      "word": "chunter"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "clangor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "cliche"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "cliched"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "cubist"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "curtsy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "dadaist"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "decaff"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "dona"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "doper"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "dox"
+    },
+    {
+      "candidate_flags": [
+        "historical"
+      ],
+      "candidate_tier": "manual",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "The European Currency Unit (symbol ₠), a currency used in the European Community before the euro.",
+        "example": "",
+        "labels": [
+          "historical"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "26ad36f5bbfaf9803909e5adcae4b5aac848497fcc1517555582d8432509c3d1",
+          "source": "Kaikki English"
+        },
+        "sense_id": "19dd41276d19a7b19639858169f01764760c7cbb2204fcae37a55d1cebd40121",
+        "source_line": 213167
+      },
+      "unlocks": [
+        "ecus"
+      ],
+      "word": "ecu"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "historical",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "An entity or being; an existing thing, as opposed to a quality or attribute.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "52aa7c695f2300121da6d6908c387ab0c39737998c4f3686258e546d065ce317",
+          "source": "Kaikki English"
+        },
+        "sense_id": "d31837d2947c1d802bdf53f50b5c1aace05c25f3edb1a7925a4a31e436e545ab",
+        "source_line": 104085
+      },
+      "unlocks": [],
+      "word": "ens"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "The symbol =.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "0cae119dad82d0d78ae91b10d017cc348323f84dd2825a208c170b2cae1b91b3",
+          "source": "Kaikki English"
+        },
+        "sense_id": "11231e761271ad2a0cc770c8041d78abe472a335c7ee88019c4dbd7587143f74",
+        "source_line": 101729
+      },
+      "unlocks": [],
+      "word": "equals"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "exes"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "faints"
+    },
+    {
+      "candidate_flags": [
+        "historical",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "The estate controlled by a feudal lord.",
+        "example": "The duke's fiefdom had been greatly expanded as a reward for his dutiful military service on behalf of the king.",
+        "labels": [
+          "countable",
+          "historical",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "98e5c9bb388770355668014bc290ca295605619aad37bb86bb99dd0fe1515ee7",
+          "source": "Kaikki English"
+        },
+        "sense_id": "9011d29427cf4007b268e44e26483fb45f6fba2486676d677a28c38593456a03",
+        "source_line": 110758
+      },
+      "unlocks": [],
+      "word": "fiefdom"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "flambe"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "fogy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "gibe"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "gite"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "goddamn"
+    },
+    {
+      "candidate_flags": [],
+      "candidate_tier": "safe",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Synonym of divinity: the state of being a god or God.",
+        "example": "",
+        "labels": [
+          "uncountable",
+          "usually"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "32f16bd3471b37ee8439f6806b9fef54a81d5b84350e7defbda9a1bce788d6d2",
+          "source": "Kaikki English"
+        },
+        "sense_id": "e418db7871d1ceade0ce4f1ca89dbb491580c4986d71654301894f199afb175f",
+        "source_line": 186998
+      },
+      "unlocks": [],
+      "word": "godhood"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Any of several marine fish, especially the Queensland groper or giant grouper, Epinephelus lanceolatus, of the Pacific and Indian Oceans.",
+        "example": "Everybody knows that there are big groper in the Gulf of Carpentaria, but those that joined Norm Phantom on his journeys were the ones nobody else had ever seen.",
+        "labels": [
+          "australia"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "63cb8f29c8a74061eaa68ec61a0bafb6fe47e98aaa060f2d739bf9e969695aae",
+          "source": "Kaikki English"
+        },
+        "sense_id": "5e0d1af0c7aa1941c33940c0cd36699e7ef4a93d10d886f5569544d3ce939061",
+        "source_line": 187170
+      },
+      "unlocks": [
+        "gropers"
+      ],
+      "word": "groper"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "heehaw"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "hist"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "hogtie"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "hoick"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "hoicks"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "hubby"
+    },
+    {
+      "candidate_flags": [],
+      "candidate_tier": "safe",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Synonym of iamb.",
+        "example": "",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "9d7d7be30cf7991f06bb8ec8e75b162a966a12f124f78e50742f92a3e335538f",
+          "source": "Kaikki English"
+        },
+        "sense_id": "83467220e7bed3674da12b1fdbbbc343d6382cbedcac92ce2deb191a61e8c659",
+        "source_line": 147766
+      },
+      "unlocks": [],
+      "word": "iambus"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Synonym of gel.",
+        "example": "",
+        "labels": [],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "bc42211b68bef9d7abd3871068c5b7c941753e2302fe3ac5948986c0066145a2",
+          "source": "Kaikki English"
+        },
+        "sense_id": "936d36dcee0df709434c829a2462f568db071df843b7aa8e80015bdb96e0cc21",
+        "source_line": 139116
+      },
+      "unlocks": [
+        "jelled",
+        "jelling",
+        "jells"
+      ],
+      "word": "jell"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "lariat"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "macrame"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "manana"
+    },
+    {
+      "candidate_flags": [
+        "grammatical-form",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "A country cottage or farmstead in Occitan-speaking territories.",
+        "example": "When she was pregnant with her second child they ran away to France and played at being artists in a secluded mas near Avignon – two months of bliss.",
+        "labels": [],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "080deb1c84c013674994d41ce444281681ea274e045b03fef39d39ca08b7fbae",
+          "source": "Kaikki English"
+        },
+        "sense_id": "83f0ce176300cce6a3d0ba19ecb05e85e6755db347fe52f0dda720dd7fb19897",
+        "source_line": 85554
+      },
+      "unlocks": [],
+      "word": "mas"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "mecca"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "midsize"
+    },
+    {
+      "candidate_flags": [
+        "dated",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Currently producing milk for its offspring.",
+        "example": "She wildly breaketh from their strict embrace / Like a milch doe, whose swelling dugs do ache / Hasting to feed her fawn, hid in some break.",
+        "labels": [
+          "dated",
+          "not-comparable"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "26968b037dc9e6e630cf9908b5b03aaa187184a5a56f817c1f0d5fdc43d91cce",
+          "source": "Kaikki English"
+        },
+        "sense_id": "0bb43d9c8010351f4d8f7ee9995f59579d3849bf661f1171adb2eedba4097331",
+        "source_line": 165340
+      },
+      "unlocks": [],
+      "word": "milch"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "milf"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "miter"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "mitered"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "molder"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "muzak"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "nah"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "naif"
+    },
+    {
+      "candidate_flags": [
+        "dated",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Good, smart; useful or beneficial, often in an impressively clever way.",
+        "example": "",
+        "labels": [
+          "colloquial",
+          "dated"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "79a13800bcc4044a7b794fe56d01999f7c0c295fbc3b59a09d85ab879090856e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "f1625347cba90743c72aa3de2dd4d9a5aa0fce0343c025e66588a39fbbb8be53",
+        "source_line": 103780
+      },
+      "unlocks": [
+        "niftier"
+      ],
+      "word": "nifty"
+    },
+    {
+      "candidate_flags": [
+        "historical",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Fibres chiefly obtained by untwisting old rope, which are used to caulk or pack gaps between boards of wooden ships and joints in masonry and plumbing, and sometimes for dressing wounds.",
+        "example": "My eyesight began to fail, from the strain of picking oakum in my cell.",
+        "labels": [
+          "countable",
+          "historical",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "1480aed35a3c4f36c64192e5ec4db110789e0fd1c918222198c1c02e0bd0e652",
+          "source": "Kaikki English"
+        },
+        "sense_id": "2274030f6624d08fa334f7aa06bc83c9ecf13563106abab0b729d57b22459c59",
+        "source_line": 83998
+      },
+      "unlocks": [],
+      "word": "oakum"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "ocher"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "onetime"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "ops"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "oversea"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "oxford"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "peke"
+    },
+    {
+      "candidate_flags": [
+        "alternative-form",
+        "historical",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "One hundredth of the former German mark (Deutsche Mark).",
+        "example": "",
+        "labels": [
+          "historical"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "fe9a2ea1d0d4432675dee5bbd07704e1b6ee41596331f4027c4bb38a050e191c",
+          "source": "Kaikki English"
+        },
+        "sense_id": "3b4b64473a2e79212586daee0b3e922a390ccfc72ad7ccf6933660da97a93f8c",
+        "source_line": 176317
+      },
+      "unlocks": [],
+      "word": "pfennig"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "pinon"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "pitapat"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "queerly"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "To complain; to regret; to fret.",
+        "example": "Beatrix invited me no more to tea but I did not greatly repine.",
+        "labels": [
+          "intransitive",
+          "literary"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "f629ebee7fff25ae701aef0a6db81f692f97f3ced23cc0ed9bb1184097b05d7e",
+          "source": "Kaikki English"
+        },
+        "sense_id": "9e114a858e8c8a635ced35e93b967242d62a35622982b9b6efe1f00a69ae3c5a",
+        "source_line": 103025
+      },
+      "unlocks": [
+        "repined",
+        "repines"
+      ],
+      "word": "repine"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "rolltop"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "romeo"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "roue"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "runtime"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "saute"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "savor"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "seance"
+    },
+    {
+      "candidate_flags": [
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "senses related to sensation An abnormal electrical discharge in the brain, as is typical of epilepsy.",
+        "example": "",
+        "labels": [
+          "countable",
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "65780e20c1ad6df7acc0d277a353ee723cf47fb6fce9b1e151243f2972f2bd98",
+          "source": "Kaikki English"
+        },
+        "sense_id": "c74b0074c47f40f520ec298ba6302ea56d958411bc6e361b0ebfbde890d1d503",
+        "source_line": 83403
+      },
+      "unlocks": [],
+      "word": "seizure"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "sis"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "somber"
+    },
+    {
+      "candidate_flags": [
+        "dated",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "A familiar form of address for a boy.",
+        "example": "",
+        "labels": [
+          "dated"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "c12e55924286fe41c16f5207372525b0fc8c225f8a33aac08d0aab0b46299482",
+          "source": "Kaikki English"
+        },
+        "sense_id": "dab8599baf98312a6675a2084b31231eaffba722700c6c6753a579641b4b7f12",
+        "source_line": 99852
+      },
+      "unlocks": [
+        "sonnies"
+      ],
+      "word": "sonny"
+    },
+    {
+      "candidate_flags": [
+        "dated",
+        "historical",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 4,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "A smartly dressed person who trades in illicit, black-market or stolen goods, especially during World War II.",
+        "example": "",
+        "labels": [
+          "historical",
+          "ireland",
+          "uk"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "36405d3900b40dd3ab34d0c2fb7ef2f1b431d5f4483ae5550a779872665bb074",
+          "source": "Kaikki English"
+        },
+        "sense_id": "64410a7d3991a7e3c2559f8ba2233846597101146de834bd1800555a5c09deb4",
+        "source_line": 92803
+      },
+      "unlocks": [
+        "spivs"
+      ],
+      "word": "spiv"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "succor"
+    },
+    {
+      "candidate_flags": [
+        "dated",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "To linger in expectation of something or until something is done or happens.",
+        "example": "",
+        "labels": [
+          "dated",
+          "intransitive"
+        ],
+        "pos": "verb",
+        "provenance": {
+          "record_id": "7c7fc00fb42e7eb8c61e93a250cdb7490d4c9e387f071fe937da9c632c4a6f50",
+          "source": "Kaikki English"
+        },
+        "sense_id": "e3d7bed4c42ea6d8db53f8dfed51503c8a8917e944cba217c36a1ea93cba5ca5",
+        "source_line": 84957
+      },
+      "unlocks": [
+        "tarrier",
+        "tarries"
+      ],
+      "word": "tarry"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "tattie"
+    },
+    {
+      "candidate_flags": [],
+      "candidate_tier": "safe",
+      "decision": "approve",
+      "rarity": 3,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "Synonym of touchy: easily annoyed or irritated, peevish, testy, irascible; also (figurative) extremely sensitive, difficult to manage, use, or work.",
+        "example": "I warrant, sir, he is, as you say, a very precise acrimonious person—A tetchy repugnant kind of old gentleman.",
+        "labels": [
+          "commonwealth",
+          "ireland",
+          "southern-us",
+          "uk"
+        ],
+        "pos": "adj",
+        "provenance": {
+          "record_id": "6cf34087c1a298e1763355c0c55d783a39092cc8be026c385398fa7b36d875e9",
+          "source": "Kaikki English"
+        },
+        "sense_id": "7ce6fdc8b71615f9ee6f27b94c5a268eb91fd24c5814ffd04f16ec8049891417",
+        "source_line": 182981
+      },
+      "unlocks": [],
+      "word": "tetchy"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "tinpot"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "tippex"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "trow"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "unmanly"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "ups"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "wain"
+    },
+    {
+      "candidate_flags": [
+        "dated",
+        "multiple-senses"
+      ],
+      "candidate_tier": "ambiguous",
+      "decision": "approve",
+      "rarity": 2,
+      "reason": "Second-pass review confirmed a clear modern or established lexical sense suitable for the game.",
+      "sense": {
+        "definition": "An inorganic compound (of molecular formula H₂O) found at room temperature and pressure as a clear liquid; it is present naturally as rain, and found in rivers, lakes and seas; its solid form is ice and its gaseous form is steam.",
+        "example": "By the action of electricity, the water was resolved into its two parts, oxygen and hydrogen.",
+        "labels": [
+          "uncountable"
+        ],
+        "pos": "noun",
+        "provenance": {
+          "record_id": "b5edd22a6c5ef36b3f226975dc79072dbd2911fff787a5600fd277cd33b82947",
+          "source": "Kaikki English"
+        },
+        "sense_id": "aa91fdf8a3bfa55d1d630ff7af8ec824762912e2822e35f070f23e207ab43190",
+        "source_line": 566375
+      },
+      "unlocks": [
+        "watered",
+        "waters"
+      ],
+      "word": "water"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "waters"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "whir"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "whoring"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "whup"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "wot"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "yid"
+    },
+    {
+      "decision": "defer",
+      "reason": "Residual review found only a variant, form-only, sensitive, overly narrow, or insufficiently ordinary sourced sense.",
+      "word": "yuks"
+    }
+  ],
+  "reviewed_at": "2026-09-18T04:20:55.070Z",
+  "reviewer": {
+    "id": "root-residual-review",
+    "kind": "agent"
+  },
+  "schema_version": 1
+}
