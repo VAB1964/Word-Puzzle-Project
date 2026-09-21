@@ -66,6 +66,7 @@ export class MultiplayerController {
   private draggingWheel = false;
   private wheelPointerId: number | null = null;
   private suppressNextLetterClick = false;
+  private pinnedWordInfoId: string | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -83,6 +84,10 @@ export class MultiplayerController {
     root.addEventListener("pointermove", this.handleWheelPointerMove);
     root.addEventListener("pointerup", this.handleWheelPointerUp);
     root.addEventListener("pointercancel", this.handleWheelPointerCancel);
+    root.addEventListener("pointerover", this.handleWordInfoPointerOver);
+    root.addEventListener("pointerout", this.handleWordInfoPointerOut);
+    root.addEventListener("focusin", this.handleWordInfoFocusIn);
+    root.addEventListener("focusout", this.handleWordInfoFocusOut);
     window.addEventListener("keydown", this.handleKeyDown);
     this.uiTicker = window.setInterval(() => {
       if (!this.snapshot) return;
@@ -102,6 +107,10 @@ export class MultiplayerController {
     this.root.removeEventListener("pointermove", this.handleWheelPointerMove);
     this.root.removeEventListener("pointerup", this.handleWheelPointerUp);
     this.root.removeEventListener("pointercancel", this.handleWheelPointerCancel);
+    this.root.removeEventListener("pointerover", this.handleWordInfoPointerOver);
+    this.root.removeEventListener("pointerout", this.handleWordInfoPointerOut);
+    this.root.removeEventListener("focusin", this.handleWordInfoFocusIn);
+    this.root.removeEventListener("focusout", this.handleWordInfoFocusOut);
     if (this.uiTicker !== null) {
       window.clearInterval(this.uiTicker);
       this.uiTicker = null;
@@ -146,6 +155,7 @@ export class MultiplayerController {
       this.awaitingLetterHint = false;
       this.awaitingFullWordHint = false;
       this.showBonusList = false;
+      this.pinnedWordInfoId = null;
       this.shownTurnOrderKey = null;
       this.feedback = "";
     }
@@ -203,6 +213,7 @@ export class MultiplayerController {
                 : this.renderResults(snapshot, host)
         }
       </section>`;
+    if (this.pinnedWordInfoId) this.showWordInfo(this.pinnedWordInfoId);
   }
 
   private renderLobby(snapshot: RoomSnapshot, host: boolean) {
@@ -551,6 +562,9 @@ export class MultiplayerController {
           const ref = cell.refs.find(
             (candidate) => !puzzle.words.find((word) => word.id === candidate.wordId)?.completed
           ) ?? cell.refs[0];
+          const completedWord = cell.refs
+            .map((candidate) => puzzle.words.find((word) => word.id === candidate.wordId))
+            .find((word) => word?.completed && word.answer);
           const gem = cell.refs
             .map((candidate) => {
               const word = puzzle.words.find((entry) => entry.id === candidate.wordId);
@@ -559,10 +573,11 @@ export class MultiplayerController {
               return gems[candidate.position] ?? "none";
             })
             .reduce((best, current) => (GEM_RANK[current] > GEM_RANK[best] ? current : best), "none");
-          return `<button class="mp-cell ${visible ? "filled" : ""} ${hintTarget ? "mp-cell-hint-target" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
+          return `<button class="mp-cell ${visible ? "filled" : ""} ${hintTarget ? "mp-cell-hint-target" : ""} ${completedWord ? "has-word-info" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
             data-action="board-cell" data-word="${ref.wordId}" data-position="${ref.position}"
+            ${completedWord ? `data-word-info="${escapeHtml(completedWord.id)}"` : ""}
             data-row="${cell.row}" data-col="${cell.col}"
-            aria-label="${visible ? `${visible.letter}, owned by ${owner?.name ?? "player"}` : "Unrevealed letter"}">
+            aria-label="${visible ? `${visible.letter}, owned by ${owner?.name ?? "player"}${completedWord ? "; definition available" : ""}` : "Unrevealed letter"}">
             ${
               !visible && gem !== "none"
                 ? `<img class="mp-cell-gem" src="${escapeHtml(gemArtwork(gem))}" alt="" aria-hidden="true" title="${gem} word">`
@@ -572,8 +587,65 @@ export class MultiplayerController {
           </button>`;
         })
         .join("")}
-    </div></div>`;
+    </div></div>
+    <aside class="mp-word-info-popup mp-paper" role="tooltip" hidden>
+      <button type="button" data-action="close-word-info" aria-label="Close word definition">&times;</button>
+      <strong data-word-info-field="word"></strong>
+      <span data-word-info-field="pos"></span>
+      <p data-word-info-field="definition"></p>
+      <p data-word-info-field="sentence"></p>
+    </aside>`;
   }
+
+  private showWordInfo(wordId: string) {
+    const word = this.snapshot?.puzzle?.words.find((candidate) => candidate.id === wordId);
+    const popup = this.root.querySelector<HTMLElement>(".mp-word-info-popup");
+    if (!word?.completed || !word.answer || !popup) return;
+    const setText = (field: string, value: string) => {
+      const element = popup.querySelector<HTMLElement>(`[data-word-info-field="${field}"]`);
+      if (element) element.textContent = value;
+    };
+    setText("word", `Word: ${word.answer.toUpperCase()}`);
+    setText("pos", `POS: ${word.pos || "N/A"}`);
+    setText("definition", `Definition: ${word.definition || "N/A"}`);
+    const sentence = popup.querySelector<HTMLElement>('[data-word-info-field="sentence"]');
+    if (sentence) {
+      sentence.textContent = word.sentence ? `Sentence: ${word.sentence}` : "";
+      sentence.hidden = !word.sentence;
+    }
+    popup.hidden = false;
+  }
+
+  private hideWordInfo() {
+    const popup = this.root.querySelector<HTMLElement>(".mp-word-info-popup");
+    if (popup) popup.hidden = true;
+  }
+
+  private handleWordInfoPointerOver = (event: PointerEvent) => {
+    if (event.pointerType === "touch" || this.pinnedWordInfoId) return;
+    const cell = (event.target as HTMLElement).closest<HTMLElement>(".mp-cell[data-word-info]");
+    if (cell?.dataset.wordInfo) this.showWordInfo(cell.dataset.wordInfo);
+  };
+
+  private handleWordInfoPointerOut = (event: PointerEvent) => {
+    if (event.pointerType === "touch" || this.pinnedWordInfoId) return;
+    const from = (event.target as HTMLElement).closest<HTMLElement>(".mp-cell[data-word-info]");
+    const to = (event.relatedTarget as HTMLElement | null)?.closest?.<HTMLElement>(".mp-cell[data-word-info]");
+    if (from && from.dataset.wordInfo !== to?.dataset.wordInfo) this.hideWordInfo();
+  };
+
+  private handleWordInfoFocusIn = (event: FocusEvent) => {
+    if (this.pinnedWordInfoId) return;
+    const cell = (event.target as HTMLElement).closest<HTMLElement>(".mp-cell[data-word-info]");
+    if (cell?.dataset.wordInfo) this.showWordInfo(cell.dataset.wordInfo);
+  };
+
+  private handleWordInfoFocusOut = (event: FocusEvent) => {
+    if (this.pinnedWordInfoId) return;
+    const from = (event.target as HTMLElement).closest<HTMLElement>(".mp-cell[data-word-info]");
+    const to = (event.relatedTarget as HTMLElement | null)?.closest?.<HTMLElement>(".mp-cell[data-word-info]");
+    if (from && from.dataset.wordInfo !== to?.dataset.wordInfo) this.hideWordInfo();
+  };
 
   private renderBonusInfo(snapshot: RoomSnapshot) {
     const puzzle = snapshot.puzzle;
@@ -842,7 +914,8 @@ export class MultiplayerController {
     const turnLocked =
       snapshot.settings.playMode === "Turn Based" &&
       (!this.isLocalTurn(snapshot) || this.isTurnOrderPopupActive()) &&
-      ["letter", "clear", "shuffle", "submit", "hint", "board-cell", "skip"].includes(action ?? "");
+      (["letter", "clear", "shuffle", "submit", "hint", "skip"].includes(action ?? "") ||
+        (action === "board-cell" && (this.awaitingLetterHint || this.awaitingFullWordHint)));
     if (turnLocked) {
       this.setError("Wait for your turn.");
       this.playSound("error");
@@ -951,6 +1024,18 @@ export class MultiplayerController {
         hint: "full-word",
         wordId: button.dataset.word
       });
+    } else if (action === "board-cell" && button.dataset.wordInfo) {
+      const wordId = button.dataset.wordInfo;
+      if (this.pinnedWordInfoId === wordId) {
+        this.pinnedWordInfoId = null;
+        this.hideWordInfo();
+      } else {
+        this.pinnedWordInfoId = wordId;
+        this.showWordInfo(wordId);
+      }
+    } else if (action === "close-word-info") {
+      this.pinnedWordInfoId = null;
+      this.hideWordInfo();
     } else if (action === "skip") {
       this.client.send({ type: snapshot.skipVote ? "accept-skip" : "request-skip" });
     } else if (action === "toggle-bonus-list") {

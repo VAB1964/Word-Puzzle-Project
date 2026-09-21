@@ -595,6 +595,10 @@ export class Game {
       this.touchInputActive = false;
       this.isBonusWordsPopupTouchOpen = false;
     }
+    // Capture the letter under the pointer before expanding the wheel. Once the
+    // interaction scale is active, each letter moves outward; hit-testing only
+    // against those new positions makes a direct click miss the visible letter.
+    const pressedWheelLetterIndex = this.findFirstWheelLetterAt(world);
     this.updateWheelInteractionScale(world);
     if (this.showExitConfirmDialog) {
       this.handleExitConfirmInput(world);
@@ -749,10 +753,21 @@ export class Game {
       }
     }
 
-    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
-    const hitRadius = this.getWheelLetterHitRadius(interactionScale, WHEEL_FIRST_LETTER_HIT_EXTRA);
+    if (pressedWheelLetterIndex >= 0) {
+      this.hintTurnEndedBySolve = false;
+      this.waitingToEndTurnOnHintSolve = false;
+      this.dragging = true;
+      this.path = [pressedWheelLetterIndex];
+      this.currentGuess = this.base[pressedWheelLetterIndex].toUpperCase();
+      playSpellTone(this.path.length);
+      return;
+    }
+  }
+
+  private findFirstWheelLetterAt(world: Vec2) {
+    const hitRadius = this.getWheelLetterHitRadius(1, WHEEL_FIRST_LETTER_HIT_EXTRA);
     for (let i = 0; i < this.base.length; i += 1) {
-      const pos = this.getWheelLetterPosition(i, interactionScale);
+      const pos = this.getWheelLetterPosition(i, 1);
       if (!pos) continue;
       let effectiveHitRadius = hitRadius;
       const outwardX = pos.x - this.wheelCenter.x;
@@ -761,19 +776,10 @@ export class Game {
       const worldDx = world.x - pos.x;
       const worldDy = world.y - pos.y;
       const radialDot = (worldDx * outwardX + worldDy * outwardY) / outwardLength;
-      if (radialDot < 0) {
-        effectiveHitRadius += WHEEL_FIRST_LETTER_INNER_SIDE_EXTRA;
-      }
-      if (distSq(world, pos) < effectiveHitRadius * effectiveHitRadius) {
-        this.hintTurnEndedBySolve = false;
-        this.waitingToEndTurnOnHintSolve = false;
-        this.dragging = true;
-        this.path = [i];
-        this.currentGuess = this.base[i].toUpperCase();
-        playSpellTone(this.path.length);
-        return;
-      }
+      if (radialDot < 0) effectiveHitRadius += WHEEL_FIRST_LETTER_INNER_SIDE_EXTRA;
+      if (distSq(world, pos) < effectiveHitRadius * effectiveHitRadius) return i;
     }
+    return -1;
   }
 
   private handlePointerMove(world: Vec2, pointerType: string) {

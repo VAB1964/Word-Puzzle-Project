@@ -32,6 +32,7 @@ import { parseCommand, ProtocolError, validateName, validateSettings } from "./p
 
 const WORD_DATA = parseMultiplayerWordData(wordsCsv);
 const DICTIONARY_WORDS = new Set(WORD_DATA.map((word) => word.text));
+const DICTIONARY_BY_WORD = new Map(WORD_DATA.map((word) => [word.text, word]));
 const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea"];
 const AI_NAMES = [
   "Ada",
@@ -1080,7 +1081,15 @@ export class WordPuzzleRoom extends DurableObject<Env> {
                 rarity: word.rarity,
                 gems: normalizeWordGems(word),
                 cells: word.cells,
-                completed: completed.has(word.id)
+                completed: completed.has(word.id),
+                ...(completed.has(word.id)
+                  ? {
+                      answer: word.answer,
+                      pos: word.pos ?? DICTIONARY_BY_WORD.get(word.answer)?.pos ?? "",
+                      definition: word.definition ?? DICTIONARY_BY_WORD.get(word.answer)?.definition ?? "",
+                      sentence: word.sentence ?? DICTIONARY_BY_WORD.get(word.answer)?.sentence ?? ""
+                    }
+                  : {})
               })),
               visibleCells: structuredClone(state.runtime.visibleCells),
               bonusWordCount: state.puzzle.bonusWords.length,

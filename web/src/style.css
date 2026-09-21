@@ -845,6 +845,56 @@ select {
   background: #fff3cd;
 }
 
+.mp-cell.has-word-info {
+  cursor: help;
+}
+
+.mp-word-info-popup {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 0.7rem;
+  width: min(32rem, calc(100% - 1rem));
+  padding: 0.85rem 2.4rem 0.85rem 1rem;
+  transform: translateX(-50%);
+  color: #392817;
+  text-align: left;
+  box-shadow: 0 0.65rem 1.5rem rgba(55, 34, 15, 0.3);
+}
+
+.mp-word-info-popup[hidden] {
+  display: none;
+}
+
+.mp-word-info-popup strong,
+.mp-word-info-popup span {
+  display: block;
+}
+
+.mp-word-info-popup strong {
+  font: 700 1.05rem Georgia, "Times New Roman", serif;
+}
+
+.mp-word-info-popup span,
+.mp-word-info-popup p {
+  margin: 0.3rem 0 0;
+  line-height: 1.35;
+}
+
+.mp-word-info-popup > button {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  padding: 0;
+  border: 0;
+  color: #5b4631;
+  background: transparent;
+  font-size: 1.35rem;
+  box-shadow: none;
+}
+
 .mp-cell-hint-target {
   animation: mp-hint-target-pulse 3s ease-in-out infinite;
   border-color: #ccb07e;

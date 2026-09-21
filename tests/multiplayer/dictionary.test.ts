@@ -12,8 +12,8 @@ describe("published dictionary", () => {
   it("loads the same unique vocabulary and rarities in the browser and Worker", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(csv)));
     const browserWords = await loadProcessedWordList("/words.csv");
-    expect(browserWords.map(({ text, rarity }) => ({ text, rarity }))).toEqual(
-      data.map(({ text, rarity }) => ({ text, rarity }))
+    expect(browserWords.map(({ text, rarity, pos, definition, sentence }) => ({ text, rarity, pos, definition, sentence }))).toEqual(
+      data.map(({ text, rarity, pos, definition, sentence }) => ({ text, rarity, pos, definition, sentence }))
     );
     expect(new Set(data.map((w) => w.text)).size).toBe(data.length);
     expect(browserWords.every((w) => /^[a-z]{3,7}$/.test(w.text))).toBe(true);
@@ -116,6 +116,7 @@ describe("published dictionary", () => {
         for (let index = 0; index < 5; index += 1) {
           const puzzle = generateMultiplayerPuzzle(data, mode, difficulty, `dictionary-${mode}-${difficulty}-${index}`, index, 5, used);
           expect(puzzle.words.length).toBeGreaterThan(0);
+          expect(puzzle.words.every((word) => Boolean(word.definition))).toBe(true);
           const available = puzzle.baseLetters.toLowerCase().split("");
           for (const word of [...puzzle.words.map((w) => w.answer), ...puzzle.bonusWords]) {
             const remaining = [...available];

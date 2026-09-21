@@ -64,6 +64,10 @@ export interface PuzzleWordDefinition {
   id: string;
   answer: string;
   rarity: number;
+  /** Optional for compatibility with rooms persisted before dictionary metadata was stored. */
+  pos?: string;
+  definition?: string;
+  sentence?: string;
   gems: GemType[];
   cells: PuzzleCellRef[];
 }
@@ -108,6 +112,11 @@ export interface PublicPuzzleWord {
   gems: GemType[];
   cells: PuzzleCellRef[];
   completed: boolean;
+  /** Present only after completion so snapshots never reveal unsolved answers. */
+  answer?: string;
+  pos?: string;
+  definition?: string;
+  sentence?: string;
 }
 
 export interface PublicPuzzle {

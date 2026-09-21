@@ -12,6 +12,9 @@ import type { WordInfo } from "../../web/src/core/types";
 export interface PuzzleWordData {
   text: string;
   rarity: number;
+  pos: string;
+  definition: string;
+  sentence: string;
   countGE4: number;
   easyValidCount: number;
   mediumValidCount: number;
@@ -71,6 +74,9 @@ export const parseMultiplayerWordData = (csv: string): PuzzleWordData[] =>
     .map((fields) => ({
       text: (fields[0] ?? "").trim().toLowerCase(),
       rarity: Number.parseInt(fields[1] ?? "0", 10) || 0,
+      pos: (fields[2] ?? "").trim(),
+      definition: (fields[3] ?? "").trim(),
+      sentence: (fields[4] ?? "").trim(),
       countGE4: Number.parseInt(fields[7] ?? "0", 10) || 0,
       easyValidCount: Number.parseInt(fields[9] ?? "0", 10) || 0,
       mediumValidCount: Number.parseInt(fields[10] ?? "0", 10) || 0,
@@ -351,6 +357,9 @@ export const generateMultiplayerPuzzle = (
     id: `w${index}`,
     answer: entry.word.text,
     rarity: entry.word.rarity,
+    pos: entry.word.pos,
+    definition: entry.word.definition,
+    sentence: entry.word.sentence,
     gems: buildWordGems(entry.word.text.length, entry.word.rarity, random),
     cells: entry.word.text.split("").map((_, position) => coordinates(entry, position))
   }));
