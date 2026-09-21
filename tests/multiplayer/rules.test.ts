@@ -193,4 +193,23 @@ describe("multiplayer scoring rules", () => {
     expect(second.changed).toBe(false);
     expect(runtime.failedGuesses).toEqual(["ploted"]);
   });
+
+  it("identifies dictionary words omitted from both puzzle word lists", () => {
+    const players = [participant("Alice", 0)];
+    const runtime = createPuzzleRuntime(crossword);
+
+    const result = submitGuess(
+      crossword,
+      runtime,
+      players,
+      "Alice",
+      "tar",
+      new Set(["art", "car", "cat", "tar"])
+    );
+
+    expect(result.changed).toBe(false);
+    expect(result.needsPuzzleReview).toBe(true);
+    expect(result.error).toBe("This is a valid word but wasn't included as part of the puzzle or bonus words");
+    expect(runtime.failedGuesses).toEqual(["tar"]);
+  });
 });

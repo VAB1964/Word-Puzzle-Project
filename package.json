@@ -6,6 +6,7 @@
     "build": "npm --prefix web run build",
     "typecheck": "tsc -p worker/tsconfig.json && tsc -p web/tsconfig.json",
     "test": "vitest run",
+    "word-issues": "python tools/check_word_issues.py",
     "worker:dev": "wrangler dev --port 8790 --env-file worker/dev.env",
     "worker:types": "wrangler types --env-file worker/dev.env",
     "worker:dry-run": "wrangler deploy --dry-run"

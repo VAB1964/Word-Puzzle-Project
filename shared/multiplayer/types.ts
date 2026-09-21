@@ -71,6 +71,8 @@ export interface PuzzleWordDefinition {
 export interface PuzzleDefinition {
   id: string;
   mode: GameMode;
+  /** Original dictionary word selected for this puzzle; absent on legacy stored rooms. */
+  baseWord?: string;
   baseLetters: string;
   rows: number;
   cols: number;

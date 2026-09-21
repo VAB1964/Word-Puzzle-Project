@@ -79,6 +79,13 @@ describe("published dictionary", () => {
     }
   });
 
+  it("includes every word from the multiplayer playtest report", () => {
+    const playable = new Set(data.map((word) => word.text));
+    for (const word of ["rinse", "tinge", "sours", "tills", "bing"]) {
+      expect(playable.has(word), word).toBe(true);
+    }
+  });
+
   it("ships identical web/Worker and standalone dictionaries", () => {
     expect(readFileSync(new URL("../../Standalone/words_processed.csv", import.meta.url), "utf8")).toBe(csv);
   });

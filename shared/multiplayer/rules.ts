@@ -34,6 +34,7 @@ export interface PuzzleActionResult {
   scoreAwarded: ScoreBreakdown;
   hintCreditsAwarded: number;
   error?: string;
+  needsPuzzleReview?: boolean;
 }
 
 export const cellKey = (row: number, col: number) => `${row},${col}`;
@@ -141,7 +142,8 @@ export const submitGuess = (
   runtime: PuzzleRuntime,
   participants: Participant[],
   actorId: string,
-  rawGuess: string
+  rawGuess: string,
+  dictionaryWords?: ReadonlySet<string>
 ): PuzzleActionResult => {
   const actor = getParticipant(participants, actorId);
   if (!actor) return failure("Participant not found.");
@@ -185,6 +187,12 @@ export const submitGuess = (
   }
 
   recordFailedGuess(runtime, guess);
+  if (dictionaryWords?.has(guess)) {
+    return {
+      ...failure("This is a valid word but wasn't included as part of the puzzle or bonus words"),
+      needsPuzzleReview: true
+    };
+  }
   return failure(`The word "${guess.toUpperCase()}" is not in the puzzle and is not a bonus word.`);
 };
 

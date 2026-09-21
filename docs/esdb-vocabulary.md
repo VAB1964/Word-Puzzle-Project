@@ -15,14 +15,14 @@ The exact export arguments and text checksums are in `data/esdb/manifest.json`.
 | --- | ---: |
 | Previous cleaned dictionary | 18,242 |
 | Filtered size-60 starting vocabulary | 28,324 |
-| Size-60 words ready for puzzles | 27,674 |
+| Size-60 words ready for puzzles | 27,676 |
 | Individually approved size-70 words | 14 |
-| Editorial supplements outside filtered ESDB | 1 |
-| Total playable words | 27,689 |
-| Retained from the previous dictionary | 13,409 |
-| Newly playable | 14,280 |
-| Previous words no longer included | 4,833 |
-| Size-60 candidates awaiting definition/usage review | 650 |
+| Editorial supplements outside filtered ESDB | 2 |
+| Total playable words | 27,692 |
+| Retained from the previous dictionary | 13,410 |
+| Newly playable | 14,282 |
+| Previous words no longer included | 4,832 |
+| Size-60 candidates awaiting definition/usage review | 648 |
 
 The complete starting vocabulary is checked in, but membership alone is not
 enough to enter a puzzle. ESDB supplies spellings, parts of speech, and inflection
@@ -49,10 +49,13 @@ inflection relationships, such as `accepts` and `acted`. These definitions say
 which word and grammatical form they represent; they do not claim to provide
 a newly researched lexical meaning. Examples remain blank for these forms.
 
-The reviewed supplemental entries `zen`, `zee`, and `zees` cover ordinary lowercase
+The reviewed supplemental entries `bing`, `zen`, `zee`, and `zees` cover ordinary lowercase
 meanings needed by the game. `zee` and `zees` are individually approved size-70
 spellings; lowercase `zen` is an editorial supplement because the filtered source
-snapshot contains only the excluded proper-name form. This exception does not admit
+snapshot contains only the excluded proper-name form. `bing` restores the previously
+reviewed solitary-confinement sense after multiplayer playtesting found it missing.
+The size-60 forms `sours` and `tills` were also restored with explicit definitions
+after the same playtest report. These exceptions do not admit
 other proper names or relax the explicit exclusions in `tools/dictionary_overrides.json`.
 
 No word is created by guessing a suffix. The lemma must already be a defined
@@ -145,6 +148,14 @@ python tools/extract_kaikki_candidates.py --kaikki-jsonl path/to/kaikki-English.
 python tools/esdb_review_batches.py batch --catalog esdb-candidate/kaikki-review/candidate-catalog.json --output-dir esdb-candidate/review-batches --batch-size 250
 python tools/esdb_review_batches.py validate --batch path/to/batch.json --decisions path/to/decisions.json
 ```
+
+Multiplayer word reports are recorded in `data/word_issues.csv`. Run
+`npm run word-issues` to classify each report against the current playable
+dictionary. Reports should include the puzzle word when available; historical
+reports without it remain explicitly marked for follow-up. When the multiplayer
+server rejects a dictionary word that is absent from both generated lists, it
+emits a structured `word_puzzle_membership_issue` log containing the word and
+the original puzzle word (or shuffled letters for a legacy room).
 
 The multi-gigabyte Kaikki source is a local build input and is not committed.
 Extraction streams it rather than loading it into memory. Approval validation

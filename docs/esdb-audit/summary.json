@@ -1,18 +1,18 @@
 {
   "baseline_words": 18242,
   "size60_candidates": 28324,
-  "playable_words": 27689,
-  "size60_playable": 27674,
+  "playable_words": 27692,
+  "size60_playable": 27676,
   "larger_level_approved": 14,
-  "supplemental_outside_esdb": 1,
-  "pending_size60": 650,
-  "retained_words": 13409,
-  "added_words": 14280,
-  "removed_words": 4833,
+  "supplemental_outside_esdb": 2,
+  "pending_size60": 648,
+  "retained_words": 13410,
+  "added_words": 14282,
+  "removed_words": 4832,
   "definition_sources": {
     "cleaned-dictionary": 13408,
-    "editorial": 27,
-    "editorial-supplement": 3,
+    "editorial": 29,
+    "editorial-supplement": 4,
     "esdb-inflection": 10067,
     "reviewed-batch": 4184
   },
@@ -20,7 +20,7 @@
     "1": 1418,
     "2": 5253,
     "3": 15538,
-    "4": 5480
+    "4": 5483
   },
   "removed_easiest_words": [
     "bam",

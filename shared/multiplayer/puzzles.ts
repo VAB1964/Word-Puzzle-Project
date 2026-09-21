@@ -357,6 +357,7 @@ export const generateMultiplayerPuzzle = (
   return {
     id: `${seed}-${puzzleIndex}`,
     mode,
+    baseWord: baseWord.text,
     baseLetters: shuffled(baseWord.text.split(""), random).join("").toUpperCase(),
     rows,
     cols,

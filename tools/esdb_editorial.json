@@ -51,6 +51,13 @@
     }
   },
   "supplemental_entries": {
+    "bing": {
+      "rarity": "4",
+      "pos": "noun",
+      "Definition": "Solitary confinement.",
+      "Sentence": "",
+      "reason": "Restored after multiplayer playtesting identified it as a missing valid word; preserves its prior tier 4 rating and meaning."
+    },
     "zen": {
       "rarity": "3",
       "pos": "noun",
@@ -74,6 +81,20 @@
     }
   },
   "new_definitions": {
+    "sours": {
+      "rarity": "4",
+      "pos": "verb",
+      "Definition": "Third-person singular present tense of sour: to make or become sour.",
+      "Sentence": "",
+      "reason": "Multiplayer playtesting identified this attested size-60 inflection as a missing valid word; restores its previous tier 4 rating."
+    },
+    "tills": {
+      "rarity": "4",
+      "pos": "noun",
+      "Definition": "Plural of till: a cash drawer used to hold money.",
+      "Sentence": "",
+      "reason": "Multiplayer playtesting identified this attested size-60 form as a missing valid word; restores its previous tier 4 rating."
+    },
     "acreage": {
       "rarity": "2",
       "pos": "noun",

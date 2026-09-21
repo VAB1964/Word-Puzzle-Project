@@ -31,6 +31,7 @@ import {
 import { parseCommand, ProtocolError, validateName, validateSettings } from "./protocol";
 
 const WORD_DATA = parseMultiplayerWordData(wordsCsv);
+const DICTIONARY_WORDS = new Set(WORD_DATA.map((word) => word.text));
 const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea"];
 const AI_NAMES = [
   "Ada",
@@ -515,9 +516,25 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     if (command.type === "submit-guess") {
       activeOnly();
       currentTurnOnly();
-      const result = submitGuess(state.puzzle!, state.runtime!, state.participants, participantId, command.guess);
+      const result = submitGuess(
+        state.puzzle!,
+        state.runtime!,
+        state.participants,
+        participantId,
+        command.guess,
+        DICTIONARY_WORDS
+      );
       const events: PresentationEvent[] = [];
       if (!result.changed) {
+        if (result.needsPuzzleReview) {
+          console.warn(JSON.stringify({
+            event: "word_puzzle_membership_issue",
+            word: command.guess.trim().toLowerCase(),
+            puzzle_word: state.puzzle!.baseWord ?? state.puzzle!.baseLetters.toLowerCase(),
+            puzzle_id: state.puzzle!.id,
+            room_code: state.code
+          }));
+        }
         events.push(
           this.event(
             state,
