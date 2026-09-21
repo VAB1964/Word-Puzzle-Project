@@ -9,7 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from build_esdb_dictionary import (BASELINE, ROOT, build, inflection,
-                                   load_approved_batches, load_snapshot)
+                                   load_approved_batches, load_generated_sentences,
+                                   load_snapshot)
 from esdb_review_batches import digest
 
 
@@ -151,8 +152,9 @@ class PublishedEsdbTests(unittest.TestCase):
         excluded = {word for word, row in overrides["words"].items() if row.get("exclude")}
         base, larger, forms = load_snapshot(ROOT / "data/esdb")
         approvals = load_approved_batches(ROOT / "tools/esdb_approved_batches")
+        generated = load_generated_sentences()
         rows, pending, removed, review, provenance, summary = build(
-            baseline, base, larger, forms, editorial, excluded, approvals)
+            baseline, base, larger, forms, editorial, excluded, approvals, generated)
         summary["baseline_commit"] = BASELINE
         for filename, expected in [("words_processed.csv", rows),
                                    ("docs/esdb-audit/pending-definitions.csv", pending),
@@ -171,7 +173,11 @@ class PublishedEsdbTests(unittest.TestCase):
         supplemental = set(editorial.get("supplemental_entries", {}))
         for row in rows:
             if row["word"] in old and row["word"] not in supplemental:
-                self.assertEqual(row, old[row["word"]])
+                expected = dict(old[row["word"]])
+                if not expected["Sentence"] and row["word"] in generated:
+                    expected["Sentence"] = generated[row["word"]]["sentence"]
+                self.assertEqual(row, expected)
+        self.assertTrue(all(row["Sentence"] for row in rows))
         self.assertEqual(len(base), 28324)
         self.assertEqual(sum(level == 70 for level in larger.values()), 11559)
         self.assertEqual(sum(level == 80 for level in larger.values()), 11135)
@@ -184,8 +190,9 @@ class PublishedEsdbTests(unittest.TestCase):
         excluded = {word for word, row in overrides["words"].items() if row.get("exclude")}
         base, larger, forms = load_snapshot(ROOT / "data/esdb")
         approvals = load_approved_batches(ROOT / "tools/esdb_approved_batches")
+        generated = load_generated_sentences()
         rows, pending, _, _, provenance, _ = build(
-            baseline, base, larger, forms, editorial, excluded, approvals)
+            baseline, base, larger, forms, editorial, excluded, approvals, generated)
         playable = {row["word"]: row for row in rows}
         sources = {row["word"]: row["definition_source"] for row in provenance}
         lexical = {

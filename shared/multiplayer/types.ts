@@ -37,6 +37,7 @@ export interface Participant {
 
 export interface RoomSettings {
   mode: GameMode;
+  includeBonusWordsWhenPossible: boolean;
   playMode: PlayMode;
   turnTimeLimit: TurnTimeLimit;
   difficulty: Difficulty;

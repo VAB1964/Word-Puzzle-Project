@@ -132,6 +132,7 @@ export const initializeAppEntry = (canvas: HTMLCanvasElement, startSinglePlayer:
     if (form.id === "create-room-form") {
       const settings: RoomSettings = {
         mode: "Casual",
+        includeBonusWordsWhenPossible: false,
         playMode: "Free for All",
         turnTimeLimit: "Not Timed",
         difficulty: "Easy",

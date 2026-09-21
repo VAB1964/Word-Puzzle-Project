@@ -58,6 +58,13 @@
       "Sentence": "",
       "reason": "Restored after multiplayer playtesting identified it as a missing valid word; preserves its prior tier 4 rating and meaning."
     },
+    "vail": {
+      "rarity": "3",
+      "pos": "verb",
+      "Definition": "To lower a flag or banner as a sign of respect.",
+      "Sentence": "The standard-bearer vailed the banner before the queen.",
+      "reason": "Approved after multiplayer playtesting identified it as a missing valid word; restores the ESDB size-70 entry with its prior tier 3 rating."
+    },
     "zen": {
       "rarity": "3",
       "pos": "noun",

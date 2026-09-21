@@ -382,6 +382,21 @@ select {
   margin: 0;
 }
 
+.mp-setting-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.mp-setting-option input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  min-height: 1rem;
+  margin: 0;
+}
+
 .mp-seat {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;

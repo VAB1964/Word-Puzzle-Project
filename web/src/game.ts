@@ -234,6 +234,7 @@ export class Game {
   private isInSession = false;
   private selectedDifficulty: DifficultyLevel = DifficultyLevel.None;
   private gameMode: GameMode = GameMode.Casual;
+  private includeBonusWordsWhenPossible = false;
 
   private crosswordPlacements: CrosswordPlacement[] = [];
   private crosswordSharedCells: Map<string, [number, number][]> = new Map();
@@ -289,6 +290,7 @@ export class Game {
 
   private mainMenuButtons: Rect[] = [];
   private casualMenuButtons: Rect[] = [];
+  private bonusWordOptionRect: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private returnToMenuButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private voiceToggleButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private continueButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -849,45 +851,7 @@ export class Game {
           this.playSound("place");
           actionTaken = true;
         } else {
-          this.found.add(this.sorted[w].text);
-          playWordSuccess();
-          this.voiceCommentary.onWordFound(this.sorted[w].text, this.sorted[w].rarity);
-          const baseScore = this.currentGuess.length * 10;
-          const rarityBonus = this.sorted[w].rarity > 1 ? this.sorted[w].rarity * 25 : 0;
-          const wordScore = baseScore + rarityBonus;
-          this.currentScore += wordScore;
-          this.spawnScoreFlourish(wordScore, w);
-          this.scoreFlourishTimer = SCORE_FLOURISH_DURATION;
-          const gemHintAward = this.getGemHintPointAward(this.sorted[w].rarity);
-          if (gemHintAward > 0) {
-            this.hintPoints += gemHintAward;
-            this.spawnHintPointAnimation(this.bonusWordsTextRect, gemHintAward);
-          }
-
-          for (let c = 0; c < this.currentGuess.length; c += 1) {
-            if (c < this.path.length) {
-              const pathIdx = this.path[c];
-              const startPos = this.wheelLetterRenderPos[pathIdx];
-              const endPos = this.tilePos(w, c);
-              const finalTileSize =
-                TILE_SIZE * this.currentGridLayoutScale * (this.currentGridLayoutScale < 1 ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1);
-              this.letterAnims.push({
-                ch: this.currentGuess[c],
-                start: startPos,
-                end: { x: endPos.x + finalTileSize / 2, y: endPos.y + finalTileSize / 2 },
-                t: 0 - c * 0.03,
-                wordIdx: w,
-                charIdx: c,
-                target: AnimTarget.Grid
-              });
-            }
-          }
-
-          if (this.found.size === this.solutions.length) {
-            this.gameState = GState.Solved;
-            this.currentScreen = GameScreen.GameOver;
-            this.voiceCommentary.onPuzzleSolved();
-          }
+          this.solveCurrentGuessAt(w);
           actionTaken = true;
         }
         break;
@@ -897,7 +861,12 @@ export class Game {
     if (!actionTaken) {
       for (const bonus of this.allPotentialSolutions) {
         if (bonus.text.toUpperCase() === this.currentGuess) {
-          if (this.foundBonusWords.has(bonus.text)) {
+          const promotedWordIndex = this.includeBonusWordsWhenPossible
+            ? this.promoteBonusWord(bonus)
+            : -1;
+          if (promotedWordIndex >= 0) {
+            this.solveCurrentGuessAt(promotedWordIndex);
+          } else if (this.foundBonusWords.has(bonus.text)) {
             this.bonusTextFlourishTimer = 0.6;
             this.playSound("place");
           } else {
@@ -925,6 +894,99 @@ export class Game {
     }
 
     this.clearDragState();
+  }
+
+  private solveCurrentGuessAt(wordIndex: number) {
+    const word = this.sorted[wordIndex];
+    this.found.add(word.text);
+    playWordSuccess();
+    this.voiceCommentary.onWordFound(word.text, word.rarity);
+    const baseScore = this.currentGuess.length * 10;
+    const rarityBonus = word.rarity > 1 ? word.rarity * 25 : 0;
+    const wordScore = baseScore + rarityBonus;
+    this.currentScore += wordScore;
+    this.spawnScoreFlourish(wordScore, wordIndex);
+    this.scoreFlourishTimer = SCORE_FLOURISH_DURATION;
+    const gemHintAward = this.getGemHintPointAward(word.rarity);
+    if (gemHintAward > 0) {
+      this.hintPoints += gemHintAward;
+      this.spawnHintPointAnimation(this.bonusWordsTextRect, gemHintAward);
+    }
+
+    for (let character = 0; character < this.currentGuess.length; character += 1) {
+      if (character >= this.path.length) continue;
+      const startPos = this.wheelLetterRenderPos[this.path[character]];
+      const endPos = this.tilePos(wordIndex, character);
+      const finalTileSize =
+        TILE_SIZE * this.currentGridLayoutScale *
+        (this.currentGridLayoutScale < 1 ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1);
+      this.letterAnims.push({
+        ch: this.currentGuess[character],
+        start: startPos,
+        end: { x: endPos.x + finalTileSize / 2, y: endPos.y + finalTileSize / 2 },
+        t: 0 - character * 0.03,
+        wordIdx: wordIndex,
+        charIdx: character,
+        target: AnimTarget.Grid
+      });
+    }
+
+    if (this.found.size === this.solutions.length) {
+      this.gameState = GState.Solved;
+      this.currentScreen = GameScreen.GameOver;
+      this.voiceCommentary.onPuzzleSolved();
+    }
+  }
+
+  private promoteBonusWord(bonus: WordInfo) {
+    const replacementIndex = this.sorted.findIndex((word, wordIndex) =>
+      !this.found.has(word.text) &&
+      word.text.length === bonus.text.length &&
+      this.canReplaceGridWord(wordIndex, bonus.text)
+    );
+    if (replacementIndex < 0) return -1;
+
+    const previousWord = this.sorted[replacementIndex];
+    this.sorted[replacementIndex] = bonus;
+    const solutionIndex = this.solutions.findIndex((word) => word.text === previousWord.text);
+    if (solutionIndex >= 0) this.solutions[solutionIndex] = bonus;
+    this.foundBonusWords.delete(bonus.text);
+    this.bonusWordsCacheIsValid = false;
+    return replacementIndex;
+  }
+
+  private canReplaceGridWord(wordIndex: number, replacement: string) {
+    for (let position = 0; position < replacement.length; position += 1) {
+      const visible = this.grid[wordIndex]?.[position];
+      if (visible && visible !== "_" && visible.toLowerCase() !== replacement[position]) return false;
+      if (this.gameMode !== GameMode.Crossword) continue;
+
+      const placement = this.crosswordPlacements[wordIndex];
+      if (!placement) return false;
+      const row = placement.dir === Direction.Horizontal ? placement.gridRow : placement.gridRow + position;
+      const col = placement.dir === Direction.Horizontal ? placement.gridCol + position : placement.gridCol;
+      for (let otherIndex = 0; otherIndex < this.sorted.length; otherIndex += 1) {
+        if (otherIndex === wordIndex) continue;
+        const otherPlacement = this.crosswordPlacements[otherIndex];
+        if (!otherPlacement) continue;
+        for (let otherPosition = 0; otherPosition < this.sorted[otherIndex].text.length; otherPosition += 1) {
+          const otherRow = otherPlacement.dir === Direction.Horizontal
+            ? otherPlacement.gridRow
+            : otherPlacement.gridRow + otherPosition;
+          const otherCol = otherPlacement.dir === Direction.Horizontal
+            ? otherPlacement.gridCol + otherPosition
+            : otherPlacement.gridCol;
+          if (
+            otherRow === row &&
+            otherCol === col &&
+            this.sorted[otherIndex].text[otherPosition].toLowerCase() !== replacement[position]
+          ) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
   }
 
   private handleKeyboardInput(ev: KeyboardEvent) {
@@ -1129,9 +1191,14 @@ export class Game {
   }
 
   private handleCasualMenuInput(world: Vec2) {
-    if (this.casualMenuButtons.length < 4) return;
+    if (this.casualMenuButtons.length < 5) return;
 
-    const [easy, medium, hard, back] = this.casualMenuButtons;
+    const [easy, medium, hard, option, back] = this.casualMenuButtons;
+    if (rectContains(option, world)) {
+      this.includeBonusWordsWhenPossible = !this.includeBonusWordsWhenPossible;
+      this.playSound("click");
+      return;
+    }
     if (rectContains(back, world)) {
       this.playSound("click");
       this.currentScreen = GameScreen.MainMenu;
@@ -1167,9 +1234,14 @@ export class Game {
   }
 
   private handleCrosswordMenuInput(world: Vec2) {
-    if (this.casualMenuButtons.length < 4) return;
+    if (this.casualMenuButtons.length < 5) return;
 
-    const [easy, medium, hard, back] = this.casualMenuButtons;
+    const [easy, medium, hard, option, back] = this.casualMenuButtons;
+    if (rectContains(option, world)) {
+      this.includeBonusWordsWhenPossible = !this.includeBonusWordsWhenPossible;
+      this.playSound("click");
+      return;
+    }
     if (rectContains(back, world)) {
       this.playSound("click");
       this.currentScreen = GameScreen.MainMenu;
@@ -1209,9 +1281,10 @@ export class Game {
       { label: "Easy", rect: this.casualMenuButtons[0] },
       { label: "Medium", rect: this.casualMenuButtons[1] },
       { label: "Hard", rect: this.casualMenuButtons[2] },
-      { label: "Return", rect: this.casualMenuButtons[3] }
+      { label: "Return", rect: this.casualMenuButtons[4] }
     ];
     this.drawMenuPanel(ctx, "Crossword", buttons);
+    this.drawBonusWordOption(ctx);
   }
 
   private handleContinue() {
@@ -1508,7 +1581,7 @@ export class Game {
       });
     }
 
-    const casualButtons = 4;
+    const casualButtons = 5;
     const casualPanelHeight =
       MENU_PANEL_PADDING_DESIGN * 2 +
       titleHeight +
@@ -1532,6 +1605,7 @@ export class Game {
         height: MENU_BUTTON_HEIGHT_DESIGN
       });
     }
+    this.bonusWordOptionRect = this.casualMenuButtons[3];
   }
 
   private updateGridLayout() {
@@ -1981,10 +2055,11 @@ export class Game {
       { label: "Easy", rect: this.casualMenuButtons[0] },
       { label: "Medium", rect: this.casualMenuButtons[1] },
       { label: "Hard", rect: this.casualMenuButtons[2] },
-      { label: "Return", rect: this.casualMenuButtons[3] }
+      { label: "Return", rect: this.casualMenuButtons[4] }
     ];
 
     this.drawMenuPanel(ctx, title, buttons);
+    this.drawBonusWordOption(ctx);
   }
 
   private renderSessionComplete(ctx: CanvasRenderingContext2D) {
@@ -3072,11 +3147,8 @@ export class Game {
     const panelX = buttons[0].rect.x - MENU_PANEL_PADDING_DESIGN;
     const panelY = buttons[0].rect.y - MENU_PANEL_PADDING_DESIGN - 40;
     const panelWidth = MENU_BUTTON_WIDTH_DESIGN + MENU_PANEL_PADDING_DESIGN * 2;
-    const panelHeight =
-      MENU_PANEL_PADDING_DESIGN * 2 +
-      40 +
-      buttons.length * MENU_BUTTON_HEIGHT_DESIGN +
-      (buttons.length - 1) * MENU_BUTTON_SPACING_DESIGN;
+    const lastButtonBottom = Math.max(...buttons.map((button) => button.rect.y + button.rect.height));
+    const panelHeight = lastButtonBottom - panelY + MENU_PANEL_PADDING_DESIGN;
 
     this.drawElevatedPanel(ctx, panelX, panelY, panelWidth, panelHeight);
 
@@ -3104,6 +3176,56 @@ export class Game {
         ctx.restore();
       }
     }
+  }
+
+  private drawBonusWordOption(ctx: CanvasRenderingContext2D) {
+    const rect = this.bonusWordOptionRect;
+    const boxSize = 24;
+    const boxX = rect.x + 12;
+    const boxY = rect.y + (rect.height - boxSize) / 2;
+    const hovering = rectContains(rect, this.mousePos);
+
+    ctx.save();
+    if (hovering) {
+      drawRoundedRect(
+        ctx,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        8,
+        { ...this.currentTheme.menuButtonHover, a: 90 }
+      );
+    }
+    drawRoundedRect(
+      ctx,
+      boxX,
+      boxY,
+      boxSize,
+      boxSize,
+      4,
+      this.includeBonusWordsWhenPossible ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal,
+      UI_INK,
+      2
+    );
+    if (this.includeBonusWordsWhenPossible) {
+      ctx.strokeStyle = colorToCss(UI_INK);
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(boxX + 5, boxY + 12);
+      ctx.lineTo(boxX + 10, boxY + 18);
+      ctx.lineTo(boxX + 20, boxY + 6);
+      ctx.stroke();
+    }
+    ctx.fillStyle = colorToCss(UI_TEXT);
+    ctx.font = this.font(14, true);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    const labelX = boxX + boxSize + 10;
+    ctx.fillText("Include Bonus Words", labelX, rect.y + rect.height / 2 - 9);
+    ctx.fillText("when possible", labelX, rect.y + rect.height / 2 + 9);
+    ctx.restore();
   }
 
   private drawButton(

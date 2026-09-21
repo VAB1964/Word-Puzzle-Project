@@ -61,6 +61,62 @@ const bonusHintAward = (length: number) => {
   return length >= 6 ? 4 : 0;
 };
 
+const canReplacePuzzleWord = (
+  puzzle: PuzzleDefinition,
+  runtime: PuzzleRuntime,
+  wordId: string,
+  replacement: string
+) => {
+  const word = puzzle.words.find((candidate) => candidate.id === wordId);
+  if (!word || word.answer.length !== replacement.length || runtime.completedWordIds.includes(wordId)) {
+    return false;
+  }
+
+  for (let position = 0; position < word.cells.length; position += 1) {
+    const cell = word.cells[position];
+    const visible = runtime.visibleCells[cellKey(cell.row, cell.col)];
+    if (visible && visible.letter.toLowerCase() !== replacement[position]) return false;
+
+    if (puzzle.mode !== "Crossword") continue;
+    for (const crossing of puzzle.words) {
+      if (crossing.id === wordId) continue;
+      const crossingPosition = crossing.cells.findIndex(
+        (candidate) => candidate.row === cell.row && candidate.col === cell.col
+      );
+      if (
+        crossingPosition >= 0 &&
+        crossing.answer[crossingPosition].toLowerCase() !== replacement[position]
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+const promoteBonusWord = (
+  puzzle: PuzzleDefinition,
+  runtime: PuzzleRuntime,
+  guess: string
+) => {
+  const word = puzzle.words.find((candidate) =>
+    canReplacePuzzleWord(puzzle, runtime, candidate.id, guess)
+  );
+  if (!word) return null;
+
+  const previousAnswer = word.answer.toLowerCase();
+  word.answer = guess;
+  // These fields describe the old answer. The worker fills the new word's
+  // dictionary details when it publishes a completed word.
+  word.pos = undefined;
+  word.definition = undefined;
+  word.sentence = undefined;
+  puzzle.bonusWords = puzzle.bonusWords.map((candidate) =>
+    candidate === guess ? previousAnswer : candidate
+  );
+  return word;
+};
+
 const getParticipant = (participants: Participant[], actorId: string) =>
   participants.find((participant) => participant.id === actorId);
 
@@ -143,14 +199,18 @@ export const submitGuess = (
   participants: Participant[],
   actorId: string,
   rawGuess: string,
-  dictionaryWords?: ReadonlySet<string>
+  dictionaryWords?: ReadonlySet<string>,
+  includeBonusWordsWhenPossible = false
 ): PuzzleActionResult => {
   const actor = getParticipant(participants, actorId);
   if (!actor) return failure("Participant not found.");
   const guess = normalizeGuess(rawGuess);
   if (guess.length < 3 || !/^[a-z]+$/.test(guess)) return failure("Enter a valid word.");
 
-  const word = puzzle.words.find((candidate) => candidate.answer.toLowerCase() === guess);
+  let word = puzzle.words.find((candidate) => candidate.answer.toLowerCase() === guess);
+  if (!word && includeBonusWordsWhenPossible && puzzle.bonusWords.includes(guess)) {
+    word = promoteBonusWord(puzzle, runtime, guess) ?? undefined;
+  }
   if (word) {
     if (runtime.completedWordIds.includes(word.id)) return failure("That word is already complete.");
     const scoreAwarded = emptyScore();

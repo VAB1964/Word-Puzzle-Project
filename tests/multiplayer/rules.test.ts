@@ -122,6 +122,52 @@ describe("multiplayer scoring rules", () => {
     expect(players[1].hintCredits).toBe(0);
   });
 
+  it("promotes a same-length bonus word into an unfinished casual slot", () => {
+    const puzzle: PuzzleDefinition = {
+      id: "bonus-swap-casual",
+      mode: "Casual",
+      baseLetters: "TIRED",
+      rows: 1,
+      cols: 4,
+      bonusWords: ["ride"],
+      words: [{
+        id: "rite",
+        answer: "rite",
+        rarity: 1,
+        gems: ["none", "none", "none", "none"],
+        cells: Array.from({ length: 4 }, (_, col) => ({ row: 0, col }))
+      }]
+    };
+    const players = [participant("Alice", 0)];
+    const runtime = createPuzzleRuntime(puzzle);
+
+    const result = submitGuess(puzzle, runtime, players, "Alice", "ride", undefined, true);
+
+    expect(result.kind).toBe("word");
+    expect(result.solvedWords).toEqual(["rite"]);
+    expect(puzzle.words[0].answer).toBe("ride");
+    expect(puzzle.bonusWords).toContain("rite");
+    expect(puzzle.bonusWords).not.toContain("ride");
+  });
+
+  it("only promotes a crossword bonus when all crossing letters remain valid", () => {
+    const compatible: PuzzleDefinition = structuredClone(crossword);
+    compatible.bonusWords = ["cot"];
+    const players = [participant("Alice", 0)];
+    const compatibleRuntime = createPuzzleRuntime(compatible);
+
+    const promoted = submitGuess(compatible, compatibleRuntime, players, "Alice", "cot", undefined, true);
+    expect(promoted.kind).toBe("word");
+    expect(compatible.words.find((word) => word.id === "cat")?.answer).toBe("cot");
+
+    const incompatible: PuzzleDefinition = structuredClone(crossword);
+    incompatible.bonusWords = ["art"];
+    const incompatibleRuntime = createPuzzleRuntime(incompatible);
+    const claimed = submitGuess(incompatible, incompatibleRuntime, players, "Alice", "art", undefined, true);
+    expect(claimed.kind).toBe("bonus");
+    expect(incompatible.words.map((word) => word.answer)).toEqual(["cat", "car"]);
+  });
+
   it("attributes a crossing-completed word to the action that fills its last cell", () => {
     const players = [participant("Alice", 0), participant("Bob", 1, 10)];
     const runtime = createPuzzleRuntime(crossword);

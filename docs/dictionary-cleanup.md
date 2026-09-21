@@ -51,8 +51,10 @@ entirely excluded groups are counted under that group's exclusion reason.
 - Remove definition-restatement examples, malformed examples, long/excerpted
   quotations, and examples with obvious archaic spelling. Prefer a short complete
   example from the same sense. Reviewed examples in the override file are original.
-- Leave the example empty when none passes those checks. The web and native popup
-  omit that row rather than displaying a placeholder or `Sentence: N/A`.
+- Source examples that fail those checks are not retained. Missing examples are
+  supplied by the reviewed generation catalog in `tools/generated_sentences.json`;
+  the builder verifies the exact spelling, part of speech, definition, sentence
+  shape, and catalog freshness before publishing them.
 - Stop the legacy example/variant tools from generating new placeholder examples.
 
 Rare words remain part of the existing game. Modern senses take priority over
@@ -81,6 +83,11 @@ The current playable file is `words_processed.csv`. The identical
 `Standalone/words_processed.csv` is the native distribution copy. Older CSVs and
 `words_processed.xlsx` remain historical source material, not regenerated outputs;
 do not copy those over the cleaned runtime dictionary.
+
+`tools/generate_missing_sentences.mjs` creates and resumes the generated-example
+catalog using strict structured output. It checkpoints after every batch and never
+writes directly to either runtime dictionary. Re-run the canonical ESDB builder to
+validate and publish the catalog.
 
 ## Reproduce and validate
 

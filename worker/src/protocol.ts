@@ -49,6 +49,9 @@ export const validateSettings = (value: unknown): RoomSettings => {
   if (!MODES.includes(candidate.mode as GameMode)) {
     throw new ProtocolError("INVALID_SETTINGS", "Choose Casual or Crossword.");
   }
+  if (typeof candidate.includeBonusWordsWhenPossible !== "boolean") {
+    throw new ProtocolError("INVALID_SETTINGS", "Choose whether bonus words may fill puzzle slots.");
+  }
   if (!DIFFICULTIES.includes(candidate.difficulty as Difficulty)) {
     throw new ProtocolError("INVALID_SETTINGS", "Choose Easy, Medium, or Hard.");
   }

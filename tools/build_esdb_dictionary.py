@@ -30,6 +30,7 @@ BATCH_PROVENANCE_FIELDS = [
     "reviewed_by", "reviewed_at", "definition_source_name",
     "definition_record_id", "definition_sense_id",
 ]
+GENERATED_SENTENCES_PATH = ROOT / "tools/generated_sentences.json"
 FORM_TYPES = {
     "ns": ("noun", "Plural"),
     "vs": ("verb", "Third-person singular present tense"),
@@ -166,7 +167,41 @@ def load_approved_batches(path):
     return approvals
 
 
-def build(baseline, base_words, larger_levels, forms, editorial, excluded, batch_approvals=None):
+def load_generated_sentences(path=GENERATED_SENTENCES_PATH):
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if data.get("schema_version") != 1 or not isinstance(data.get("entries"), dict):
+        raise ValueError("Invalid generated-sentence catalog")
+    return data["entries"]
+
+
+def apply_generated_sentences(rows, generated):
+    by_word = {row["word"]: row for row in rows}
+    unknown = sorted(set(generated) - set(by_word))
+    if unknown:
+        raise ValueError(f"Generated sentences contain unknown words: {', '.join(unknown[:5])}")
+    applied = 0
+    for word, entry in generated.items():
+        row = by_word[word]
+        if entry.get("pos") != row["pos"] or entry.get("definition") != row["Definition"]:
+            raise ValueError(f"Stale generated sentence metadata: {word}")
+        sentence = re.sub(r"\s+", " ", str(entry.get("sentence", ""))).strip()
+        tokens = re.findall(r"[A-Za-z]+(?:['-][A-Za-z]+)*", sentence)
+        if (not 12 <= len(sentence) <= 180 or not 4 <= len(tokens) <= 20 or
+                not re.search(rf"(?:^|[^A-Za-z]){re.escape(word)}(?:[^A-Za-z]|$)", sentence, re.I) or
+                not re.match(r"^[A-Z]", sentence) or not re.search(r"[.!?]$", sentence) or
+                len(re.findall(r"[.!?]", sentence)) != 1):
+            raise ValueError(f"Invalid generated sentence: {word}")
+        if not row["Sentence"]:
+            row["Sentence"] = sentence
+            applied += 1
+    missing = [row["word"] for row in rows if not row["Sentence"]]
+    if missing:
+        raise ValueError(f"Playable words still lack sentences: {', '.join(missing[:5])}")
+    return applied
+
+
+def build(baseline, base_words, larger_levels, forms, editorial, excluded,
+          batch_approvals=None, generated_sentences=None):
     validate(baseline)
     old = {row["word"]: row for row in baseline}
     approved = editorial["larger_level_approvals"]
@@ -234,6 +269,7 @@ def build(baseline, base_words, larger_levels, forms, editorial, excluded, batch
                 provenance[word].update({field: batch_approvals[lemma][field]
                                          for field in BATCH_PROVENANCE_FIELDS})
     rows = sorted(result.values(), key=lambda row: (len(row["word"]), row["word"]))
+    generated_example_count = apply_generated_sentences(rows, generated_sentences) if generated_sentences is not None else 0
     validate(rows)
     pending = [{"word": word, "reason": "explicit-editorial-exclusion" if word in excluded else "needs-definition-and-usage-review"}
                for word in sorted(base_words - result.keys())]
@@ -258,6 +294,9 @@ def build(baseline, base_words, larger_levels, forms, editorial, excluded, batch
         "retained_words": len(old.keys() & result.keys()), "added_words": len(result.keys() - old.keys()),
         "removed_words": len(removed),
         "definition_sources": dict(sorted(Counter(p["definition_source"] for p in provenance.values()).items())),
+        "generated_examples": generated_example_count,
+        "words_with_examples": sum(bool(row["Sentence"]) for row in rows),
+        "words_without_examples": sum(not row["Sentence"] for row in rows),
         "rarity_counts": dict(sorted(Counter(row["rarity"] for row in rows).items())),
         "removed_easiest_words": sorted(w for w in old.keys() - result.keys() if old[w]["rarity"] == "1"),
     }
@@ -304,8 +343,10 @@ def main():
     old_editorial = json.loads((ROOT / "tools/dictionary_overrides.json").read_text(encoding="utf-8"))
     excluded = {word for word, row in old_editorial["words"].items() if row.get("exclude")}
     batch_approvals = load_approved_batches(args.approved_batches)
+    generated_sentences = load_generated_sentences()
     rows, pending, removed, review, provenance, summary = build(
-        baseline, *load_snapshot(args.snapshot), editorial, excluded, batch_approvals)
+        baseline, *load_snapshot(args.snapshot), editorial, excluded, batch_approvals,
+        generated_sentences)
     output = args.output_dir
     write_rows(output / "words_processed.csv", rows, FIELDS)
     write_rows(output / "pending-definitions.csv", pending, ["word", "reason"])

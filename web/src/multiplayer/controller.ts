@@ -251,6 +251,15 @@ export class MultiplayerController {
                 <option ${snapshot.settings.mode === "Crossword" ? "selected" : ""}>Crossword</option>
               </select>
             </label>
+            <label class="mp-setting-option">
+              <input
+                type="checkbox"
+                data-setting-option="includeBonusWordsWhenPossible"
+                ${snapshot.settings.includeBonusWordsWhenPossible ? "checked" : ""}
+                ${host ? "" : "disabled"}
+              >
+              <span>Include Bonus Words when possible</span>
+            </label>
             <label>Mode
               <select data-setting="playMode" ${host ? "" : "disabled"}>
                 <option ${snapshot.settings.playMode === "Free for All" ? "selected" : ""}>Free for All</option>
@@ -1063,8 +1072,18 @@ export class MultiplayerController {
   }
 
   private handleChange(event: Event) {
-    const hintToggle = (event.target as HTMLElement).closest<HTMLInputElement>("[data-setting-hint]");
+    const optionToggle = (event.target as HTMLElement).closest<HTMLInputElement>("[data-setting-option]");
     const snapshot = this.snapshot;
+    if (optionToggle && snapshot) {
+      const settings = {
+        ...snapshot.settings,
+        includeBonusWordsWhenPossible: optionToggle.checked
+      };
+      this.client.send({ type: "update-settings", settings, expectedRevision: snapshot.revision });
+      return;
+    }
+
+    const hintToggle = (event.target as HTMLElement).closest<HTMLInputElement>("[data-setting-hint]");
     if (hintToggle && snapshot) {
       const settings = {
         ...snapshot.settings,

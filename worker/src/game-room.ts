@@ -134,6 +134,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           ...state,
           settings: {
             ...state.settings,
+            includeBonusWordsWhenPossible: state.settings.includeBonusWordsWhenPossible ?? false,
             puzzlesPerRound: state.settings.puzzlesPerRound ?? 3,
             enabledPowerUps: state.settings.enabledPowerUps ?? defaultEnabledPowerUps()
           },
@@ -523,7 +524,8 @@ export class WordPuzzleRoom extends DurableObject<Env> {
         state.participants,
         participantId,
         command.guess,
-        DICTIONARY_WORDS
+        DICTIONARY_WORDS,
+        state.settings.includeBonusWordsWhenPossible
       );
       const events: PresentationEvent[] = [];
       if (!result.changed) {

@@ -149,6 +149,13 @@ python tools/esdb_review_batches.py batch --catalog esdb-candidate/kaikki-review
 python tools/esdb_review_batches.py validate --batch path/to/batch.json --decisions path/to/decisions.json
 ```
 
+The committed `tools/generated_sentences.json` catalog is also an input to this
+offline build. Each generated entry records the exact part of speech and definition
+used during generation. The build fails on stale metadata, malformed examples, or
+any playable word that still lacks an example sentence. New missing entries can be
+generated or resumed with `node tools/generate_missing_sentences.mjs` before the
+offline build is run.
+
 Multiplayer word reports are recorded in `data/word_issues.csv`. Run
 `npm run word-issues` to classify each report against the current playable
 dictionary. Reports should include the puzzle word when available; historical
