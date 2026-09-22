@@ -14,6 +14,38 @@ const word = (text: string, rarity: number): PuzzleWordData => ({
   hardValidCount: 0
 });
 
+const crosswordWord = (text: string) => ({
+  ...word(text, 2),
+  pos: "",
+  definition: "",
+  sentence: "",
+  avgSubLen: 0,
+  countGE3: 0,
+  countGE5: 0
+});
+
+describe("phone-friendly crossword layout", () => {
+  it("keeps a hard-sized board compact instead of forming a horizontal snake", () => {
+    const candidates = [
+      "reactor", "creator", "trace", "crate", "cater", "caret", "react", "actor",
+      "terra", "racer", "carer", "orate", "oater", "rate", "tare", "tear",
+      "rear", "rare", "care", "race"
+    ].map(crosswordWord);
+
+    const random = vi.spyOn(Math, "random").mockReturnValue(0.37);
+    try {
+      const layout = crossword.generateCrossword(candidates);
+      const longSide = Math.max(layout.gridRows, layout.gridCols);
+      const shortSide = Math.max(1, Math.min(layout.gridRows, layout.gridCols));
+
+      expect(layout.placedWords.length).toBeGreaterThanOrEqual(15);
+      expect(longSide / shortSide).toBeLessThanOrEqual(1.8);
+    } finally {
+      random.mockRestore();
+    }
+  });
+});
+
 describe("multiplayer puzzle difficulty", () => {
   it("keeps Easy base-word fallback restricted to Easy rarity", () => {
     const data = [

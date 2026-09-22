@@ -21,6 +21,19 @@ export interface CrosswordResult {
 
 const cellKey = (r: number, c: number) => `${r},${c}`;
 
+// The phone board is close to square after the status bars and wheel are laid
+// out. Scoring against a normalized viewport makes the generator optimize the
+// size of each rendered cell instead of rewarding long horizontal boards.
+const PHONE_FIT_WIDTH = 18;
+const PHONE_FIT_HEIGHT = 16;
+const PHONE_TARGET_ASPECT = PHONE_FIT_WIDTH / PHONE_FIT_HEIGHT;
+
+const phoneCellScale = (rows: number, cols: number) =>
+  Math.min(PHONE_FIT_WIDTH / Math.max(1, cols), PHONE_FIT_HEIGHT / Math.max(1, rows));
+
+const aspectPenalty = (rows: number, cols: number) =>
+  Math.abs(Math.log((Math.max(1, cols) / Math.max(1, rows)) / PHONE_TARGET_ASPECT));
+
 interface PlacedWord {
   text: string;
   startRow: number;
@@ -154,11 +167,18 @@ function generateCrosswordTrial(words: WordInfo[]): CrosswordResult {
             const newRows = Math.max(curMaxRow, endR) - Math.min(curMinRow, startRow) + 1;
             const newCols = Math.max(curMaxCol, endC) - Math.min(curMinCol, startCol) + 1;
 
-            if (newRows > newCols) continue;
-
-            const widthBonus = (newCols - newRows) * 5;
+            const newArea = newRows * newCols;
+            const density = (occupiedCells.size + candLen - intersections) / Math.max(1, newArea);
+            const fit = phoneCellScale(newRows, newCols);
             const randomJitter = Math.random() * 4;
-            const score = intersections * 10 + candidate.length + widthBonus + randomJitter;
+            const score =
+              intersections * 80 +
+              candidate.length * 2 +
+              fit * 120 +
+              density * 30 -
+              aspectPenalty(newRows, newCols) * 12 -
+              newArea * 0.04 +
+              randomJitter;
             if (score > bestScore) {
               bestScore = score;
               bestRow = startRow;
@@ -248,15 +268,24 @@ export function generateCrossword(words: WordInfo[]): CrosswordResult {
     return { placedWords: [], placements: [], sharedCells: new Map(), gridRows: 0, gridCols: 0 };
   }
 
-  const NUM_TRIALS = 20;
+  const NUM_TRIALS = Math.max(40, words.length * 4);
   let bestResult: CrosswordResult | null = null;
   let bestScore = -Infinity;
 
   for (let trial = 0; trial < NUM_TRIALS; trial++) {
     const result = generateCrosswordTrial(words);
     const placed = result.placedWords.length;
-    const ratio = result.gridCols / Math.max(result.gridRows, 1);
-    const score = placed * 1000 + ratio * 100 - result.gridRows * 10;
+    const area = Math.max(1, result.gridRows * result.gridCols);
+    const occupiedCells = result.placedWords.reduce((total, word) => total + word.text.length, 0) -
+      result.sharedCells.size;
+    const density = occupiedCells / area;
+    const score =
+      placed * 10000 +
+      phoneCellScale(result.gridRows, result.gridCols) * 2000 +
+      result.sharedCells.size * 120 +
+      density * 100 -
+      aspectPenalty(result.gridRows, result.gridCols) * 80 -
+      area * 0.1;
     if (score > bestScore) {
       bestScore = score;
       bestResult = result;

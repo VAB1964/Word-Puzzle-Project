@@ -67,6 +67,7 @@ export class MultiplayerController {
   private wheelPointerId: number | null = null;
   private suppressNextLetterClick = false;
   private pinnedWordInfoId: string | null = null;
+  private readonly handleViewportResize = () => this.fitBoardToViewport();
 
   constructor(
     private readonly root: HTMLElement,
@@ -89,6 +90,7 @@ export class MultiplayerController {
     root.addEventListener("focusin", this.handleWordInfoFocusIn);
     root.addEventListener("focusout", this.handleWordInfoFocusOut);
     window.addEventListener("keydown", this.handleKeyDown);
+    window.addEventListener("resize", this.handleViewportResize);
     this.uiTicker = window.setInterval(() => {
       if (!this.snapshot) return;
       const activeCountdown =
@@ -103,6 +105,7 @@ export class MultiplayerController {
 
   destroy() {
     window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("resize", this.handleViewportResize);
     this.root.removeEventListener("pointerdown", this.handleWheelPointerDown);
     this.root.removeEventListener("pointermove", this.handleWheelPointerMove);
     this.root.removeEventListener("pointerup", this.handleWheelPointerUp);
@@ -195,12 +198,12 @@ export class MultiplayerController {
         ? ""
         : `<div class="mp-connection-banner">${escapeHtml(this.connection)} — competitive actions are unavailable.</div>`;
     this.root.innerHTML = `
-      <section class="mp-shell">
+      <section class="mp-shell mp-shell-${snapshot.status}">
         ${connectionBanner}
         <header class="mp-room-header">
           <button class="mp-link-button" data-action="leave">Leave</button>
           <strong>Room ${escapeHtml(snapshot.roomCode)}</strong>
-          <span>${escapeHtml(snapshot.settings.mode)} · ${escapeHtml(snapshot.settings.playMode)} · ${escapeHtml(String(snapshot.settings.turnTimeLimit))} · ${escapeHtml(snapshot.settings.difficulty)} · ${escapeHtml(String(snapshot.settings.puzzlesPerRound))} Puzzles</span>
+          <span class="mp-room-details">${escapeHtml(snapshot.settings.mode)} · ${escapeHtml(snapshot.settings.playMode)} · ${escapeHtml(String(snapshot.settings.turnTimeLimit))} · ${escapeHtml(snapshot.settings.difficulty)} · ${escapeHtml(String(snapshot.settings.puzzlesPerRound))} Puzzles</span>
           <button class="mp-link-button" data-action="copy-invite">Copy Invite</button>
         </header>
         ${
@@ -213,6 +216,7 @@ export class MultiplayerController {
                 : this.renderResults(snapshot, host)
         }
       </section>`;
+    window.requestAnimationFrame(() => this.fitBoardToViewport());
     if (this.pinnedWordInfoId) this.showWordInfo(this.pinnedWordInfoId);
   }
 
@@ -413,6 +417,8 @@ export class MultiplayerController {
                     <button data-action="clear" ${controlsDisabled ? "disabled" : ""}>Clear</button>
                     <button data-action="shuffle" ${controlsDisabled ? "disabled" : ""}>↝ Shuffle</button>
                     <button class="mp-submit" data-action="submit" ${controlsDisabled ? "disabled" : ""}>Submit</button>
+                    <button class="mp-mobile-utility" data-action="toggle-bonus-list" ${puzzle.bonusWordCount === 0 ? "disabled" : ""} aria-label="Show bonus words">Bonus</button>
+                    <button class="mp-mobile-utility" data-action="skip" ${controlsDisabled ? "disabled" : ""}>Skip</button>
                   </div>
                   <button class="mp-skip-button" data-action="skip" ${controlsDisabled ? "disabled" : ""}>Request Skip</button>
                 </div>
@@ -538,6 +544,35 @@ export class MultiplayerController {
       .join("")}</div>`;
   }
 
+  private buildMobileCasualLayout(puzzle: PublicPuzzle) {
+    if (puzzle.mode !== "Casual" || puzzle.words.length === 0) return null;
+
+    const rows = Math.ceil(puzzle.words.length / 2);
+    const columnWidths = [0, 0];
+    puzzle.words.forEach((word, index) => {
+      const column = Math.min(1, Math.floor(index / rows));
+      columnWidths[column] = Math.max(columnWidths[column], word.cells.length);
+    });
+
+    const secondColumnOffset = columnWidths[0] + 1;
+    const positions = new Map<string, { row: number; col: number }>();
+    puzzle.words.forEach((word, index) => {
+      const column = Math.min(1, Math.floor(index / rows));
+      const row = index % rows;
+      const startCol = column === 0 ? 0 : secondColumnOffset;
+      word.cells.forEach((cell, position) => {
+        positions.set(cellKey(cell.row, cell.col), { row, col: startCol + position });
+      });
+    });
+
+    return {
+      rows,
+      cols: secondColumnOffset + columnWidths[1],
+      dividerCols: columnWidths[1] > 0 ? [columnWidths[0]] : [],
+      positions
+    };
+  }
+
   private renderBoard(puzzle: PublicPuzzle, snapshot: RoomSnapshot) {
     const cells = new Map<string, { row: number; col: number; refs: Array<{ wordId: string; position: number }> }>();
     const occupiedCols = new Set<number>();
@@ -556,11 +591,20 @@ export class MultiplayerController {
             (col) => !occupiedCols.has(col)
           )
         : [];
-    return `<div class="mp-board-scroll" role="region" aria-label="Puzzle board" tabindex="0"><div class="mp-board" style="--rows:${puzzle.rows};--cols:${puzzle.cols}">
+    const mobileLayout = this.buildMobileCasualLayout(puzzle);
+    const mobileRows = mobileLayout?.rows ?? puzzle.rows;
+    const mobileCols = mobileLayout?.cols ?? puzzle.cols;
+    return `<div class="mp-board-scroll" role="region" aria-label="Puzzle board" tabindex="0"><div class="mp-board ${mobileLayout ? "mp-mobile-reflow" : ""}" data-layout-rows="${mobileRows}" data-layout-cols="${mobileCols}" style="--rows:${puzzle.rows};--cols:${puzzle.cols};--mobile-rows:${mobileRows};--mobile-cols:${mobileCols}">
       ${dividerCols
         .map(
           (col) =>
-            `<span class="mp-column-divider" style="grid-row:1 / span ${puzzle.rows};grid-column:${col + 1};" aria-hidden="true"></span>`
+            `<span class="mp-column-divider mp-desktop-divider" style="grid-row:1 / span ${puzzle.rows};grid-column:${col + 1};" aria-hidden="true"></span>`
+        )
+        .join("")}
+      ${(mobileLayout?.dividerCols ?? [])
+        .map(
+          (col) =>
+            `<span class="mp-column-divider mp-mobile-divider" style="--mobile-divider-col:${col + 1};grid-row:1 / span ${mobileRows};grid-column:${col + 1};" aria-hidden="true"></span>`
         )
         .join("")}
       ${[...cells.entries()]
@@ -582,7 +626,8 @@ export class MultiplayerController {
               return gems[candidate.position] ?? "none";
             })
             .reduce((best, current) => (GEM_RANK[current] > GEM_RANK[best] ? current : best), "none");
-          return `<button class="mp-cell ${visible ? "filled" : ""} ${hintTarget ? "mp-cell-hint-target" : ""} ${completedWord ? "has-word-info" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
+          const mobilePosition = mobileLayout?.positions.get(key) ?? { row: cell.row, col: cell.col };
+          return `<button class="mp-cell ${visible ? "filled" : ""} ${hintTarget ? "mp-cell-hint-target" : ""} ${completedWord ? "has-word-info" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--mobile-row:${mobilePosition.row + 1};--mobile-col:${mobilePosition.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
             data-action="board-cell" data-word="${ref.wordId}" data-position="${ref.position}"
             ${completedWord ? `data-word-info="${escapeHtml(completedWord.id)}"` : ""}
             data-row="${cell.row}" data-col="${cell.col}"
@@ -604,6 +649,33 @@ export class MultiplayerController {
       <p data-word-info-field="definition"></p>
       <p data-word-info-field="sentence"></p>
     </aside>`;
+  }
+
+  private fitBoardToViewport() {
+    const puzzle = this.snapshot?.puzzle;
+    const stage =
+      this.root.querySelector<HTMLElement>(".mp-board-stage") ??
+      this.root.querySelector<HTMLElement>(".mp-summary-layout .mp-board-scroll");
+    const board = this.root.querySelector<HTMLElement>(".mp-board");
+    if (!puzzle || !stage || !board || window.matchMedia("(min-width: 761px)").matches) {
+      board?.style.removeProperty("--cell-size");
+      return;
+    }
+
+    const gap = 2;
+    const horizontalSafetyInset = this.snapshot?.status === "puzzle-summary" ? 6 : 0;
+    const layoutCols = Number(board.dataset.layoutCols) || puzzle.cols;
+    const layoutRows = Number(board.dataset.layoutRows) || puzzle.rows;
+    const availableWidth = Math.max(
+      0,
+      stage.clientWidth - horizontalSafetyInset - gap * Math.max(0, layoutCols - 1)
+    );
+    const availableHeight = Math.max(0, stage.clientHeight - gap * Math.max(0, layoutRows - 1));
+    const cellSize = Math.max(
+      1,
+      Math.min(42, availableWidth / Math.max(1, layoutCols), availableHeight / Math.max(1, layoutRows))
+    );
+    board.style.setProperty("--cell-size", `${cellSize}px`);
   }
 
   private showWordInfo(wordId: string) {

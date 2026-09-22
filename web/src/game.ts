@@ -184,6 +184,9 @@ export class Game {
   private width = 0;
   private height = 0;
   private view: ViewTransform = createViewTransform(1, 1, REF_W, REF_H);
+  private layoutWidth = REF_W;
+  private layoutHeight = REF_H;
+  private isPortraitLayout = false;
   private uiScale = 1;
   private fontFamily = "WordPuzzleFont";
   private dpr = 1;
@@ -320,15 +323,20 @@ export class Game {
     this.width = width;
     this.height = height;
     this.dpr = dpr;
-    this.view = createViewTransform(width, height, REF_W, REF_H);
-    this.uiScale = clamp(Math.min(width / REF_W, height / REF_H), 0.65, 1.6);
+    this.isPortraitLayout = width <= 760 && height > width;
+    this.layoutWidth = this.isPortraitLayout ? 600 : REF_W;
+    this.layoutHeight = this.isPortraitLayout ? this.layoutWidth * (height / Math.max(1, width)) : REF_H;
+    this.view = createViewTransform(width, height, this.layoutWidth, this.layoutHeight);
+    this.uiScale = this.isPortraitLayout
+      ? 1
+      : clamp(Math.min(width / REF_W, height / REF_H), 0.65, 1.6);
     this.updateLayout();
   }
 
   update(dt: number) {
     if (!this.ready) return;
 
-    this.decor.update(dt, { x: REF_W, y: REF_H }, this.currentTheme);
+    this.decor.update(dt, { x: this.layoutWidth, y: this.layoutHeight }, this.currentTheme);
 
     if (this.isAwaitingLetterHintTarget) {
       this.letterHintTargetPulseTime += dt;
@@ -424,7 +432,7 @@ export class Game {
 
     applyView(ctx, this.view, this.dpr);
     ctx.fillStyle = colorToCss(this.currentTheme.winBg);
-    ctx.fillRect(0, 0, REF_W, REF_H);
+    ctx.fillRect(0, 0, this.layoutWidth, this.layoutHeight);
 
     this.drawBackground(ctx);
     // this.decor.draw(ctx); // Disabled - old background decor code (circles, triangles, lines)
@@ -1551,6 +1559,65 @@ export class Game {
     this.updateRulesLayout();
   }
 
+  private get gridZone(): Rect {
+    if (!this.isPortraitLayout) return GRID_ZONE_RECT_DESIGN;
+    return {
+      x: 20,
+      y: 82,
+      width: this.layoutWidth - 40,
+      height: clamp(this.layoutHeight * 0.4, 350, 520)
+    };
+  }
+
+  private get wheelZone(): Rect {
+    if (!this.isPortraitLayout) return WHEEL_ZONE_RECT_DESIGN;
+    const grid = this.gridZone;
+    const y = grid.y + grid.height + 22;
+    const availableHeight = Math.max(250, this.lowerPanelY - y - 18);
+    const size = Math.min(clamp(this.layoutHeight * 0.3, 280, 400), availableHeight);
+    return {
+      x: (this.layoutWidth - size) / 2,
+      y,
+      width: size,
+      height: size
+    };
+  }
+
+  private get lowerPanelHeight() {
+    return this.isPortraitLayout ? clamp(this.layoutHeight * 0.18, 210, 245) : 0;
+  }
+
+  private get lowerPanelY() {
+    return this.isPortraitLayout
+      ? this.layoutHeight - this.lowerPanelHeight - 18
+      : this.wheelZone.y + this.wheelZone.height + 25;
+  }
+
+  private get hintZone(): Rect {
+    if (!this.isPortraitLayout) return HINT_ZONE_RECT_DESIGN;
+    return {
+      x: 20,
+      y: this.lowerPanelY,
+      width: 270,
+      height: this.lowerPanelHeight
+    };
+  }
+
+  private get scoreZone(): Rect {
+    if (!this.isPortraitLayout) return SCORE_ZONE_RECT_DESIGN;
+    return {
+      x: 310,
+      y: this.lowerPanelY,
+      width: 270,
+      height: this.lowerPanelHeight
+    };
+  }
+
+  private get topBarZone(): Rect {
+    if (!this.isPortraitLayout) return TOP_BAR_ZONE_DESIGN;
+    return { x: 10, y: 10, width: this.layoutWidth - 20, height: 50 };
+  }
+
   private updateMenuLayout() {
     const titleSize = this.scale(36);
     const titleHeight = titleSize + 10;
@@ -1562,8 +1629,8 @@ export class Game {
       mainButtons * MENU_BUTTON_HEIGHT_DESIGN +
       (mainButtons - 1) * MENU_BUTTON_SPACING_DESIGN +
       MENU_PANEL_EXTRA_HEIGHT_DESIGN;
-    const panelX = (REF_W - panelWidth) / 2;
-    const panelY = (REF_H - panelHeight) / 2;
+    const panelX = (this.layoutWidth - panelWidth) / 2;
+    const panelY = (this.layoutHeight - panelHeight) / 2;
 
     this.mainMenuButtons = [];
     for (let i = 0; i < mainButtons; i += 1) {
@@ -1588,7 +1655,7 @@ export class Game {
       casualButtons * MENU_BUTTON_HEIGHT_DESIGN +
       (casualButtons - 1) * MENU_BUTTON_SPACING_DESIGN +
       MENU_PANEL_EXTRA_HEIGHT_DESIGN;
-    const casualPanelY = (REF_H - casualPanelHeight) / 2;
+    const casualPanelY = (this.layoutHeight - casualPanelHeight) / 2;
 
     this.casualMenuButtons = [];
     for (let i = 0; i < casualButtons; i += 1) {
@@ -1609,10 +1676,11 @@ export class Game {
   }
 
   private updateGridLayout() {
-    const zoneInnerX = GRID_ZONE_RECT_DESIGN.x + GRID_ZONE_PADDING_X_DESIGN;
-    const zoneInnerY = GRID_ZONE_RECT_DESIGN.y + GRID_ZONE_PADDING_Y_DESIGN;
-    const zoneInnerWidth = GRID_ZONE_RECT_DESIGN.width - 2 * GRID_ZONE_PADDING_X_DESIGN;
-    const zoneInnerHeight = GRID_ZONE_RECT_DESIGN.height - 2 * GRID_ZONE_PADDING_Y_DESIGN;
+    const gridZone = this.gridZone;
+    const zoneInnerX = gridZone.x + GRID_ZONE_PADDING_X_DESIGN;
+    const zoneInnerY = gridZone.y + GRID_ZONE_PADDING_Y_DESIGN;
+    const zoneInnerWidth = gridZone.width - 2 * GRID_ZONE_PADDING_X_DESIGN;
+    const zoneInnerHeight = gridZone.height - 2 * GRID_ZONE_PADDING_Y_DESIGN;
 
     const wordCount = this.sorted.length || 1;
     let numCols = 1;
@@ -1664,7 +1732,7 @@ export class Game {
 
       numCols = narrowestCols;
       maxRowsPerCol = narrowestRows;
-      const MAX_ROWS_LIMIT_GRID = 5;
+      const MAX_ROWS_LIMIT_GRID = this.isPortraitLayout ? 8 : 5;
       if (maxRowsPerCol > MAX_ROWS_LIMIT_GRID) {
         maxRowsPerCol = MAX_ROWS_LIMIT_GRID;
         numCols = Math.ceil(wordCount / maxRowsPerCol);
@@ -1725,14 +1793,16 @@ export class Game {
   }
 
   private updateWheelLayout() {
-    const innerX = WHEEL_ZONE_RECT_DESIGN.x + WHEEL_ZONE_PADDING_DESIGN;
-    const innerY = WHEEL_ZONE_RECT_DESIGN.y + WHEEL_ZONE_PADDING_DESIGN;
-    const innerW = WHEEL_ZONE_RECT_DESIGN.width - 2 * WHEEL_ZONE_PADDING_DESIGN;
-    const innerH = WHEEL_ZONE_RECT_DESIGN.height - 2 * WHEEL_ZONE_PADDING_DESIGN;
+    const wheelZone = this.wheelZone;
+    const innerX = wheelZone.x + WHEEL_ZONE_PADDING_DESIGN;
+    const innerY = wheelZone.y + WHEEL_ZONE_PADDING_DESIGN;
+    const innerW = wheelZone.width - 2 * WHEEL_ZONE_PADDING_DESIGN;
+    const innerH = wheelZone.height - 2 * WHEEL_ZONE_PADDING_DESIGN;
 
     this.wheelCenter = { x: innerX + innerW / 2, y: innerY + innerH / 2 };
     const maxRadiusForZone = Math.min(innerW / 2, innerH / 2);
-    this.currentWheelRadius = Math.max(Math.min(maxRadiusForZone, WHEEL_R), LETTER_R * 1.5);
+    const wheelRadiusLimit = this.isPortraitLayout ? WHEEL_R * 1.35 : WHEEL_R;
+    this.currentWheelRadius = Math.max(Math.min(maxRadiusForZone, wheelRadiusLimit), LETTER_R * 1.5);
     const wheelScaleFactor = WHEEL_R > 0 ? this.currentWheelRadius / WHEEL_R : 1;
 
     if (this.base.length > 0) {
@@ -1773,13 +1843,26 @@ export class Game {
       }
     }
 
-    const scrambleSize = SCRAMBLE_BTN_HEIGHT;
-    this.scrambleButton = {
-      x: this.wheelCenter.x - scrambleSize / 2,
-      y: Math.min(REF_H - 58, this.wheelCenter.y + this.visualBgRadius * WHEEL_INTERACTION_SCALE_FACTOR + 8),
-      width: scrambleSize,
-      height: scrambleSize
-    };
+    const scrambleSize = this.isPortraitLayout ? 55 : SCRAMBLE_BTN_HEIGHT;
+    this.scrambleButton = this.isPortraitLayout
+      ? {
+          x: Math.min(
+            this.layoutWidth - scrambleSize - 18,
+            this.wheelCenter.x + this.visualBgRadius + 14
+          ),
+          y: this.wheelCenter.y - scrambleSize / 2,
+          width: scrambleSize,
+          height: scrambleSize
+        }
+      : {
+          x: this.wheelCenter.x - scrambleSize / 2,
+          y: Math.min(
+            this.layoutHeight - 58,
+            this.wheelCenter.y + this.visualBgRadius * WHEEL_INTERACTION_SCALE_FACTOR + 8
+          ),
+          width: scrambleSize,
+          height: scrambleSize
+        };
 
     this.continueButton = {
       x: this.wheelCenter.x - 100,
@@ -1791,7 +1874,7 @@ export class Game {
 
   private updateHintLayout() {
     this.hintClickableRegions = [];
-    const zone = HINT_ZONE_RECT_DESIGN;
+    const zone = this.hintZone;
     const numHintFrames = HINT_LABELS.length;
     const verticalSpacing = HINT_FRAME_VERTICAL_SPACING;
     const frameImage = this.images.hintFrame;
@@ -1849,17 +1932,17 @@ export class Game {
 
   private updateTopBarLayout() {
     this.returnToMenuButton = {
-      x: TOP_BAR_ZONE_DESIGN.x + TOP_BAR_PADDING_X_DESIGN,
+      x: this.topBarZone.x + TOP_BAR_PADDING_X_DESIGN,
       y:
-        TOP_BAR_ZONE_DESIGN.y +
-        (TOP_BAR_ZONE_DESIGN.height - RETURN_BTN_HEIGHT_DESIGN) / 2,
+        this.topBarZone.y +
+        (this.topBarZone.height - RETURN_BTN_HEIGHT_DESIGN) / 2,
       width: RETURN_BTN_WIDTH_DESIGN,
       height: RETURN_BTN_HEIGHT_DESIGN
     };
     const voiceBtnSize = RETURN_BTN_HEIGHT_DESIGN;
     this.voiceToggleButton = {
-      x: TOP_BAR_ZONE_DESIGN.x + TOP_BAR_ZONE_DESIGN.width - TOP_BAR_PADDING_X_DESIGN - voiceBtnSize,
-      y: TOP_BAR_ZONE_DESIGN.y + (TOP_BAR_ZONE_DESIGN.height - voiceBtnSize) / 2,
+      x: this.topBarZone.x + this.topBarZone.width - TOP_BAR_PADDING_X_DESIGN - voiceBtnSize,
+      y: this.topBarZone.y + (this.topBarZone.height - voiceBtnSize) / 2,
       width: voiceBtnSize,
       height: voiceBtnSize
     };
@@ -1868,8 +1951,8 @@ export class Game {
   private updateExitConfirmLayout() {
     const panelWidth = 340;
     const panelHeight = 180;
-    const panelX = (REF_W - panelWidth) / 2;
-    const panelY = (REF_H - panelHeight) / 2;
+    const panelX = (this.layoutWidth - panelWidth) / 2;
+    const panelY = (this.layoutHeight - panelHeight) / 2;
     this.exitConfirmPanel = { x: panelX, y: panelY, width: panelWidth, height: panelHeight };
 
     const buttonWidth = 120;
@@ -1894,8 +1977,8 @@ export class Game {
   private updateRulesLayout() {
     const panelWidth = 860;
     const panelHeight = 570;
-    const panelX = (REF_W - panelWidth) / 2;
-    const panelY = (REF_H - panelHeight) / 2;
+    const panelX = (this.layoutWidth - panelWidth) / 2;
+    const panelY = (this.layoutHeight - panelHeight) / 2;
     this.rulesPanel = { x: panelX, y: panelY, width: panelWidth, height: panelHeight };
     this.rulesCloseButton = {
       x: panelX + panelWidth / 2 - 90,
@@ -1925,7 +2008,7 @@ export class Game {
   private renderExitConfirmDialog(ctx: CanvasRenderingContext2D) {
     ctx.save();
     ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-    ctx.fillRect(0, 0, REF_W, REF_H);
+    ctx.fillRect(0, 0, this.layoutWidth, this.layoutHeight);
     ctx.restore();
 
     const panel = this.exitConfirmPanel;
@@ -1962,7 +2045,7 @@ export class Game {
   private renderRulesDialog(ctx: CanvasRenderingContext2D) {
     ctx.save();
     ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-    ctx.fillRect(0, 0, REF_W, REF_H);
+    ctx.fillRect(0, 0, this.layoutWidth, this.layoutHeight);
     ctx.restore();
 
     const panel = this.rulesPanel;
@@ -2066,7 +2149,7 @@ export class Game {
     // Draw semi-transparent dark overlay (matching PC version)
     ctx.save();
     ctx.fillStyle = colorToCss({ r: 0, g: 0, b: 0, a: 150 });
-    ctx.fillRect(0, 0, REF_W, REF_H);
+    ctx.fillRect(0, 0, this.layoutWidth, this.layoutHeight);
     ctx.restore();
 
     // Draw Final Score Prominently (matching PC version)
@@ -2074,7 +2157,7 @@ export class Game {
     drawCenteredText(
       ctx,
       finalScoreText,
-      { x: REF_W / 2, y: REF_H * 0.3 },
+      { x: this.layoutWidth / 2, y: this.layoutHeight * 0.3 },
       { r: 255, g: 242, b: 213, a: 255 },
       this.font(48, true)
     );
@@ -2085,8 +2168,8 @@ export class Game {
     // Draw Continue Button (matching PC version positioning)
     const buttonWidth = 200;
     const buttonHeight = 50;
-    const buttonX = REF_W / 2 - buttonWidth / 2;
-    const buttonY = REF_H * 0.8 - buttonHeight / 2;
+    const buttonX = this.layoutWidth / 2 - buttonWidth / 2;
+    const buttonY = this.layoutHeight * 0.8 - buttonHeight / 2;
     
     this.continueButton = {
       x: buttonX,
@@ -2133,8 +2216,8 @@ export class Game {
       const buttonHeight = 75;
       const popupWidth = Math.max(titleMetrics.width, buttonWidth) + 50;
       const popupHeight = titleHeight + buttonHeight + 70;
-      const popupX = REF_W / 2 - popupWidth / 2;
-      const popupY = REF_H / 2 - popupHeight / 2;
+      const popupX = this.layoutWidth / 2 - popupWidth / 2;
+      const popupY = this.layoutHeight / 2 - popupHeight / 2;
 
       this.drawElevatedPanel(
         ctx,
@@ -2150,13 +2233,13 @@ export class Game {
       drawCenteredText(
         ctx,
         title,
-        { x: REF_W / 2, y: popupY + 24 + titleHeight / 2 },
+        { x: this.layoutWidth / 2, y: popupY + 24 + titleHeight / 2 },
         UI_TEXT,
         titleFont
       );
 
       this.continueButton = {
-        x: REF_W / 2 - buttonWidth / 2,
+        x: this.layoutWidth / 2 - buttonWidth / 2,
         y: popupY + titleHeight + 35,
         width: buttonWidth,
         height: buttonHeight
@@ -2264,7 +2347,7 @@ export class Game {
   }
 
   private renderScoreZone(ctx: CanvasRenderingContext2D) {
-    const zone = SCORE_ZONE_RECT_DESIGN;
+    const zone = this.scoreZone;
     const centerX = zone.x + zone.width / 2;
     const labelHeight = SCORE_ZONE_LABEL_FONT_SIZE;
     const valueHeight = SCORE_ZONE_VALUE_FONT_SIZE;
@@ -2577,8 +2660,9 @@ export class Game {
     const tilesWidth = n * tileSize + (n - 1) * tilePad;
     const panelW = tilesWidth + GUESS_OVERLAY_PANEL_PAD_X * 2;
     const panelH = tileSize + GUESS_OVERLAY_PANEL_PAD_Y * 2;
-    const gridPanelBottom = GRID_ZONE_RECT_DESIGN.y - 20 + GRID_ZONE_RECT_DESIGN.height + 40;
-    const panelX = clamp(this.wheelCenter.x - panelW / 2, 24, REF_W - 24 - panelW);
+    const gridZone = this.gridZone;
+    const gridPanelBottom = gridZone.y - 20 + gridZone.height + 40;
+    const panelX = clamp(this.wheelCenter.x - panelW / 2, 24, this.layoutWidth - 24 - panelW);
     const panelY = gridPanelBottom - panelH - GUESS_OVERLAY_PANEL_BOTTOM_GAP;
 
     ctx.save();
@@ -2613,7 +2697,7 @@ export class Game {
   }
 
   private renderHintZone(ctx: CanvasRenderingContext2D) {
-    const zone = HINT_ZONE_RECT_DESIGN;
+    const zone = this.hintZone;
     const totalBonus = this.calculateTotalPossibleBonusWords();
     const bonusText = `Bonus Words: ${this.foundBonusWords.size}/${totalBonus}`;
     ctx.font = this.font(HINT_ZONE_BONUS_TEXT_SIZE, true);
@@ -2658,7 +2742,7 @@ export class Game {
     if (this.hoveredHintIndex >= 0) {
       const rect = this.hintClickableRegions[this.hoveredHintIndex];
       const popupX = rect.x + rect.width + 10;
-      const popupY = Math.min(rect.y, REF_H - HINT_POPUP_HEIGHT_DESIGN - 10);
+      const popupY = Math.min(rect.y, this.layoutHeight - HINT_POPUP_HEIGHT_DESIGN - 10);
       this.drawElevatedPanel(
         ctx,
         popupX,
@@ -2943,7 +3027,7 @@ export class Game {
   }
 
   private getBonusWordsPopupRect(): Rect {
-    const zone = GRID_ZONE_RECT_DESIGN;
+    const zone = this.gridZone;
     const popupWidth = zone.width * POPUP_MAX_WIDTH_DESIGN_RATIO;
     const popupHeight = zone.height * POPUP_MAX_HEIGHT_DESIGN_RATIO;
     const popupX = zone.x + (zone.width - popupWidth) / 2;
@@ -3034,11 +3118,11 @@ export class Game {
     let popupX = this.mousePos.x + popupOffset;
     let popupY = this.mousePos.y + popupOffset;
 
-    if (popupX + popupWidth > REF_W - popupMargin) {
-      popupX = REF_W - popupWidth - popupMargin;
+    if (popupX + popupWidth > this.layoutWidth - popupMargin) {
+      popupX = this.layoutWidth - popupWidth - popupMargin;
     }
-    if (popupY + popupHeight > REF_H - popupMargin) {
-      popupY = REF_H - popupHeight - popupMargin;
+    if (popupY + popupHeight > this.layoutHeight - popupMargin) {
+      popupY = this.layoutHeight - popupHeight - popupMargin;
     }
     popupX = Math.max(popupX, popupMargin);
     popupY = Math.max(popupY, popupMargin);
@@ -3662,7 +3746,7 @@ export class Game {
     this.confetti = [];
     for (let i = 0; i < 100; i += 1) {
       this.confetti.push({
-        position: { x: randRange(0, REF_W), y: randRange(0, REF_H) },
+        position: { x: randRange(0, this.layoutWidth), y: randRange(0, this.layoutHeight) },
         velocity: { x: randRange(-30, 30), y: randRange(20, 80) },
         angularVelocity: randRange(-3, 3),
         lifetime: randRange(2, 4),
@@ -3762,11 +3846,11 @@ export class Game {
     const panel = (x: number, y: number, w: number, h: number) => {
       this.drawElevatedPanel(ctx, x, y, w, h, 12, this.currentTheme.menuBg, undefined, true);
     };
-    const grid = GRID_ZONE_RECT_DESIGN;
+    const grid = this.gridZone;
     panel(grid.x - 18, grid.y - 20, grid.width + 36, grid.height + 40);
-    const hints = HINT_ZONE_RECT_DESIGN;
+    const hints = this.hintZone;
     panel(hints.x - 15, hints.y - 16, hints.width + 30, hints.height + 32);
-    const score = SCORE_ZONE_RECT_DESIGN;
+    const score = this.scoreZone;
     panel(score.x - 3, score.y - 22, score.width + 6, score.height + 44);
     const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
     ctx.save();
@@ -3783,17 +3867,23 @@ export class Game {
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();
-    drawCenteredText(ctx, "Word Puzzle", {x: REF_W / 2, y: 59}, {r:255,g:242,b:213}, "bold 30px Georgia, serif");
+    drawCenteredText(
+      ctx,
+      "Word Puzzle",
+      { x: this.layoutWidth / 2, y: this.isPortraitLayout ? 54 : 59 },
+      { r: 255, g: 242, b: 213 },
+      `bold ${this.isPortraitLayout ? 25 : 30}px Georgia, serif`
+    );
   }
 
   private drawBackground(ctx: CanvasRenderingContext2D) {
     const bg = this.images.mainBackground;
     if (!bg) return;
-    const scale = Math.max(REF_W / bg.width, REF_H / bg.height);
+    const scale = Math.max(this.layoutWidth / bg.width, this.layoutHeight / bg.height);
     const width = bg.width * scale;
     const height = bg.height * scale;
-    const x = (REF_W - width) / 2;
-    const y = (REF_H - height) / 2;
+    const x = (this.layoutWidth - width) / 2;
+    const y = (this.layoutHeight - height) / 2;
     ctx.drawImage(bg, x, y, width, height);
   }
 
