@@ -150,6 +150,33 @@ describe("multiplayer scoring rules", () => {
     expect(puzzle.bonusWords).not.toContain("ride");
   });
 
+  it("promotes a casual bonus word into its alphabetical position", () => {
+    const answers = ["care", "dare", "tire"];
+    const puzzle: PuzzleDefinition = {
+      id: "sorted-bonus-swap-casual",
+      mode: "Casual",
+      baseLetters: "TIRED",
+      rows: answers.length,
+      cols: 4,
+      bonusWords: ["ride"],
+      words: answers.map((answer, row) => ({
+        id: answer,
+        answer,
+        rarity: 1,
+        gems: ["none", "none", "none", "none"],
+        cells: Array.from({ length: 4 }, (_, col) => ({ row, col }))
+      }))
+    };
+    const players = [participant("Alice", 0)];
+    const runtime = createPuzzleRuntime(puzzle);
+
+    const result = submitGuess(puzzle, runtime, players, "Alice", "ride", undefined, true);
+
+    expect(result.kind).toBe("word");
+    expect(puzzle.words.map((word) => word.answer)).toEqual(["care", "ride", "tire"]);
+    expect(puzzle.bonusWords).toEqual(["dare"]);
+  });
+
   it("only promotes a crossword bonus when all crossing letters remain valid", () => {
     const compatible: PuzzleDefinition = structuredClone(crossword);
     compatible.bonusWords = ["cot"];

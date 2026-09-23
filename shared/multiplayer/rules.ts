@@ -94,13 +94,36 @@ const canReplacePuzzleWord = (
   return true;
 };
 
+const compareCasualWords = (
+  left: PuzzleDefinition["words"][number],
+  right: PuzzleDefinition["words"][number]
+) =>
+  left.answer.length - right.answer.length ||
+  left.answer.localeCompare(right.answer, undefined, { sensitivity: "base" });
+
+const keepsCasualWordsSorted = (
+  puzzle: PuzzleDefinition,
+  wordId: string,
+  replacement: string
+) => {
+  const answers = puzzle.words.map((word) => ({
+    ...word,
+    answer: word.id === wordId ? replacement : word.answer
+  }));
+  return answers.every(
+    (word, index) => index === 0 || compareCasualWords(answers[index - 1], word) <= 0
+  );
+};
+
 const promoteBonusWord = (
   puzzle: PuzzleDefinition,
   runtime: PuzzleRuntime,
   guess: string
 ) => {
-  const word = puzzle.words.find((candidate) =>
-    canReplacePuzzleWord(puzzle, runtime, candidate.id, guess)
+  const word = puzzle.words.find(
+    (candidate) =>
+      canReplacePuzzleWord(puzzle, runtime, candidate.id, guess) &&
+      (puzzle.mode !== "Casual" || keepsCasualWordsSorted(puzzle, candidate.id, guess))
   );
   if (!word) return null;
 

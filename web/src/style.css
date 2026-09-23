@@ -582,11 +582,24 @@ select {
   color: color-mix(in srgb, var(--owner-color) 74%, #2b2018);
   transform: translate(-9999px, -9999px);
   transform-origin: center;
-  will-change: transform, opacity;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 249, 224, 0.92);
+  box-shadow: 0 0.4rem 1.25rem rgba(35, 22, 10, 0.28);
+}
+
+.mp-score-flight-word {
+  max-width: min(28rem, 72vw);
+  overflow: hidden;
+  font: 900 1.45rem/1.05 Georgia, "Times New Roman", serif;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mp-score-flight-total {
-  font: 900 1.5rem/1 Georgia, "Times New Roman", serif;
+  font: 900 2.5rem/1 Georgia, "Times New Roman", serif;
   text-align: center;
   letter-spacing: 0.03em;
   text-shadow:
@@ -600,11 +613,25 @@ select {
   flex-wrap: wrap;
   gap: 0.2rem 0.36rem;
   margin-top: 0.14rem;
-  font-size: 0.88rem;
+  font-size: 1rem;
   font-weight: 900;
   text-shadow:
     0 0 0.2rem rgba(255, 255, 255, 0.72),
     0 0.06rem 0.16rem rgba(35, 22, 10, 0.32);
+}
+
+.mp-score-flight-breakdown > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16rem;
+  white-space: nowrap;
+}
+
+.mp-score-flight-gem {
+  width: 1.05rem;
+  height: 1.05rem;
+  object-fit: contain;
+  filter: drop-shadow(0 0.05rem 0.08rem rgba(35, 22, 10, 0.3));
 }
 
 .mp-score-flight-breakdown .gem-emerald {
@@ -620,15 +647,15 @@ select {
 }
 
 .mp-score-flight.gem-emerald {
-  filter: drop-shadow(0 0 0.4rem rgba(25, 146, 82, 0.45));
+  border: 1px solid rgba(25, 146, 82, 0.5);
 }
 
 .mp-score-flight.gem-diamond {
-  filter: drop-shadow(0 0 0.42rem rgba(88, 169, 202, 0.5));
+  border: 1px solid rgba(88, 169, 202, 0.55);
 }
 
 .mp-score-flight.gem-ruby {
-  filter: drop-shadow(0 0 0.42rem rgba(206, 47, 62, 0.5));
+  border: 1px solid rgba(206, 47, 62, 0.55);
 }
 
 .mp-score-flight.reduced {
@@ -638,15 +665,15 @@ select {
 @keyframes mp-score-flight-reduced {
   0% {
     opacity: 0;
-    transform: translate(var(--from-x, 0px), var(--from-y, 0px)) scale(0.95);
+    transform: translate(var(--center-x, 50vw), var(--center-y, 50vh)) translate(-50%, -50%) scale(0.85);
   }
-  18% {
+  12%, 82% {
     opacity: 1;
-    transform: translate(var(--from-x, 0px), var(--from-y, 0px)) scale(1.05);
+    transform: translate(var(--center-x, 50vw), var(--center-y, 50vh)) translate(-50%, -50%) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translate(var(--from-x, 0px), var(--from-y, 0px)) scale(1.02);
+    transform: translate(var(--center-x, 50vw), var(--center-y, 50vh)) translate(-50%, -50%) scale(1);
   }
 }
 
@@ -656,7 +683,7 @@ select {
   height: 0.48rem;
   border-radius: 50%;
   background: color-mix(in srgb, var(--owner-color) 68%, white);
-  transform: translate(-9999px, -9999px);
+  transform: translate(-50%, -50%);
   opacity: 0.76;
   animation: mp-score-trail-fade 360ms ease-out forwards;
 }
@@ -682,11 +709,11 @@ select {
 @keyframes mp-score-trail-fade {
   0% {
     opacity: 0.78;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
   100% {
     opacity: 0;
-    transform: scale(0.2);
+    transform: translate(-50%, -50%) scale(0.2);
   }
 }
 

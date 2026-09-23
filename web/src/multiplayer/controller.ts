@@ -1376,67 +1376,99 @@ export class MultiplayerController {
       snapshot.participants.find((participant) => participant.id === participantId)?.color ?? "#526b3d";
     const strongestGem = components.strongestGem;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const travelMs = reducedMotion ? 260 : Math.max(800, Math.min(1300, 760 + Math.hypot(destination.x - source.x, destination.y - source.y) * 0.4));
-    const holdMs = reducedMotion ? 120 : 180;
+    const gridBounds = this.root.querySelector<HTMLElement>(".mp-board")?.getBoundingClientRect();
+    const center = gridBounds
+      ? {
+          x: Math.round(gridBounds.left + gridBounds.width * 0.5),
+          y: Math.round(gridBounds.top + gridBounds.height * 0.5)
+        }
+      : { x: Math.round(window.innerWidth * 0.5), y: Math.round(window.innerHeight * 0.5) };
+    const centerTravelMs = 700;
+    const centerHoldMs = 1400;
+    const panelTravelMs = 460;
+    const completedWords = wordIds
+      .map((wordId) => snapshot.puzzle?.words.find((word) => word.id === wordId)?.answer)
+      .filter((answer): answer is string => Boolean(answer))
+      .map((answer) => answer.toUpperCase());
+    const wordLabel = completedWords.join(" + ");
+
+    const gemScore = (gem: Exclude<GemName, "none">, score: number) => `
+      <span class="gem-${gem}">
+        <img class="mp-score-flight-gem" src="${escapeHtml(gemArtwork(gem))}" alt="${gem} gem">
+        <span>+${score}</span>
+      </span>`;
 
     const flight = document.createElement("div");
     flight.className = `mp-score-flight gem-${strongestGem}`;
     flight.style.setProperty("--owner-color", ownerColor);
     flight.innerHTML = `
+      ${wordLabel ? `<div class="mp-score-flight-word">${escapeHtml(wordLabel)}</div>` : ""}
       <div class="mp-score-flight-total">+${points}</div>
       <div class="mp-score-flight-breakdown">
-        <span>L+${components.letters}</span>
-        ${components.emerald > 0 ? `<span class="gem-emerald">E+${components.emerald}</span>` : ""}
-        ${components.ruby > 0 ? `<span class="gem-ruby">R+${components.ruby}</span>` : ""}
-        ${components.diamond > 0 ? `<span class="gem-diamond">D+${components.diamond}</span>` : ""}
+        <span>Letters +${components.letters}</span>
+        ${components.emerald > 0 ? gemScore("emerald", components.emerald) : ""}
+        ${components.ruby > 0 ? gemScore("ruby", components.ruby) : ""}
+        ${components.diamond > 0 ? gemScore("diamond", components.diamond) : ""}
       </div>`;
     this.animationLayer.appendChild(flight);
 
     if (reducedMotion) {
       flight.classList.add("reduced");
-      flight.style.setProperty("--from-x", `${source.x}px`);
-      flight.style.setProperty("--from-y", `${source.y}px`);
+      flight.style.setProperty("--center-x", `${center.x}px`);
+      flight.style.setProperty("--center-y", `${center.y}px`);
+      flight.style.animationDuration = `${centerHoldMs}ms`;
       window.setTimeout(() => {
         flight.remove();
         this.triggerScoreImpact(participantId, components, strongestGem);
-      }, travelMs);
+      }, centerHoldMs);
       return;
     }
 
-    const dx = destination.x - source.x;
-    const dy = destination.y - source.y;
-    const control = {
-      x: source.x + dx * 0.45 + Math.max(-90, Math.min(90, dx * 0.12)),
-      y: Math.min(source.y, destination.y) - Math.max(56, Math.abs(dx) * 0.18)
-    };
-
     const startAt = performance.now();
     let lastTrailAt = startAt;
+    const smoothstep = (value: number) => value * value * (3 - 2 * value);
+    const positionFlight = (x: number, y: number, scale: number, opacity = 1) => {
+      flight.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${scale})`;
+      flight.style.opacity = `${opacity}`;
+    };
     const frame = () => {
       const elapsed = performance.now() - startAt;
-      if (elapsed < holdMs) {
-        const pop = elapsed / holdMs;
-        const scale = 0.82 + 0.32 * Math.sin(pop * Math.PI * 0.5);
-        flight.style.transform = `translate(${source.x}px, ${source.y}px) scale(${scale})`;
+      if (elapsed < centerTravelMs) {
+        const progress = smoothstep(elapsed / centerTravelMs);
+        const x = source.x + (center.x - source.x) * progress;
+        const y = source.y + (center.y - source.y) * progress;
+        positionFlight(x, y, 0.62 + progress * 0.38, Math.min(1, 0.3 + progress * 1.4));
+        const now = performance.now();
+        if (now - lastTrailAt > 55) {
+          lastTrailAt = now;
+          this.spawnTrailDot(x, y, ownerColor, strongestGem);
+        }
         requestAnimationFrame(frame);
         return;
       }
 
-      const tRaw = Math.min(1, (elapsed - holdMs) / travelMs);
-      const t = tRaw * tRaw * (3 - 2 * tRaw);
-      const x = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * control.x + t * t * destination.x;
-      const y = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * control.y + t * t * destination.y;
-      const scale = 1.08 - t * 0.18;
-      flight.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-      flight.style.opacity = `${1 - t * 0.68}`;
+      if (elapsed < centerTravelMs + centerHoldMs) {
+        positionFlight(center.x, center.y, 1);
+        requestAnimationFrame(frame);
+        return;
+      }
+
+      const rawProgress = Math.min(
+        1,
+        (elapsed - centerTravelMs - centerHoldMs) / panelTravelMs
+      );
+      const progress = smoothstep(rawProgress);
+      const x = center.x + (destination.x - center.x) * progress;
+      const y = center.y + (destination.y - center.y) * progress;
+      positionFlight(x, y, 1 - progress * 0.45, 1 - progress * 0.5);
 
       const now = performance.now();
-      if (now - lastTrailAt > 40) {
+      if (now - lastTrailAt > 35) {
         lastTrailAt = now;
         this.spawnTrailDot(x, y, ownerColor, strongestGem);
       }
 
-      if (tRaw < 1) {
+      if (rawProgress < 1) {
         requestAnimationFrame(frame);
       } else {
         flight.remove();
@@ -1536,7 +1568,8 @@ export class MultiplayerController {
     const dot = document.createElement("span");
     dot.className = `mp-score-trail gem-${gem}${burst ? " burst" : ""}`;
     dot.style.setProperty("--owner-color", ownerColor.trim() || "#526b3d");
-    dot.style.transform = `translate(${x}px, ${y}px)`;
+    dot.style.left = `${x}px`;
+    dot.style.top = `${y}px`;
     this.animationLayer.appendChild(dot);
     window.setTimeout(() => dot.remove(), burst ? 460 : 360);
   }
