@@ -423,16 +423,19 @@ export class MultiplayerController {
                   <button class="mp-skip-button" data-action="skip" ${controlsDisabled ? "disabled" : ""}>Request Skip</button>
                 </div>
                 <aside class="mp-progress-panel mp-paper">
-                  <strong class="mp-score-label">${escapeHtml(localPlayer?.name ?? "Your")} Score</strong>
-                  <b class="mp-local-score">${localPlayer?.score.total ?? 0}</b>
-                  <span class="mp-puzzle-label">Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</span>
-                  <div class="mp-puzzle-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${snapshot.puzzleCount}" aria-valuenow="${snapshot.puzzleIndex + 1}">
-                    <span style="width:${puzzleProgress}%"></span>
-                  </div>
-                  <strong class="mp-hint-points">Hint Points: ${hintCredits}</strong>
-                  <div class="mp-failed-summary">
-                    <span>Failed words: <strong>${failedWords.length}</strong></span>
-                    ${failedWords.length > 0 ? `<small>${failedWords.map((word) => escapeHtml(word)).join(", ")}</small>` : ""}
+                  ${this.renderCompactScores(snapshot)}
+                  <div class="mp-progress-overview">
+                    <strong class="mp-score-label">${escapeHtml(localPlayer?.name ?? "Your")} Score</strong>
+                    <b class="mp-local-score">${localPlayer?.score.total ?? 0}</b>
+                    <span class="mp-puzzle-label">Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</span>
+                    <div class="mp-puzzle-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${snapshot.puzzleCount}" aria-valuenow="${snapshot.puzzleIndex + 1}">
+                      <span style="width:${puzzleProgress}%"></span>
+                    </div>
+                    <strong class="mp-hint-points">Hint Points: ${hintCredits}</strong>
+                    <div class="mp-failed-summary">
+                      <span>Failed words: <strong>${failedWords.length}</strong></span>
+                      ${failedWords.length > 0 ? `<small>${failedWords.map((word) => escapeHtml(word)).join(", ")}</small>` : ""}
+                    </div>
                   </div>
                 </aside>
               </section>
@@ -542,6 +545,35 @@ export class MultiplayerController {
         </article>`;
       })
       .join("")}</div>`;
+  }
+
+  private renderCompactScores(snapshot: RoomSnapshot) {
+    const activeTurnId = snapshot.turnState?.activeParticipantId ?? "";
+    return `<section class="mp-compact-scores" aria-label="Player scores">
+      <strong class="mp-compact-scores-title">Players</strong>
+      <div class="mp-compact-score-list">${[...snapshot.participants]
+        .sort((left, right) => left.seat - right.seat)
+        .map((participant) => {
+          const activeClass =
+            snapshot.settings.playMode === "Turn Based" && participant.id === activeTurnId ? "mp-active-turn" : "";
+          const level = participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human";
+          return `<article class="mp-compact-score-row ${activeClass}" style="--player-color:${participant.color}" data-participant-id="${participant.id}">
+            <span class="mp-color-dot" aria-hidden="true"></span>
+            <span class="mp-compact-player">
+              <strong>${escapeHtml(participant.name)}</strong>
+              <small>${level}</small>
+            </span>
+            <b class="mp-score-total" data-score-field="total">${participant.score.total}</b>
+            <small class="mp-compact-breakdown">
+              <span data-score-field="letters">L ${participant.score.letters}</span>
+              <span data-score-field="emerald">E ${participant.score.emerald}</span>
+              <span data-score-field="ruby">R ${participant.score.ruby}</span>
+              <span data-score-field="diamond">D ${participant.score.diamond}</span>
+            </small>
+          </article>`;
+        })
+        .join("")}</div>
+    </section>`;
   }
 
   private buildMobileCasualLayout(puzzle: PublicPuzzle) {
@@ -657,15 +689,16 @@ export class MultiplayerController {
       this.root.querySelector<HTMLElement>(".mp-board-stage") ??
       this.root.querySelector<HTMLElement>(".mp-summary-layout .mp-board-scroll");
     const board = this.root.querySelector<HTMLElement>(".mp-board");
-    if (!puzzle || !stage || !board || window.matchMedia("(min-width: 761px)").matches) {
+    if (!puzzle || !stage || !board || window.matchMedia("(min-width: 1501px)").matches) {
       board?.style.removeProperty("--cell-size");
       return;
     }
 
     const gap = 2;
     const horizontalSafetyInset = this.snapshot?.status === "puzzle-summary" ? 6 : 0;
-    const layoutCols = Number(board.dataset.layoutCols) || puzzle.cols;
-    const layoutRows = Number(board.dataset.layoutRows) || puzzle.rows;
+    const phoneLayout = window.matchMedia("(max-width: 760px)").matches;
+    const layoutCols = phoneLayout ? Number(board.dataset.layoutCols) || puzzle.cols : puzzle.cols;
+    const layoutRows = phoneLayout ? Number(board.dataset.layoutRows) || puzzle.rows : puzzle.rows;
     const availableWidth = Math.max(
       0,
       stage.clientWidth - horizontalSafetyInset - gap * Math.max(0, layoutCols - 1)
@@ -1511,7 +1544,7 @@ export class MultiplayerController {
   }
 
   private resolveFlightDestination(participantId: string) {
-    const card = this.root.querySelector<HTMLElement>(`.mp-score-strip article[data-participant-id="${participantId}"]`);
+    const card = this.findVisibleScoreCard(participantId);
     if (!card) return null;
     const totalEl = card.querySelector<HTMLElement>(".mp-score-total");
     const target = (totalEl ?? card).getBoundingClientRect();
@@ -1519,7 +1552,7 @@ export class MultiplayerController {
   }
 
   private triggerScoreImpact(participantId: string, components: ScoreFlightComponents, gem: GemName) {
-    const card = this.root.querySelector<HTMLElement>(`.mp-score-strip article[data-participant-id="${participantId}"]`);
+    const card = this.findVisibleScoreCard(participantId);
     if (!card) return;
     const total = card.querySelector<HTMLElement>('[data-score-field="total"]');
     if (!total) return;
@@ -1561,6 +1594,13 @@ export class MultiplayerController {
       card.classList.remove("mp-score-impact-panel");
       total.classList.remove("mp-score-impact-total", "gem-emerald", "gem-ruby", "gem-diamond");
     }, 460);
+  }
+
+  private findVisibleScoreCard(participantId: string) {
+    const cards = this.root.querySelectorAll<HTMLElement>(
+      `[data-participant-id="${participantId}"].mp-compact-score-row, .mp-score-strip article[data-participant-id="${participantId}"]`
+    );
+    return [...cards].find((card) => card.getClientRects().length > 0) ?? null;
   }
 
   private spawnTrailDot(x: number, y: number, ownerColor: string, gem: GemName, burst = false) {

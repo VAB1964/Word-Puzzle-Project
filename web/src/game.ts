@@ -652,6 +652,20 @@ export class Game {
       return;
     }
 
+    // The enlarged touch wheel can visually overlap nearby controls on narrow
+    // portrait screens. A press on a visible letter must belong exclusively to
+    // the wheel; otherwise the same press can open the bonus list or shuffle
+    // the letters before the drag begins.
+    if (pressedWheelLetterIndex >= 0) {
+      this.hintTurnEndedBySolve = false;
+      this.waitingToEndTurnOnHintSolve = false;
+      this.dragging = true;
+      this.path = [pressedWheelLetterIndex];
+      this.currentGuess = this.base[pressedWheelLetterIndex].toUpperCase();
+      playSpellTone(this.path.length);
+      return;
+    }
+
     if (this.touchInputActive && this.currentScreen === GameScreen.Playing) {
       if (rectContains(this.bonusWordsTextRect, world)) {
         this.isBonusWordsPopupTouchOpen = true;
@@ -763,15 +777,6 @@ export class Game {
       }
     }
 
-    if (pressedWheelLetterIndex >= 0) {
-      this.hintTurnEndedBySolve = false;
-      this.waitingToEndTurnOnHintSolve = false;
-      this.dragging = true;
-      this.path = [pressedWheelLetterIndex];
-      this.currentGuess = this.base[pressedWheelLetterIndex].toUpperCase();
-      playSpellTone(this.path.length);
-      return;
-    }
   }
 
   private findFirstWheelLetterAt(world: Vec2) {
@@ -1801,7 +1806,10 @@ export class Game {
 
     this.wheelCenter = { x: innerX + innerW / 2, y: innerY + innerH / 2 };
     const maxRadiusForZone = Math.min(innerW / 2, innerH / 2);
-    const wheelRadiusLimit = this.isPortraitLayout ? WHEEL_R * 1.35 : WHEEL_R;
+    // On phones, the old resting wheel was already the ideal maximum size.
+    // Start smaller so the 1.4x touch expansion lands exactly at that size.
+    const portraitRestingScale = 1.35 / WHEEL_INTERACTION_SCALE_FACTOR;
+    const wheelRadiusLimit = this.isPortraitLayout ? WHEEL_R * portraitRestingScale : WHEEL_R;
     this.currentWheelRadius = Math.max(Math.min(maxRadiusForZone, wheelRadiusLimit), LETTER_R * 1.5);
     const wheelScaleFactor = WHEEL_R > 0 ? this.currentWheelRadius / WHEEL_R : 1;
 
@@ -1848,7 +1856,7 @@ export class Game {
       ? {
           x: Math.min(
             this.layoutWidth - scrambleSize - 18,
-            this.wheelCenter.x + this.visualBgRadius + 14
+            this.wheelCenter.x + this.visualBgRadius * WHEEL_INTERACTION_SCALE_FACTOR + 14
           ),
           y: this.wheelCenter.y - scrambleSize / 2,
           width: scrambleSize,
