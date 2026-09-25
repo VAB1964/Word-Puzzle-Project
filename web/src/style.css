@@ -1839,8 +1839,9 @@ select {
   }
 }
 
-/* Landscape tablets retain the three-column board and controls, but trim the
-   fixed-height chrome so every gameplay region remains inside the viewport. */
+/* Landscape tablets retain the three-column board and divide the actual
+   viewport height between the board and controls. Both rows stay bounded so
+   browser chrome and shorter tablet viewports cannot force page scrolling. */
 @media (min-width: 761px) and (max-width: 1500px) and (orientation: landscape) {
   .mp-shell-playing,
   .mp-shell-puzzle-summary {
@@ -1863,40 +1864,51 @@ select {
   }
 
   .mp-shell-playing .mp-play-layout {
-    grid-template-rows: auto auto;
-    gap: 0.75rem;
-    align-content: start;
+    grid-template-rows: minmax(0, 1fr) minmax(0, clamp(12rem, 31dvh, 15rem));
+    gap: 0.4rem;
+    height: 100%;
+    align-content: stretch;
+    overflow: hidden;
   }
 
   .mp-shell-playing .mp-play-layout .mp-board-panel {
-    height: fit-content;
+    height: 100%;
+    min-height: 0;
     padding-block: 0.3rem;
   }
 
   .mp-shell-playing .mp-board-stage,
   .mp-shell-playing .mp-board-scroll {
-    height: auto;
+    height: 100%;
+    min-height: 0;
   }
 
   .mp-shell-playing .mp-sp-lower {
     gap: 0.4rem;
-    align-items: start;
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+    overflow: hidden;
   }
 
   .mp-shell-playing .mp-hint-panel,
   .mp-shell-playing .mp-progress-panel {
-    align-self: start;
-    height: auto;
+    align-self: stretch;
+    height: 100%;
+    min-height: 0;
     padding: 0.4rem;
+    overflow: hidden;
   }
 
   .mp-shell-playing .mp-wheel-console {
-    align-content: start;
+    height: 100%;
+    min-height: 0;
+    align-content: center;
   }
 
   .mp-shell-playing .mp-wheel {
-    --wheel-size: clamp(14rem, 19vw, 17rem);
-    --letter-size: 2.8rem;
+    --wheel-size: clamp(7.5rem, 19dvh, 10.5rem);
+    --letter-size: clamp(2rem, 5dvh, 2.5rem);
   }
 
   .mp-shell-playing .mp-hints button {

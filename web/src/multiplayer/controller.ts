@@ -718,11 +718,14 @@ export class MultiplayerController {
       stage.clientWidth - horizontalSafetyInset - gap * Math.max(0, layoutCols - 1)
     );
     const availableHeight = Math.max(0, stage.clientHeight - gap * Math.max(0, layoutRows - 1));
-    const contentSizedTabletLayout = portraitTabletLayout || landscapeTabletLayout;
+    // Portrait deliberately lets the reflowed board grow from its available width.
+    // Landscape shares the viewport with the controls, so it must also respect the
+    // stage height or the complete gameplay workspace can overflow vertically.
+    const widthOnlyTabletLayout = portraitTabletLayout;
     const maxCellSize = portraitTabletLayout ? 64 : landscapeTabletLayout ? 52 : 42;
     const cellSize = Math.max(
       1,
-      contentSizedTabletLayout
+      widthOnlyTabletLayout
         ? Math.min(maxCellSize, availableWidth / Math.max(1, layoutCols))
         : Math.min(maxCellSize, availableWidth / Math.max(1, layoutCols), availableHeight / Math.max(1, layoutRows))
     );
