@@ -212,7 +212,7 @@ export class MultiplayerController {
             : snapshot.status === "playing"
               ? this.renderPlay(snapshot, local?.hintCredits ?? 0, host)
               : snapshot.status === "puzzle-summary"
-                ? this.renderSummary(snapshot, Boolean(local?.continued))
+                ? this.renderSummary(snapshot, local?.hintCredits ?? 0, Boolean(local?.continued))
                 : this.renderResults(snapshot, host)
         }
       </section>`;
@@ -697,16 +697,34 @@ export class MultiplayerController {
     const gap = 2;
     const horizontalSafetyInset = this.snapshot?.status === "puzzle-summary" ? 6 : 0;
     const phoneLayout = window.matchMedia("(max-width: 760px)").matches;
-    const layoutCols = phoneLayout ? Number(board.dataset.layoutCols) || puzzle.cols : puzzle.cols;
-    const layoutRows = phoneLayout ? Number(board.dataset.layoutRows) || puzzle.rows : puzzle.rows;
+    const tabletGameplayShell = Boolean(
+      board.closest(".mp-shell-playing, .mp-shell-puzzle-summary")
+    );
+    const portraitTabletLayout =
+      tabletGameplayShell &&
+      window.matchMedia(
+        "(min-width: 761px) and (max-width: 1180px) and (orientation: portrait)"
+      ).matches;
+    const landscapeTabletLayout =
+      tabletGameplayShell &&
+      window.matchMedia(
+        "(min-width: 761px) and (max-width: 1500px) and (orientation: landscape)"
+      ).matches;
+    const reflowedCasualLayout = phoneLayout || portraitTabletLayout;
+    const layoutCols = reflowedCasualLayout ? Number(board.dataset.layoutCols) || puzzle.cols : puzzle.cols;
+    const layoutRows = reflowedCasualLayout ? Number(board.dataset.layoutRows) || puzzle.rows : puzzle.rows;
     const availableWidth = Math.max(
       0,
       stage.clientWidth - horizontalSafetyInset - gap * Math.max(0, layoutCols - 1)
     );
     const availableHeight = Math.max(0, stage.clientHeight - gap * Math.max(0, layoutRows - 1));
+    const contentSizedTabletLayout = portraitTabletLayout || landscapeTabletLayout;
+    const maxCellSize = portraitTabletLayout ? 64 : landscapeTabletLayout ? 52 : 42;
     const cellSize = Math.max(
       1,
-      Math.min(42, availableWidth / Math.max(1, layoutCols), availableHeight / Math.max(1, layoutRows))
+      contentSizedTabletLayout
+        ? Math.min(maxCellSize, availableWidth / Math.max(1, layoutCols))
+        : Math.min(maxCellSize, availableWidth / Math.max(1, layoutCols), availableHeight / Math.max(1, layoutRows))
     );
     board.style.setProperty("--cell-size", `${cellSize}px`);
   }
@@ -823,19 +841,27 @@ export class MultiplayerController {
     </main>`;
   }
 
-  private renderSummary(snapshot: RoomSnapshot, continued: boolean) {
+  private renderSummary(snapshot: RoomSnapshot, hintCredits: number, continued: boolean) {
     return `${this.renderScores(snapshot)}
-      <main class="mp-game-layout mp-summary-layout">
+      <div class="mp-play-status">
+        <span>Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</span>
+        <span style="font-weight:800;">Round ${snapshot.turnState?.roundNumber ?? 1}: Puzzle Complete</span>
+        <span>Hint Credits: <strong>${hintCredits}</strong></span>
+        <span>${escapeHtml(this.timeStatusText(snapshot))}</span>
+      </div>
+      <main class="mp-play-layout mp-summary-layout">
         <section class="mp-board-panel mp-paper">
-          ${snapshot.puzzle ? this.renderBoard(snapshot.puzzle, snapshot) : ""}
+          <div class="mp-board-stage">
+            ${snapshot.puzzle ? this.renderBoard(snapshot.puzzle, snapshot) : ""}
+          </div>
           ${this.renderFeedbackText(this.feedback)}
-        </section>
         <aside class="mp-paper mp-summary-card">
           <h1>${snapshot.puzzle?.skipped ? "Puzzle Skipped" : "Puzzle Complete"}</h1>
           <p>Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</p>
           <p>Review the completed board, then continue when you are ready.</p>
           <button class="mp-primary" data-action="continue" ${continued ? "disabled" : ""}>${continued ? "Waiting for others…" : "Continue"}</button>
         </aside>
+        </section>
       </main>
       ${this.renderBonusInfo(snapshot)}
       ${this.showBonusList ? this.renderBonusListPopup(snapshot) : ""}`;

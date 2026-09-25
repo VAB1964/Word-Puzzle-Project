@@ -1339,9 +1339,23 @@ select {
 }
 
 .mp-summary-card {
-  align-self: center;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 30;
+  width: min(22rem, calc(100% - 2rem));
+  box-sizing: border-box;
   padding: clamp(1.25rem, 3vw, 2rem);
   text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.mp-summary-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mp-summary-layout .mp-board-panel {
+  position: relative;
 }
 
 .mp-summary-card h1 {
@@ -1412,9 +1426,10 @@ select {
     display: none;
   }
 
-  .mp-shell-playing {
+  .mp-shell-playing,
+  .mp-shell-puzzle-summary {
     display: grid;
-    grid-template-rows: 3rem auto auto minmax(0, 1fr);
+    grid-template-rows: 3rem auto minmax(0, 1fr);
     gap: 0.35rem;
     width: 100%;
     height: 100dvh;
@@ -1423,7 +1438,8 @@ select {
     overflow: hidden;
   }
 
-  .mp-shell-playing .mp-room-header {
+  .mp-shell-playing .mp-room-header,
+  .mp-shell-puzzle-summary .mp-room-header {
     position: static;
     width: 100%;
     min-height: 0;
@@ -1437,7 +1453,8 @@ select {
     display: none;
   }
 
-  .mp-shell-playing .mp-play-status {
+  .mp-shell-playing .mp-play-status,
+  .mp-shell-puzzle-summary .mp-play-status {
     width: 100%;
     margin: 0;
     padding: 0.35rem 0.65rem;
@@ -1470,7 +1487,8 @@ select {
     overflow: hidden;
   }
 
-  .mp-shell-playing .mp-board {
+  .mp-shell-playing .mp-board,
+  .mp-shell-puzzle-summary .mp-board {
     grid-template-columns: repeat(var(--cols), var(--cell-size, 2rem));
     grid-template-rows: repeat(var(--rows), var(--cell-size, 2rem));
     gap: 2px;
@@ -1648,6 +1666,242 @@ select {
 
   .mp-shell-playing .mp-failed-summary small {
     max-height: 2.4rem;
+  }
+}
+
+/* Puzzle review keeps the same compact tablet shell and full-width board used
+   during play. The completion card is layered over the board instead of
+   forcing the review into a separate desktop column. */
+@media (min-width: 761px) and (max-width: 1500px) {
+  #appEntry:has(.mp-shell-puzzle-summary) {
+    overflow: hidden;
+  }
+
+  body:has(.mp-shell-puzzle-summary) .back-to-vab {
+    display: none;
+  }
+
+  .mp-shell-puzzle-summary {
+    display: grid;
+    grid-template-rows: 3rem auto minmax(0, 1fr);
+    gap: 0.35rem;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    padding: max(0.4rem, env(safe-area-inset-top)) 0.6rem max(0.4rem, env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+
+  .mp-shell-puzzle-summary .mp-room-header {
+    position: static;
+    width: 100%;
+    min-height: 0;
+    height: 3rem;
+    margin: 0;
+    padding: 0.3rem 0.7rem;
+    box-sizing: border-box;
+  }
+
+  .mp-shell-puzzle-summary > .mp-score-strip {
+    display: none;
+  }
+
+  .mp-shell-puzzle-summary .mp-play-status {
+    width: 100%;
+    margin: 0;
+    padding: 0.35rem 0.65rem;
+  }
+
+  .mp-shell-puzzle-summary .mp-summary-layout {
+    display: grid;
+    grid-template-rows: auto;
+    gap: 0;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    align-content: start;
+    overflow: visible;
+  }
+
+  .mp-shell-puzzle-summary .mp-summary-layout .mp-board-panel {
+    display: grid;
+    height: fit-content;
+    min-height: 0;
+    padding: 0.45rem 0.6rem;
+    overflow: visible;
+  }
+
+  .mp-shell-puzzle-summary .mp-board-stage,
+  .mp-shell-puzzle-summary .mp-board-scroll {
+    display: grid;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  .mp-shell-puzzle-summary .mp-board {
+    grid-template-columns: repeat(var(--cols), var(--cell-size, 2rem));
+    grid-template-rows: repeat(var(--rows), var(--cell-size, 2rem));
+    gap: 2px;
+    width: max-content;
+    min-height: 0;
+    margin: auto;
+  }
+
+  .mp-shell-puzzle-summary .mp-cell {
+    min-height: 0;
+    padding: 0;
+    font-size: clamp(0.7rem, calc(var(--cell-size, 2rem) * 0.48), 1.15rem);
+  }
+
+  .mp-shell-puzzle-summary > .mp-bonus-info,
+  .mp-shell-puzzle-summary > .mp-tried-info {
+    display: none;
+  }
+}
+
+/* In portrait, tablet screens have enough width to enlarge the casual board,
+   but not enough to keep its desktop three-column word arrangement legible.
+   Reuse the phone's two-column board map while retaining the tablet controls. */
+@media (min-width: 761px) and (max-width: 1180px) and (orientation: portrait) {
+  .mp-shell-playing .mp-play-layout {
+    grid-template-rows: auto auto;
+    gap: 0.9rem;
+    align-content: start;
+  }
+
+  .mp-shell-playing .mp-play-layout .mp-board-panel {
+    height: fit-content;
+  }
+
+  .mp-shell-playing .mp-board-stage,
+  .mp-shell-playing .mp-board-scroll {
+    height: auto;
+  }
+
+  .mp-shell-playing .mp-board,
+  .mp-shell-puzzle-summary .mp-board {
+    grid-template-columns: repeat(var(--mobile-cols, var(--cols)), var(--cell-size, 2rem));
+    grid-template-rows: repeat(var(--mobile-rows, var(--rows)), var(--cell-size, 2rem));
+  }
+
+  .mp-shell-playing .mp-board.mp-mobile-reflow,
+  .mp-shell-puzzle-summary .mp-board.mp-mobile-reflow {
+    height: auto;
+    align-content: center;
+  }
+
+  .mp-shell-playing .mp-cell,
+  .mp-shell-puzzle-summary .mp-cell {
+    grid-row: var(--mobile-row) !important;
+    grid-column: var(--mobile-col) !important;
+    font-size: clamp(0.85rem, calc(var(--cell-size, 2rem) * 0.48), 1.55rem);
+  }
+
+  .mp-shell-playing .mp-desktop-divider,
+  .mp-shell-puzzle-summary .mp-desktop-divider {
+    display: none;
+  }
+
+  .mp-shell-playing .mp-mobile-divider,
+  .mp-shell-puzzle-summary .mp-mobile-divider {
+    display: block;
+    grid-column: var(--mobile-divider-col) !important;
+  }
+
+  .mp-shell-playing .mp-sp-lower {
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 1.12fr) minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .mp-shell-playing .mp-hint-panel,
+  .mp-shell-playing .mp-progress-panel {
+    align-self: start;
+    height: auto;
+  }
+
+  .mp-shell-playing .mp-wheel-console {
+    align-content: start;
+  }
+
+  .mp-shell-playing .mp-wheel {
+    --wheel-size: clamp(15rem, 28vw, 18rem);
+    --letter-size: 3rem;
+  }
+
+  .mp-shell-playing .mp-hints button {
+    min-height: 2.65rem;
+    font-size: 0.86rem;
+  }
+}
+
+/* Landscape tablets retain the three-column board and controls, but trim the
+   fixed-height chrome so every gameplay region remains inside the viewport. */
+@media (min-width: 761px) and (max-width: 1500px) and (orientation: landscape) {
+  .mp-shell-playing,
+  .mp-shell-puzzle-summary {
+    grid-template-rows: 2.65rem 1.9rem minmax(0, 1fr);
+    gap: 0.25rem;
+    padding-block: max(0.25rem, env(safe-area-inset-top)) max(0.25rem, env(safe-area-inset-bottom));
+  }
+
+  .mp-shell-playing .mp-room-header,
+  .mp-shell-puzzle-summary .mp-room-header {
+    height: 2.65rem;
+    padding-block: 0.2rem;
+  }
+
+  .mp-shell-playing .mp-play-status,
+  .mp-shell-puzzle-summary .mp-play-status {
+    height: 1.9rem;
+    padding-block: 0.2rem;
+    box-sizing: border-box;
+  }
+
+  .mp-shell-playing .mp-play-layout {
+    grid-template-rows: auto auto;
+    gap: 0.75rem;
+    align-content: start;
+  }
+
+  .mp-shell-playing .mp-play-layout .mp-board-panel {
+    height: fit-content;
+    padding-block: 0.3rem;
+  }
+
+  .mp-shell-playing .mp-board-stage,
+  .mp-shell-playing .mp-board-scroll {
+    height: auto;
+  }
+
+  .mp-shell-playing .mp-sp-lower {
+    gap: 0.4rem;
+    align-items: start;
+  }
+
+  .mp-shell-playing .mp-hint-panel,
+  .mp-shell-playing .mp-progress-panel {
+    align-self: start;
+    height: auto;
+    padding: 0.4rem;
+  }
+
+  .mp-shell-playing .mp-wheel-console {
+    align-content: start;
+  }
+
+  .mp-shell-playing .mp-wheel {
+    --wheel-size: clamp(14rem, 19vw, 17rem);
+    --letter-size: 2.8rem;
+  }
+
+  .mp-shell-playing .mp-hints button {
+    min-height: 2rem;
+    padding-block: 0.2rem;
   }
 }
 
@@ -2201,6 +2455,7 @@ select {
   .mp-shell-puzzle-summary .mp-summary-layout .mp-board-panel {
     position: relative;
     display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
     width: 100%;
     min-width: 0;
     min-height: 0;
@@ -2217,6 +2472,13 @@ select {
     min-width: 0;
     min-height: 0;
     padding: 0;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  .mp-shell-puzzle-summary .mp-board-stage {
+    display: grid;
+    min-height: 0;
     place-items: center;
     overflow: hidden;
   }
@@ -2272,10 +2534,12 @@ select {
   }
 
   .mp-shell-puzzle-summary .mp-summary-card {
+    position: static;
     width: 100%;
     min-width: 0;
     padding: 0.6rem;
     box-sizing: border-box;
+    transform: none;
   }
 
   .mp-shell-puzzle-summary .mp-summary-card h1 {
