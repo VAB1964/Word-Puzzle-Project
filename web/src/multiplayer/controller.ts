@@ -3,7 +3,8 @@ import type {
   HintKind,
   PresentationEvent,
   PublicPuzzle,
-  RoomSnapshot
+  RoomSnapshot,
+  ScoreBreakdown
 } from "../../../shared/multiplayer/types";
 import { Assets } from "../assets";
 import { playSpellTone, playWordSuccess, sampleVolume, unlockGameAudio } from "../core/gameAudio";
@@ -67,6 +68,11 @@ export class MultiplayerController {
   private wheelPointerId: number | null = null;
   private suppressNextLetterClick = false;
   private pinnedWordInfoId: string | null = null;
+  private hoveredWordInfoId: string | null = null;
+  private focusedWordInfoId: string | null = null;
+  private suppressWordInfoHover = false;
+  private presentedScores = new Map<string, ScoreBreakdown>();
+  private pendingScoreAnimations = new Map<string, number>();
   private readonly handleViewportResize = () => this.fitBoardToViewport();
 
   constructor(
@@ -147,6 +153,7 @@ export class MultiplayerController {
     const previousStatus = this.snapshot?.status ?? null;
     const previousSnapshot = this.snapshot;
     const puzzleChanged = snapshot.puzzle?.id !== this.snapshot?.puzzle?.id;
+    this.preparePresentedScores(snapshot, previousSnapshot, events);
     this.snapshot = snapshot;
     if (snapshot.status !== "lobby" && this.startSessionTimeout !== null) {
       window.clearTimeout(this.startSessionTimeout);
@@ -159,6 +166,9 @@ export class MultiplayerController {
       this.awaitingFullWordHint = false;
       this.showBonusList = false;
       this.pinnedWordInfoId = null;
+      this.hoveredWordInfoId = null;
+      this.focusedWordInfoId = null;
+      this.suppressWordInfoHover = false;
       this.shownTurnOrderKey = null;
       this.feedback = "";
     }
@@ -217,7 +227,7 @@ export class MultiplayerController {
         }
       </section>`;
     window.requestAnimationFrame(() => this.fitBoardToViewport());
-    if (this.pinnedWordInfoId) this.showWordInfo(this.pinnedWordInfoId);
+    this.showActiveWordInfo();
   }
 
   private renderLobby(snapshot: RoomSnapshot, host: boolean) {
@@ -337,16 +347,10 @@ export class MultiplayerController {
     const puzzle = snapshot.puzzle;
     if (!puzzle) return `<main class="mp-paper"><h1>Preparing puzzle…</h1></main>`;
     const localTurn = this.isLocalTurn(snapshot);
-    const localPlayer = snapshot.participants.find(
-      (participant) => participant.id === snapshot.localParticipantId
-    );
-    const puzzleProgress = ((snapshot.puzzleIndex + 1) / Math.max(1, snapshot.puzzleCount)) * 100;
-    const failedWords = [...puzzle.failedWords].sort((left, right) => left.localeCompare(right));
     const controlsDisabled =
       snapshot.settings.playMode === "Turn Based" &&
       (!localTurn || this.isTurnOrderPopupActive());
     return `
-      ${this.renderScores(snapshot)}
       <div class="mp-play-status">
         <span>Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</span>
         <span style="color:${escapeHtml(this.activeTurnColor(snapshot))};font-weight:800;">${escapeHtml(this.roundTurnText(snapshot))}</span>
@@ -424,19 +428,6 @@ export class MultiplayerController {
                 </div>
                 <aside class="mp-progress-panel mp-paper">
                   ${this.renderCompactScores(snapshot)}
-                  <div class="mp-progress-overview">
-                    <strong class="mp-score-label">${escapeHtml(localPlayer?.name ?? "Your")} Score</strong>
-                    <b class="mp-local-score">${localPlayer?.score.total ?? 0}</b>
-                    <span class="mp-puzzle-label">Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</span>
-                    <div class="mp-puzzle-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${snapshot.puzzleCount}" aria-valuenow="${snapshot.puzzleIndex + 1}">
-                      <span style="width:${puzzleProgress}%"></span>
-                    </div>
-                    <strong class="mp-hint-points">Hint Points: ${hintCredits}</strong>
-                    <div class="mp-failed-summary">
-                      <span>Failed words: <strong>${failedWords.length}</strong></span>
-                      ${failedWords.length > 0 ? `<small>${failedWords.map((word) => escapeHtml(word)).join(", ")}</small>` : ""}
-                    </div>
-                  </div>
                 </aside>
               </section>
             </main>`
@@ -525,6 +516,7 @@ export class MultiplayerController {
     return `<div class="mp-score-strip">${[...snapshot.participants]
       .sort((left, right) => left.seat - right.seat)
       .map((participant) => {
+        const score = this.presentedScores.get(participant.id) ?? participant.score;
         const activeClass =
           snapshot.settings.playMode === "Turn Based" && participant.id === activeTurnId ? "mp-active-turn" : "";
         return `<article class="${activeClass}" style="--player-color:${participant.color}" data-participant-id="${participant.id}">
@@ -535,12 +527,12 @@ export class MultiplayerController {
               participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human"
             }</span>
           </div>
-          <b class="mp-score-total" data-score-field="total">${participant.score.total}</b>
+          <b class="mp-score-total" data-score-field="total">${score.total}</b>
           <small class="mp-score-breakdown">
-            <span data-score-field="letters">L ${participant.score.letters}</span> ·
-            <span data-score-field="emerald">E ${participant.score.emerald}</span> ·
-            <span data-score-field="ruby">R ${participant.score.ruby}</span> ·
-            <span data-score-field="diamond">D ${participant.score.diamond}</span>
+            <span data-score-field="letters">L ${score.letters}</span> ·
+            <span data-score-field="emerald">E ${score.emerald}</span> ·
+            <span data-score-field="ruby">R ${score.ruby}</span> ·
+            <span data-score-field="diamond">D ${score.diamond}</span>
           </small>
         </article>`;
       })
@@ -554,6 +546,7 @@ export class MultiplayerController {
       <div class="mp-compact-score-list">${[...snapshot.participants]
         .sort((left, right) => left.seat - right.seat)
         .map((participant) => {
+          const score = this.presentedScores.get(participant.id) ?? participant.score;
           const activeClass =
             snapshot.settings.playMode === "Turn Based" && participant.id === activeTurnId ? "mp-active-turn" : "";
           const level = participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human";
@@ -563,12 +556,12 @@ export class MultiplayerController {
               <strong>${escapeHtml(participant.name)}</strong>
               <small>${level}</small>
             </span>
-            <b class="mp-score-total" data-score-field="total">${participant.score.total}</b>
+            <b class="mp-score-total" data-score-field="total">${score.total}</b>
             <small class="mp-compact-breakdown">
-              <span data-score-field="letters">L ${participant.score.letters}</span>
-              <span data-score-field="emerald">E ${participant.score.emerald}</span>
-              <span data-score-field="ruby">R ${participant.score.ruby}</span>
-              <span data-score-field="diamond">D ${participant.score.diamond}</span>
+              <span data-score-field="letters">L ${score.letters}</span>
+              <span data-score-field="emerald">E ${score.emerald}</span>
+              <span data-score-field="ruby">R ${score.ruby}</span>
+              <span data-score-field="diamond">D ${score.diamond}</span>
             </small>
           </article>`;
         })
@@ -748,38 +741,60 @@ export class MultiplayerController {
       sentence.textContent = word.sentence ? `Sentence: ${word.sentence}` : "";
       sentence.hidden = !word.sentence;
     }
+    popup.classList.toggle("is-pinned", this.pinnedWordInfoId === wordId);
     popup.hidden = false;
   }
 
   private hideWordInfo() {
     const popup = this.root.querySelector<HTMLElement>(".mp-word-info-popup");
-    if (popup) popup.hidden = true;
+    if (popup) {
+      popup.classList.remove("is-pinned");
+      popup.hidden = true;
+    }
+  }
+
+  private showActiveWordInfo() {
+    const wordId = this.pinnedWordInfoId ?? this.focusedWordInfoId ?? this.hoveredWordInfoId;
+    if (wordId) this.showWordInfo(wordId);
+    else this.hideWordInfo();
   }
 
   private handleWordInfoPointerOver = (event: PointerEvent) => {
-    if (event.pointerType === "touch" || this.pinnedWordInfoId) return;
+    if (event.pointerType === "touch" || this.pinnedWordInfoId || this.suppressWordInfoHover) return;
     const cell = (event.target as HTMLElement).closest<HTMLElement>(".mp-cell[data-word-info]");
-    if (cell?.dataset.wordInfo) this.showWordInfo(cell.dataset.wordInfo);
+    if (!cell?.dataset.wordInfo) return;
+    this.hoveredWordInfoId = cell.dataset.wordInfo;
+    this.showActiveWordInfo();
   };
 
   private handleWordInfoPointerOut = (event: PointerEvent) => {
     if (event.pointerType === "touch" || this.pinnedWordInfoId) return;
     const from = (event.target as HTMLElement).closest<HTMLElement>(".mp-cell[data-word-info]");
     const to = (event.relatedTarget as HTMLElement | null)?.closest?.<HTMLElement>(".mp-cell[data-word-info]");
-    if (from && from.dataset.wordInfo !== to?.dataset.wordInfo) this.hideWordInfo();
+    if (this.suppressWordInfoHover) {
+      if (from && from !== to) this.suppressWordInfoHover = false;
+      return;
+    }
+    if (!from || from.dataset.wordInfo === to?.dataset.wordInfo) return;
+    this.hoveredWordInfoId = to?.dataset.wordInfo ?? null;
+    this.showActiveWordInfo();
   };
 
   private handleWordInfoFocusIn = (event: FocusEvent) => {
     if (this.pinnedWordInfoId) return;
     const cell = (event.target as HTMLElement).closest<HTMLElement>(".mp-cell[data-word-info]");
-    if (cell?.dataset.wordInfo) this.showWordInfo(cell.dataset.wordInfo);
+    if (!cell?.dataset.wordInfo) return;
+    this.focusedWordInfoId = cell.dataset.wordInfo;
+    this.showActiveWordInfo();
   };
 
   private handleWordInfoFocusOut = (event: FocusEvent) => {
     if (this.pinnedWordInfoId) return;
     const from = (event.target as HTMLElement).closest<HTMLElement>(".mp-cell[data-word-info]");
     const to = (event.relatedTarget as HTMLElement | null)?.closest?.<HTMLElement>(".mp-cell[data-word-info]");
-    if (from && from.dataset.wordInfo !== to?.dataset.wordInfo) this.hideWordInfo();
+    if (!from || from.dataset.wordInfo === to?.dataset.wordInfo) return;
+    this.focusedWordInfoId = to?.dataset.wordInfo ?? null;
+    this.showActiveWordInfo();
   };
 
   private renderBonusInfo(snapshot: RoomSnapshot) {
@@ -1171,13 +1186,22 @@ export class MultiplayerController {
       const wordId = button.dataset.wordInfo;
       if (this.pinnedWordInfoId === wordId) {
         this.pinnedWordInfoId = null;
+        this.hoveredWordInfoId = null;
+        this.focusedWordInfoId = null;
+        this.suppressWordInfoHover = true;
         this.hideWordInfo();
       } else {
         this.pinnedWordInfoId = wordId;
+        this.hoveredWordInfoId = null;
+        this.focusedWordInfoId = null;
+        this.suppressWordInfoHover = false;
         this.showWordInfo(wordId);
       }
     } else if (action === "close-word-info") {
       this.pinnedWordInfoId = null;
+      this.hoveredWordInfoId = null;
+      this.focusedWordInfoId = null;
+      this.suppressWordInfoHover = true;
       this.hideWordInfo();
     } else if (action === "skip") {
       this.client.send({ type: snapshot.skipVote ? "accept-skip" : "request-skip" });
@@ -1332,6 +1356,39 @@ export class MultiplayerController {
     document.body.appendChild(this.animationLayer);
   }
 
+  private preparePresentedScores(
+    snapshot: RoomSnapshot,
+    previousSnapshot: RoomSnapshot | null,
+    events: PresentationEvent[]
+  ) {
+    const participantIds = new Set(snapshot.participants.map((participant) => participant.id));
+    for (const participantId of this.presentedScores.keys()) {
+      if (!participantIds.has(participantId)) this.presentedScores.delete(participantId);
+    }
+
+    const actorsWithNewScoreFlights = new Set(
+      events
+        .filter(
+          (event) =>
+            !this.processedEventSequences.has(event.sequence) &&
+            Boolean(event.actorId) &&
+            Boolean(event.points && event.points > 0) &&
+            (event.type === "word-solved" || event.type === "hint-used")
+        )
+        .map((event) => event.actorId as string)
+    );
+
+    for (const participant of snapshot.participants) {
+      const hasPendingAnimation = (this.pendingScoreAnimations.get(participant.id) ?? 0) > 0;
+      if (hasPendingAnimation || this.presentedScores.has(participant.id)) continue;
+      if (!previousSnapshot || !actorsWithNewScoreFlights.has(participant.id)) continue;
+      const previousScore = previousSnapshot.participants.find(
+        (candidate) => candidate.id === participant.id
+      )?.score;
+      if (previousScore) this.presentedScores.set(participant.id, { ...previousScore });
+    }
+  }
+
   private processPresentationEvents(
     events: PresentationEvent[],
     snapshot: RoomSnapshot,
@@ -1431,8 +1488,16 @@ export class MultiplayerController {
     if (!snapshot || !this.animationLayer) return;
 
     const source = this.resolveFlightSource(snapshot, wordIds);
-    const destination = this.resolveFlightDestination(participantId);
-    if (!destination) return;
+    const initialDestination = this.resolveFlightDestination(participantId);
+    if (!initialDestination) {
+      this.completeScoreFlight(participantId, points, components);
+      return;
+    }
+
+    this.pendingScoreAnimations.set(
+      participantId,
+      (this.pendingScoreAnimations.get(participantId) ?? 0) + 1
+    );
 
     const ownerColor =
       snapshot.participants.find((participant) => participant.id === participantId)?.color ?? "#526b3d";
@@ -1481,6 +1546,7 @@ export class MultiplayerController {
       flight.style.animationDuration = `${centerHoldMs}ms`;
       window.setTimeout(() => {
         flight.remove();
+        this.completeScoreFlight(participantId, points, components);
         this.triggerScoreImpact(participantId, components, strongestGem);
       }, centerHoldMs);
       return;
@@ -1520,6 +1586,7 @@ export class MultiplayerController {
         (elapsed - centerTravelMs - centerHoldMs) / panelTravelMs
       );
       const progress = smoothstep(rawProgress);
+      const destination = this.resolveFlightDestination(participantId) ?? initialDestination;
       const x = center.x + (destination.x - center.x) * progress;
       const y = center.y + (destination.y - center.y) * progress;
       positionFlight(x, y, 1 - progress * 0.45, 1 - progress * 0.5);
@@ -1534,11 +1601,59 @@ export class MultiplayerController {
         requestAnimationFrame(frame);
       } else {
         flight.remove();
+        this.completeScoreFlight(participantId, points, components);
         this.triggerScoreImpact(participantId, components, strongestGem);
       }
     };
 
     requestAnimationFrame(frame);
+  }
+
+  private completeScoreFlight(
+    participantId: string,
+    points: number,
+    components: ScoreFlightComponents
+  ) {
+    const pending = Math.max(0, (this.pendingScoreAnimations.get(participantId) ?? 0) - 1);
+    if (pending > 0) this.pendingScoreAnimations.set(participantId, pending);
+    else this.pendingScoreAnimations.delete(participantId);
+
+    const presented = this.presentedScores.get(participantId);
+    if (presented) {
+      presented.letters += components.letters;
+      presented.emerald += components.emerald;
+      presented.ruby += components.ruby;
+      presented.diamond += components.diamond;
+      presented.total += points;
+    }
+
+    const authoritative = this.snapshot?.participants.find(
+      (participant) => participant.id === participantId
+    )?.score;
+    const arrivedScore = pending === 0 && authoritative ? authoritative : presented ?? authoritative;
+    if (!arrivedScore) return;
+
+    if (pending === 0) this.presentedScores.delete(participantId);
+    this.updateRenderedScore(participantId, arrivedScore);
+  }
+
+  private updateRenderedScore(participantId: string, score: ScoreBreakdown) {
+    const cards = this.root.querySelectorAll<HTMLElement>(
+      `[data-participant-id="${participantId}"].mp-compact-score-row, .mp-score-strip article[data-participant-id="${participantId}"]`
+    );
+    const values: Record<keyof ScoreBreakdown, string> = {
+      total: `${score.total}`,
+      letters: `L ${score.letters}`,
+      emerald: `E ${score.emerald}`,
+      ruby: `R ${score.ruby}`,
+      diamond: `D ${score.diamond}`
+    };
+    for (const card of cards) {
+      for (const [field, value] of Object.entries(values)) {
+        const element = card.querySelector<HTMLElement>(`[data-score-field="${field}"]`);
+        if (element) element.textContent = value;
+      }
+    }
   }
 
   private resolveFlightSource(snapshot: RoomSnapshot, wordIds: string[]) {
