@@ -1393,6 +1393,7 @@ select {
 }
 
 .mp-ranking article {
+  position: relative;
   display: grid;
   grid-template-columns: auto auto minmax(8rem, 1fr) auto minmax(12rem, auto) auto;
   gap: 0.7rem;
@@ -1401,10 +1402,99 @@ select {
   border-left: 0.35rem solid var(--player-color);
   border-radius: 0.45rem;
   background: rgba(255, 250, 231, 0.58);
+  transition: transform 300ms ease, box-shadow 300ms ease, background 300ms ease;
 }
 
 .mp-ranking em {
   font: 700 1.6rem Georgia, serif;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-results-intro {
+  margin: -0.25rem 0 1rem;
+  color: #674b25;
+  font-weight: 800;
+  text-align: center;
+}
+
+.mp-ranking article.is-tallying {
+  background: linear-gradient(105deg, rgba(255, 250, 231, 0.72), rgba(255, 224, 134, 0.58), rgba(255, 250, 231, 0.72));
+  background-size: 220% 100%;
+  box-shadow: 0 0 0 1px rgba(192, 136, 32, 0.28), 0 0.45rem 1rem rgba(90, 57, 12, 0.18);
+  animation: mp-bonus-shimmer 1.2s linear infinite;
+}
+
+.mp-final-bonus {
+  grid-column: 3 / -1;
+  display: grid;
+  grid-template-columns: minmax(8.5rem, auto) minmax(5rem, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  color: #765315;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.mp-final-bonus > span > b,
+.mp-final-bonus > strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-final-bonus > strong {
+  min-width: 2.6rem;
+  color: #9c6811;
+  font: 900 1.05rem Georgia, serif;
+  text-align: right;
+}
+
+.mp-final-bonus > i {
+  height: 0.42rem;
+  overflow: hidden;
+  border: 1px solid rgba(145, 101, 25, 0.34);
+  border-radius: 999px;
+  background: rgba(112, 77, 20, 0.13);
+}
+
+.mp-final-bonus > i > span {
+  display: block;
+  width: var(--bonus-progress);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #d7961d, #ffe08a, #bb7510);
+  box-shadow: 0 0 0.45rem rgba(238, 177, 49, 0.78);
+}
+
+.mp-no-final-bonus {
+  grid-template-columns: 1fr auto;
+  color: #806f58;
+  opacity: 0.72;
+}
+
+.mp-ranking-winner {
+  transform: translateY(-0.08rem) scale(1.01);
+  background: linear-gradient(105deg, rgba(255, 251, 225, 0.92), rgba(255, 225, 133, 0.72));
+  box-shadow: 0 0 0 2px rgba(207, 150, 37, 0.42), 0 0.55rem 1.25rem rgba(80, 50, 10, 0.22);
+}
+
+@keyframes mp-bonus-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+
+@media (max-width: 600px) {
+  .mp-final-bonus {
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(3rem, 1fr) auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-ranking article,
+  .mp-ranking-winner {
+    transition: none;
+    animation: none;
+  }
 }
 
 @media (min-width: 1600px) {

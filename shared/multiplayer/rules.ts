@@ -2,6 +2,7 @@ import {
   addCreditToParticipant,
   createPositionCredit,
   emptyScore,
+  scoreTotal,
   totalCreditValue
 } from "./scoring";
 import type {
@@ -390,7 +391,7 @@ const failure = (error: string): PuzzleActionResult => ({
 const addToBreakdown = (score: ScoreBreakdown, base: number, gem: "none" | "emerald" | "diamond" | "ruby", bonus: number) => {
   score.letters += base;
   if (gem !== "none") score[gem] += bonus;
-  score.total = score.letters + score.emerald + score.diamond + score.ruby;
+  score.total = scoreTotal(score);
 };
 
 const mergeBreakdown = (target: ScoreBreakdown, source: ScoreBreakdown) => {
@@ -398,5 +399,6 @@ const mergeBreakdown = (target: ScoreBreakdown, source: ScoreBreakdown) => {
   target.emerald += source.emerald;
   target.diamond += source.diamond;
   target.ruby += source.ruby;
-  target.total = target.letters + target.emerald + target.diamond + target.ruby;
+  target.bonus += source.bonus;
+  target.total = scoreTotal(target);
 };

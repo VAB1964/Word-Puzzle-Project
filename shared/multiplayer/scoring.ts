@@ -18,8 +18,12 @@ export const emptyScore = (): ScoreBreakdown => ({
   emerald: 0,
   diamond: 0,
   ruby: 0,
+  bonus: 0,
   total: 0
 });
+
+export const scoreTotal = (score: ScoreBreakdown) =>
+  score.letters + score.emerald + score.diamond + score.ruby + (score.bonus ?? 0);
 
 export const gemForPosition = (word: PuzzleWordDefinition, position: number): GemType => {
   if (position < 0 || position >= word.gems.length) return "none";
@@ -45,11 +49,16 @@ export const addCreditToParticipant = (participant: Participant, credit: Positio
   if (credit.gem !== "none") {
     participant.score[credit.gem] += credit.bonus;
   }
-  participant.score.total =
-    participant.score.letters +
-    participant.score.emerald +
-    participant.score.diamond +
-    participant.score.ruby;
+  participant.score.total = scoreTotal(participant.score);
+};
+
+/** Consumes a player's banked hint credits at the end of a session. */
+export const awardUnusedHintCredits = (participant: Participant) => {
+  const award = Math.max(0, Math.floor(participant.hintCredits));
+  participant.score.bonus = (participant.score.bonus ?? 0) + award;
+  participant.hintCredits = 0;
+  participant.score.total = scoreTotal(participant.score);
+  return award;
 };
 
 export const totalCreditValue = (credit: PositionCredit) => credit.base + credit.bonus;
@@ -61,4 +70,4 @@ export const puzzleMaximumScore = (words: PuzzleWordDefinition[]) =>
   words.reduce((total, word) => total + wordMaximumScore(word), 0);
 
 export const scoreIsConsistent = (score: ScoreBreakdown) =>
-  score.total === score.letters + score.emerald + score.diamond + score.ruby;
+  score.total === scoreTotal(score);

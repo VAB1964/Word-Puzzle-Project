@@ -5,6 +5,7 @@ import {
   useHint
 } from "../../shared/multiplayer/rules";
 import {
+  awardUnusedHintCredits,
   emptyScore,
   puzzleMaximumScore,
   scoreIsConsistent
@@ -61,6 +62,25 @@ const crossword: PuzzleDefinition = {
     }
   ]
 };
+
+describe("end-of-session bonus", () => {
+  it("converts unused hint credits into a separate score category exactly once", () => {
+    const player = participant("Alice", 0, 14);
+    player.score.letters = 20;
+    player.score.emerald = 5;
+    player.score.total = 25;
+
+    expect(awardUnusedHintCredits(player)).toBe(14);
+    expect(player.hintCredits).toBe(0);
+    expect(player.score.bonus).toBe(14);
+    expect(player.score.total).toBe(39);
+    expect(scoreIsConsistent(player.score)).toBe(true);
+
+    expect(awardUnusedHintCredits(player)).toBe(0);
+    expect(player.score.bonus).toBe(14);
+    expect(player.score.total).toBe(39);
+  });
+});
 
 describe("multiplayer scoring rules", () => {
   it("scores an intersection once per word while preserving its first cell owner", () => {

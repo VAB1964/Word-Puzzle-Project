@@ -1,4 +1,4 @@
-export const MULTIPLAYER_PROTOCOL_VERSION = 1;
+export const MULTIPLAYER_PROTOCOL_VERSION = 2;
 
 export type GameMode = "Casual" | "Crossword";
 export type PlayMode = "Free for All" | "Turn Based";
@@ -16,6 +16,8 @@ export interface ScoreBreakdown {
   emerald: number;
   diamond: number;
   ruby: number;
+  /** Unused hint credits converted to score when the session is completed. */
+  bonus: number;
   total: number;
 }
 

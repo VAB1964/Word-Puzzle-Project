@@ -47,6 +47,12 @@ interface ScoreFlightComponents {
   strongestGem: GemName;
 }
 
+interface FinalBonusPresentation {
+  startedAt: number;
+  skipped: boolean;
+  awards: Map<string, number>;
+}
+
 export class MultiplayerController {
   private snapshot: RoomSnapshot | null = null;
   private feedback = "Connected to the library table.";
@@ -73,6 +79,8 @@ export class MultiplayerController {
   private suppressWordInfoHover = false;
   private presentedScores = new Map<string, ScoreBreakdown>();
   private pendingScoreAnimations = new Map<string, number>();
+  private finalBonusPresentation: FinalBonusPresentation | null = null;
+  private finalBonusSoundPlayed = false;
   private readonly handleViewportResize = () => this.fitBoardToViewport();
 
   constructor(
@@ -105,8 +113,14 @@ export class MultiplayerController {
         this.snapshot.turnState.turnEndsAt !== null;
       // Keep ticking while popup object exists so expired popups get one final render pass and disappear.
       const showingTurnPopup = this.turnOrderPopup !== null;
-      if (activeCountdown || showingTurnPopup) this.render();
-    }, 250);
+      const finalBonusComplete = this.isFinalBonusTallyComplete();
+      const tallyingFinalBonus = Boolean(this.finalBonusPresentation && !finalBonusComplete);
+      if (this.finalBonusPresentation && finalBonusComplete && !this.finalBonusSoundPlayed) {
+        this.finalBonusSoundPlayed = true;
+        this.playSound("win");
+      }
+      if (activeCountdown || showingTurnPopup || tallyingFinalBonus) this.render();
+    }, 100);
   }
 
   destroy() {
@@ -152,6 +166,7 @@ export class MultiplayerController {
   setSnapshot(snapshot: RoomSnapshot, events: PresentationEvent[]) {
     const previousStatus = this.snapshot?.status ?? null;
     const previousSnapshot = this.snapshot;
+    this.prepareFinalBonusPresentation(snapshot, previousSnapshot);
     const puzzleChanged = snapshot.puzzle?.id !== this.snapshot?.puzzle?.id;
     this.preparePresentedScores(snapshot, previousSnapshot, events);
     this.snapshot = snapshot;
@@ -886,33 +901,93 @@ export class MultiplayerController {
   }
 
   private renderResults(snapshot: RoomSnapshot, host: boolean) {
-    const sorted = [...snapshot.participants].sort(
-      (left, right) => right.score.total - left.score.total || left.seat - right.seat
-    );
+    const presentation = snapshot.status === "completed" ? this.finalBonusPresentation : null;
+    const tallyComplete = !presentation || this.isFinalBonusTallyComplete();
+    const awardFor = (participantId: string) => presentation?.awards.get(participantId) ?? 0;
+    const scoreBeforeBonus = (participant: RoomSnapshot["participants"][number]) =>
+      participant.score.total - awardFor(participant.id);
+    const sorted = [...snapshot.participants].sort((left, right) => {
+      const leftScore = tallyComplete ? left.score.total : scoreBeforeBonus(left);
+      const rightScore = tallyComplete ? right.score.total : scoreBeforeBonus(right);
+      return rightScore - leftScore || left.seat - right.seat;
+    });
     let priorScore: number | null = null;
     let rank = 0;
-    return `<main class="mp-paper mp-results">
-      <h1>${snapshot.status === "completed" ? "High Scores" : "Session Ended"}</h1>
+    return `<main class="mp-paper mp-results ${presentation && !tallyComplete ? "mp-results-tallying" : "mp-results-complete"}">
+      <h1>${snapshot.status === "completed" ? (tallyComplete ? "High Scores" : "Banking Bonus Points…") : "Session Ended"}</h1>
+      ${presentation && !tallyComplete ? `<p class="mp-results-intro">Every unused Hint Credit is worth one final point.</p>` : ""}
       <div class="mp-ranking">
         ${sorted
           .map((participant, index) => {
-            if (participant.score.total !== priorScore) rank = index + 1;
-            priorScore = participant.score.total;
-            return `<article style="--player-color:${participant.color}">
+            const award = awardFor(participant.id);
+            const progress = tallyComplete ? 1 : this.finalBonusProgress(participant.id);
+            const applied = Math.round(award * progress);
+            const displayedTotal = participant.score.total - award + applied;
+            const displayedBonus = participant.score.bonus - award + applied;
+            if (displayedTotal !== priorScore) rank = index + 1;
+            priorScore = displayedTotal;
+            const winner = tallyComplete && rank === 1 ? "mp-ranking-winner" : "";
+            return `<article class="${winner} ${award > 0 && !tallyComplete ? "is-tallying" : ""}" style="--player-color:${participant.color}; --bonus-progress:${Math.round(progress * 100)}%">
               <b>#${rank}</b><span class="mp-color-dot"></span>
               <strong>${escapeHtml(participant.name)}</strong>
               <span>${participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human"}</span>
-              <small>L ${participant.score.letters} · E ${participant.score.emerald} · R ${participant.score.ruby} · D ${participant.score.diamond}</small>
-              <em>${participant.score.total}</em>
+              <small>L ${participant.score.letters} · E ${participant.score.emerald} · R ${participant.score.ruby} · D ${participant.score.diamond} · B ${displayedBonus}</small>
+              <em>${displayedTotal}</em>
+              ${award > 0 ? `<div class="mp-final-bonus">
+                <span><b>${Math.max(0, award - applied)}</b> unused credits</span>
+                <i aria-hidden="true"><span></span></i>
+                <strong>+${applied}</strong>
+              </div>` : `<div class="mp-final-bonus mp-no-final-bonus"><span>No unused credits</span><strong>+0</strong></div>`}
             </article>`;
           })
           .join("")}
       </div>
       <div class="mp-actions">
-        ${host ? `<button class="mp-primary" data-action="rematch">Rematch</button>` : ""}
+        ${presentation && !tallyComplete ? `<button data-action="skip-bonus-tally">Finish Tally</button>` : host ? `<button class="mp-primary" data-action="rematch">Rematch</button>` : ""}
         <button data-action="leave">Leave</button>
       </div>
     </main>`;
+  }
+
+  private prepareFinalBonusPresentation(snapshot: RoomSnapshot, previousSnapshot: RoomSnapshot | null) {
+    if (snapshot.status !== "completed") {
+      this.finalBonusPresentation = null;
+      this.finalBonusSoundPlayed = false;
+      return;
+    }
+    if (previousSnapshot?.status !== "puzzle-summary") return;
+
+    const awards = new Map<string, number>();
+    for (const participant of snapshot.participants) {
+      const previous = previousSnapshot.participants.find((candidate) => candidate.id === participant.id);
+      const award = Math.max(0, participant.score.bonus - (previous?.score.bonus ?? 0));
+      awards.set(participant.id, award);
+    }
+    if (![...awards.values()].some((award) => award > 0)) return;
+    this.finalBonusPresentation = {
+      startedAt: performance.now(),
+      skipped: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      awards
+    };
+    this.finalBonusSoundPlayed = this.finalBonusPresentation.skipped;
+  }
+
+  private finalBonusProgress(participantId: string) {
+    const presentation = this.finalBonusPresentation;
+    if (!presentation || presentation.skipped) return 1;
+    const participant = this.snapshot?.participants.find((candidate) => candidate.id === participantId);
+    const seat = participant?.seat ?? 0;
+    const elapsed = performance.now() - presentation.startedAt - 450 - seat * 180;
+    const linear = Math.max(0, Math.min(1, elapsed / 1100));
+    return 1 - Math.pow(1 - linear, 3);
+  }
+
+  private isFinalBonusTallyComplete() {
+    const presentation = this.finalBonusPresentation;
+    if (!presentation || presentation.skipped) return true;
+    const seats = this.snapshot?.participants.map((participant) => participant.seat) ?? [0];
+    const lastSeat = Math.max(0, ...seats);
+    return performance.now() - presentation.startedAt >= 450 + lastSeat * 180 + 1450;
   }
 
   private canUseWheel() {
@@ -1213,6 +1288,11 @@ export class MultiplayerController {
       this.render();
     } else if (action === "continue") {
       this.client.send({ type: "continue" });
+    } else if (action === "skip-bonus-tally") {
+      if (this.finalBonusPresentation) this.finalBonusPresentation.skipped = true;
+      this.finalBonusSoundPlayed = true;
+      this.playSound("win");
+      this.render();
     } else if (action === "resume") {
       this.client.send({ type: "resume" });
     } else if (action === "replace") {
@@ -1646,7 +1726,8 @@ export class MultiplayerController {
       letters: `L ${score.letters}`,
       emerald: `E ${score.emerald}`,
       ruby: `R ${score.ruby}`,
-      diamond: `D ${score.diamond}`
+      diamond: `D ${score.diamond}`,
+      bonus: `B ${score.bonus}`
     };
     for (const card of cards) {
       for (const [field, value] of Object.entries(values)) {

@@ -6,7 +6,7 @@ import {
   submitGuess,
   useHint
 } from "../../shared/multiplayer/rules";
-import { emptyScore } from "../../shared/multiplayer/scoring";
+import { awardUnusedHintCredits, emptyScore, scoreTotal } from "../../shared/multiplayer/scoring";
 import {
   generateMultiplayerPuzzle,
   parseMultiplayerWordData
@@ -139,7 +139,15 @@ export class WordPuzzleRoom extends DurableObject<Env> {
             enabledPowerUps: state.settings.enabledPowerUps ?? defaultEnabledPowerUps()
           },
           aiIntents: state.aiIntents ?? {},
-          turnState: state.turnState ?? null
+          turnState: state.turnState ?? null,
+          participants: state.participants.map((participant) => ({
+            ...participant,
+            score: {
+              ...participant.score,
+              bonus: participant.score.bonus ?? 0,
+              total: scoreTotal({ ...participant.score, bonus: participant.score.bonus ?? 0 })
+            }
+          }))
         }
       : null;
     this.credentials = credentials ?? {};
@@ -630,6 +638,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       );
       if (!waiting) {
         if (state.puzzleIndex + 1 >= state.puzzleCount) {
+          state.participants.forEach(awardUnusedHintCredits);
           state.status = "completed";
           state.puzzle = null;
           state.runtime = null;
