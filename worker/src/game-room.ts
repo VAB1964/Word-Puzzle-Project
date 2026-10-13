@@ -140,8 +140,15 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           },
           aiIntents: state.aiIntents ?? {},
           turnState: state.turnState ?? null,
+          puzzle: state.puzzle
+            ? { ...state.puzzle, mysteryGems: state.puzzle.mysteryGems ?? [] }
+            : null,
+          runtime: state.runtime
+            ? { ...state.runtime, claimedMysteryGems: state.runtime.claimedMysteryGems ?? {} }
+            : null,
           participants: state.participants.map((participant) => ({
             ...participant,
+            freePowerTokens: participant.freePowerTokens ?? 0,
             score: {
               ...participant.score,
               bonus: participant.score.bonus ?? 0,
@@ -519,6 +526,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       state.participants.forEach((participant) => {
         participant.score = emptyScore();
         participant.hintCredits = 0;
+        participant.freePowerTokens = 0;
         participant.continued = false;
       });
       return this.startPuzzle(state);
@@ -581,13 +589,20 @@ export class WordPuzzleRoom extends DurableObject<Env> {
             "word-solved",
             text,
             actor.id,
-            result.pointsAwarded
+            result.pointsAwarded,
+            {
+              wordIds: result.solvedWords,
+              score: result.scoreAwarded,
+              mysteryRewards: result.mysteryRewards
+            }
           )
         );
       }
       this.finishPuzzleIfNeeded(state);
       if (this.shouldEndTurnOnGuessAttempt(state) && state.status === "playing") {
-        events.push(...this.advanceTurn(state, "word-complete"));
+        events.push(...(result.retainTurn
+          ? this.retainCurrentTurn(state, actor.id)
+          : this.advanceTurn(state, "word-complete")));
       }
       return events;
     }
@@ -616,7 +631,12 @@ export class WordPuzzleRoom extends DurableObject<Env> {
             solved.length > 0 ? `, and completed ${solved.join(", ")}` : ""
           }.`,
           actor.id,
-          result.pointsAwarded
+          result.pointsAwarded,
+          {
+            wordIds: result.solvedWords,
+            score: result.scoreAwarded,
+            mysteryRewards: result.mysteryRewards
+          }
         )
       ];
       const shouldEndTurnForHint =
@@ -624,7 +644,9 @@ export class WordPuzzleRoom extends DurableObject<Env> {
         (command.hint === "random" && result.solvedWords.length > 0) ||
         (command.hint === "first-of-each" && result.solvedWords.length > 0);
       if (shouldEndTurnForHint && this.shouldEndTurnOnGuessAttempt(state) && state.status === "playing") {
-        events.push(...this.advanceTurn(state, "attempt-ended"));
+        events.push(...(result.retainTurn
+          ? this.retainCurrentTurn(state, actor.id)
+          : this.advanceTurn(state, "attempt-ended")));
       }
       return events;
     }
@@ -739,6 +761,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       state.participants.forEach((participant) => {
         participant.score = emptyScore();
         participant.hintCredits = 0;
+        participant.freePowerTokens = 0;
         participant.ready = participant.kind === "ai";
         participant.continued = false;
       });
@@ -811,14 +834,21 @@ export class WordPuzzleRoom extends DurableObject<Env> {
               "word-solved",
               text,
               ai.id,
-              result.pointsAwarded
+              result.pointsAwarded,
+              {
+                wordIds: result.solvedWords,
+                score: result.scoreAwarded,
+                mysteryRewards: result.mysteryRewards
+              }
             )
           );
         }
-        if (this.shouldEndTurnOnGuessAttempt(next) && next.status === "playing") {
-          events.push(...this.advanceTurn(next, "word-complete"));
-        }
         this.finishPuzzleIfNeeded(next);
+        if (this.shouldEndTurnOnGuessAttempt(next) && next.status === "playing") {
+          events.push(...(result.retainTurn
+            ? this.retainCurrentTurn(next, ai.id)
+            : this.advanceTurn(next, "word-complete")));
+        }
       }
       this.scheduleAi(next);
     }
@@ -838,7 +868,8 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       seed,
       state.puzzleIndex,
       state.puzzleCount,
-      used
+      used,
+      state.settings.playMode
     );
     state.usedBaseWords = [...used];
     state.runtime = createPuzzleRuntime(state.puzzle);
@@ -943,7 +974,28 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       `💚: ${score.emerald}`,
       `♦️: ${score.ruby}`,
       `💎: ${score.diamond}`
+      , ...(score.bonus > 0 ? [`Mystery: ${score.bonus}`] : [])
     ].join("\n");
+  }
+
+  private retainCurrentTurn(state: RoomState, participantId: string) {
+    if (!this.isTurnBased(state) || !state.turnState) return [] as PresentationEvent[];
+    const participant = state.participants.find((candidate) => candidate.id === participantId);
+    const startedAt = Date.now();
+    const duration = turnDurationMs(state.settings.turnTimeLimit);
+    state.turnState.turnStartedAt = startedAt;
+    state.turnState.turnEndsAt = duration ? startedAt + duration : null;
+    state.aiDeadlines = {};
+    state.aiIntents = {};
+    this.scheduleAi(state);
+    return [
+      this.event(
+        state,
+        "mystery-revealed",
+        `${participant?.name ?? "Player"} found Go Again and keeps the turn.`,
+        participantId
+      )
+    ];
   }
 
   private advanceTurn(state: RoomState, reason: "timer-expired" | "word-complete" | "attempt-ended") {
@@ -1102,6 +1154,16 @@ export class WordPuzzleRoom extends DurableObject<Env> {
                     }
                   : {})
               })),
+              mysteryGems: (state.puzzle.mysteryGems ?? []).map((gem) => {
+                const claimed = state.runtime!.claimedMysteryGems?.[gem.id];
+                return {
+                  id: gem.id,
+                  wordId: gem.wordId,
+                  cell: gem.cell,
+                  claimed: Boolean(claimed),
+                  ...(claimed ? { claimedBy: claimed.actorId, effect: claimed.effect } : {})
+                };
+              }),
               visibleCells: structuredClone(state.runtime.visibleCells),
               bonusWordCount: state.puzzle.bonusWords.length,
               claimedBonusCount: Object.keys(state.runtime.claimedBonusWords).length,
@@ -1127,7 +1189,8 @@ export class WordPuzzleRoom extends DurableObject<Env> {
     type: PresentationEvent["type"],
     text: string,
     actorId?: string,
-    points?: number
+    points?: number,
+    details?: Pick<PresentationEvent, "wordIds" | "score" | "mysteryRewards">
   ): PresentationEvent {
     const event: PresentationEvent = {
       sequence: ++state.eventSequence,
@@ -1135,6 +1198,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       actorId,
       text,
       points,
+      ...details,
       at: Date.now()
     };
     state.events.push(event);
@@ -1204,6 +1268,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       replaced: false,
       joinedAt,
       hintCredits: 0,
+      freePowerTokens: 0,
       score: emptyScore(),
       continued: false
     };
@@ -1222,6 +1287,7 @@ export class WordPuzzleRoom extends DurableObject<Env> {
       replaced: false,
       joinedAt: Date.now(),
       hintCredits: 0,
+      freePowerTokens: 0,
       score: emptyScore(),
       continued: true
     };

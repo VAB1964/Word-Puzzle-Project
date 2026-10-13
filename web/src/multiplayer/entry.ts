@@ -133,7 +133,7 @@ export const initializeAppEntry = (canvas: HTMLCanvasElement, startSinglePlayer:
       const settings: RoomSettings = {
         mode: "Casual",
         includeBonusWordsWhenPossible: false,
-        playMode: "Free for All",
+        playMode: "Turn Based",
         turnTimeLimit: "Not Timed",
         difficulty: "Easy",
         capacity: 4,

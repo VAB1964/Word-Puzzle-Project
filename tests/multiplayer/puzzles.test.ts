@@ -47,6 +47,38 @@ describe("phone-friendly crossword layout", () => {
 });
 
 describe("multiplayer puzzle difficulty", () => {
+  it("places exactly one Triple Word and two distinct rewards from the remaining pool", () => {
+    const data = [
+      word("reactor", 1), word("trace", 2), word("crate", 2), word("cater", 2),
+      word("caret", 2), word("race", 1), word("care", 1), word("cart", 1),
+      word("rate", 1), word("tare", 1), word("ace", 1), word("act", 1)
+    ];
+    const puzzle = generateMultiplayerPuzzle(
+      data, "Casual", "Easy", "mystery-placement", 0, 3, new Set(), "Turn Based"
+    );
+    const mysteries = puzzle.mysteryGems ?? [];
+
+    expect(mysteries).toHaveLength(3);
+    expect(mysteries.filter((gem) => gem.effect === "triple-word")).toHaveLength(1);
+    expect(new Set(mysteries.map((gem) => gem.effect)).size).toBe(3);
+    expect(new Set(mysteries.map((gem) => gem.wordId)).size).toBe(3);
+    for (const mystery of mysteries) {
+      const owner = puzzle.words.find((candidate) => candidate.id === mystery.wordId)!;
+      expect(owner.gems[mystery.position]).toBe("none");
+    }
+  });
+
+  it("does not place Go Again in Free for All puzzles", () => {
+    const data = [
+      word("reactor", 1), word("trace", 2), word("crate", 2), word("cater", 2),
+      word("caret", 2), word("race", 1), word("care", 1), word("cart", 1)
+    ];
+    const puzzle = generateMultiplayerPuzzle(
+      data, "Casual", "Easy", "mystery-free-for-all", 0, 3, new Set(), "Free for All"
+    );
+    expect(puzzle.mysteryGems?.some((gem) => gem.effect === "extra-turn")).toBe(false);
+  });
+
   it("keeps Easy base-word fallback restricted to Easy rarity", () => {
     const data = [
       word("axolotl", 4),

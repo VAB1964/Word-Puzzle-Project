@@ -83,6 +83,157 @@ describe("end-of-session bonus", () => {
 });
 
 describe("multiplayer scoring rules", () => {
+  it("triples the completed word total and records the mystery reward", () => {
+    const puzzle: PuzzleDefinition = {
+      id: "triple-mystery",
+      mode: "Casual",
+      baseLetters: "CAT",
+      rows: 1,
+      cols: 3,
+      bonusWords: [],
+      words: [{
+        id: "cat",
+        answer: "cat",
+        rarity: 1,
+        gems: ["none", "none", "none"],
+        cells: Array.from({ length: 3 }, (_, col) => ({ row: 0, col }))
+      }],
+      mysteryGems: [{
+        id: "m0",
+        wordId: "cat",
+        position: 1,
+        cell: { row: 0, col: 1 },
+        effect: "triple-word"
+      }]
+    };
+    const players = [participant("Alice", 0)];
+    const result = submitGuess(puzzle, createPuzzleRuntime(puzzle), players, "Alice", "cat");
+
+    expect(result.pointsAwarded).toBe(9);
+    expect(result.scoreAwarded.bonus).toBe(6);
+    expect(result.mysteryRewards).toEqual(expect.arrayContaining([
+      expect.objectContaining({ effect: "triple-word", extraPoints: 6 })
+    ]));
+    expect(players[0].score.total).toBe(9);
+  });
+
+  it("banks Free Power and consumes it before hint credits", () => {
+    const puzzle: PuzzleDefinition = {
+      id: "free-power-mystery",
+      mode: "Casual",
+      baseLetters: "CART",
+      rows: 2,
+      cols: 3,
+      bonusWords: [],
+      words: [
+        {
+          id: "cat", answer: "cat", rarity: 1, gems: ["none", "none", "none"],
+          cells: Array.from({ length: 3 }, (_, col) => ({ row: 0, col }))
+        },
+        {
+          id: "car", answer: "car", rarity: 1, gems: ["none", "none", "none"],
+          cells: Array.from({ length: 3 }, (_, col) => ({ row: 1, col }))
+        }
+      ],
+      mysteryGems: [{
+        id: "m0", wordId: "cat", position: 0, cell: { row: 0, col: 0 }, effect: "free-power"
+      }]
+    };
+    const players = [participant("Alice", 0, 5)];
+    const runtime = createPuzzleRuntime(puzzle);
+    submitGuess(puzzle, runtime, players, "Alice", "cat");
+
+    expect(players[0].freePowerTokens).toBe(1);
+    const hint = useHint(puzzle, runtime, players, "Alice", {
+      hint: "letter", wordId: "car", position: 0
+    });
+    expect(hint.freePowerUsed).toBe(true);
+    expect(players[0].freePowerTokens).toBe(0);
+    expect(players[0].hintCredits).toBe(5);
+  });
+
+  it("reveals every hidden occurrence selected by Letter Burst", () => {
+    const puzzle: PuzzleDefinition = {
+      id: "letter-burst-mystery",
+      mode: "Casual",
+      baseLetters: "CART",
+      rows: 2,
+      cols: 3,
+      bonusWords: [],
+      words: [
+        {
+          id: "cat", answer: "cat", rarity: 1, gems: ["none", "none", "none"],
+          cells: Array.from({ length: 3 }, (_, col) => ({ row: 0, col }))
+        },
+        {
+          id: "car", answer: "car", rarity: 1, gems: ["none", "none", "none"],
+          cells: Array.from({ length: 3 }, (_, col) => ({ row: 1, col }))
+        }
+      ],
+      mysteryGems: [{
+        id: "m0", wordId: "cat", position: 2, cell: { row: 0, col: 2 }, effect: "letter-burst"
+      }]
+    };
+    const players = [participant("Alice", 0)];
+    const runtime = createPuzzleRuntime(puzzle);
+    const result = submitGuess(puzzle, runtime, players, "Alice", "cat", undefined, false, () => 0);
+
+    expect(result.mysteryRewards[0]).toEqual(expect.objectContaining({ effect: "letter-burst", letter: "C" }));
+    expect(runtime.visibleCells["1,0"]?.letter).toBe("C");
+  });
+
+  it("blooms three unrevealed ordinary gem positions", () => {
+    const puzzle: PuzzleDefinition = {
+      id: "gem-bloom-mystery",
+      mode: "Casual",
+      baseLetters: "CART",
+      rows: 2,
+      cols: 4,
+      bonusWords: [],
+      words: [
+        {
+          id: "cat", answer: "cat", rarity: 1, gems: ["none", "none", "none"],
+          cells: Array.from({ length: 3 }, (_, col) => ({ row: 0, col }))
+        },
+        {
+          id: "cart", answer: "cart", rarity: 1, gems: ["none", "none", "none", "none"],
+          cells: Array.from({ length: 4 }, (_, col) => ({ row: 1, col }))
+        }
+      ],
+      mysteryGems: [{
+        id: "m0", wordId: "cat", position: 1, cell: { row: 0, col: 1 }, effect: "gem-bloom"
+      }]
+    };
+    const players = [participant("Alice", 0)];
+    const result = submitGuess(puzzle, createPuzzleRuntime(puzzle), players, "Alice", "cat", undefined, false, () => 0);
+
+    expect(result.mysteryRewards[0].affectedCells).toHaveLength(3);
+    expect(puzzle.words[1].gems.filter((gem) => gem === "emerald")).toHaveLength(3);
+  });
+
+  it("marks Go Again without changing the score multiplier", () => {
+    const puzzle: PuzzleDefinition = {
+      id: "extra-turn-mystery",
+      mode: "Casual",
+      baseLetters: "CAT",
+      rows: 1,
+      cols: 3,
+      bonusWords: [],
+      words: [{
+        id: "cat", answer: "cat", rarity: 1, gems: ["none", "none", "none"],
+        cells: Array.from({ length: 3 }, (_, col) => ({ row: 0, col }))
+      }],
+      mysteryGems: [{
+        id: "m0", wordId: "cat", position: 1, cell: { row: 0, col: 1 }, effect: "extra-turn"
+      }]
+    };
+    const players = [participant("Alice", 0)];
+    const result = submitGuess(puzzle, createPuzzleRuntime(puzzle), players, "Alice", "cat");
+
+    expect(result.retainTurn).toBe(true);
+    expect(result.pointsAwarded).toBe(3);
+  });
+
   it("scores an intersection once per word while preserving its first cell owner", () => {
     const players = [participant("Alice", 0), participant("Bob", 1)];
     const runtime = createPuzzleRuntime(crossword);
@@ -241,6 +392,32 @@ describe("multiplayer scoring rules", () => {
 
     expect(result.changed).toBe(false);
     expect(players[0].hintCredits).toBe(before);
+  });
+
+  it("rejects a Letter power-up on a mystery gem without spending credits or a banked power", () => {
+    const mysteryPuzzle: PuzzleDefinition = structuredClone(crossword);
+    mysteryPuzzle.mysteryGems = [{
+      id: "mystery-letter",
+      wordId: "car",
+      position: 1,
+      cell: { row: 1, col: 0 },
+      effect: "free-power"
+    }];
+    const players = [participant("Alice", 0, 30)];
+    players[0].freePowerTokens = 1;
+    const runtime = createPuzzleRuntime(mysteryPuzzle);
+
+    const result = useHint(mysteryPuzzle, runtime, players, "Alice", {
+      hint: "letter",
+      wordId: "car",
+      position: 1
+    });
+
+    expect(result.changed).toBe(false);
+    expect(result.error).toBe("Mystery gems can only be uncovered by solving their word.");
+    expect(players[0].hintCredits).toBe(30);
+    expect(players[0].freePowerTokens).toBe(1);
+    expect(runtime.visibleCells["1,0"]).toBeUndefined();
   });
 
   it("full-word hint can target a chosen word", () => {

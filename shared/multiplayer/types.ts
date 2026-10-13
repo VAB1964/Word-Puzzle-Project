@@ -1,4 +1,4 @@
-export const MULTIPLAYER_PROTOCOL_VERSION = 2;
+export const MULTIPLAYER_PROTOCOL_VERSION = 3;
 
 export type GameMode = "Casual" | "Crossword";
 export type PlayMode = "Free for All" | "Turn Based";
@@ -7,6 +7,12 @@ export type Difficulty = "Easy" | "Medium" | "Hard";
 export type PuzzlesPerRound = 3 | 4 | 5 | 6 | 7;
 export type AiLevel = "High School" | "College" | "Professional";
 export type GemType = "none" | "diamond" | "ruby" | "emerald";
+export type MysteryEffect =
+  | "triple-word"
+  | "extra-turn"
+  | "free-power"
+  | "gem-bloom"
+  | "letter-burst";
 export type RoomStatus = "lobby" | "playing" | "puzzle-summary" | "completed" | "ended";
 export type PauseReason = "participant-disconnected" | "host-disconnected" | null;
 export type HintKind = "letter" | "random" | "full-word" | "first-of-each";
@@ -33,6 +39,7 @@ export interface Participant {
   replaced: boolean;
   joinedAt: number;
   hintCredits: number;
+  freePowerTokens?: number;
   score: ScoreBreakdown;
   continued: boolean;
 }
@@ -84,7 +91,16 @@ export interface PuzzleDefinition {
   rows: number;
   cols: number;
   words: PuzzleWordDefinition[];
+  mysteryGems?: MysteryGemDefinition[];
   bonusWords: string[];
+}
+
+export interface MysteryGemDefinition {
+  id: string;
+  wordId: string;
+  position: number;
+  cell: PuzzleCellRef;
+  effect: MysteryEffect;
 }
 
 export interface VisibleCell {
@@ -105,7 +121,27 @@ export interface PuzzleRuntime {
   credits: Record<string, Array<PositionCredit | null>>;
   claimedBonusWords: Record<string, string>;
   failedGuesses: string[];
+  claimedMysteryGems?: Record<string, { actorId: string; effect: MysteryEffect; at: number }>;
   skipped: boolean;
+}
+
+export interface PublicMysteryGem {
+  id: string;
+  wordId: string;
+  cell: PuzzleCellRef;
+  claimed: boolean;
+  claimedBy?: string;
+  effect?: MysteryEffect;
+}
+
+export interface MysteryRewardPresentation {
+  id: string;
+  effect: MysteryEffect;
+  wordId: string;
+  cell: PuzzleCellRef;
+  extraPoints?: number;
+  letter?: string;
+  affectedCells?: PuzzleCellRef[];
 }
 
 export interface PublicPuzzleWord {
@@ -129,6 +165,7 @@ export interface PublicPuzzle {
   rows: number;
   cols: number;
   words: PublicPuzzleWord[];
+  mysteryGems: PublicMysteryGem[];
   visibleCells: Record<string, VisibleCell>;
   bonusWordCount: number;
   claimedBonusCount: number;
@@ -149,11 +186,15 @@ export interface PresentationEvent {
     | "host-changed"
     | "puzzle-skipped"
     | "guess-rejected"
+    | "mystery-revealed"
     | "turn-order"
     | "turn-advanced";
   actorId?: string;
   text: string;
   points?: number;
+  wordIds?: string[];
+  score?: ScoreBreakdown;
+  mysteryRewards?: MysteryRewardPresentation[];
   at: number;
 }
 

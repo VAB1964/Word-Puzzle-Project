@@ -7,6 +7,7 @@ import {
 } from "./scoring";
 import type {
   HintKind,
+  MysteryRewardPresentation,
   Participant,
   PuzzleDefinition,
   PuzzleRuntime,
@@ -34,6 +35,10 @@ export interface PuzzleActionResult {
   pointsAwarded: number;
   scoreAwarded: ScoreBreakdown;
   hintCreditsAwarded: number;
+  wordScores: Record<string, ScoreBreakdown>;
+  mysteryRewards: MysteryRewardPresentation[];
+  retainTurn: boolean;
+  freePowerUsed: boolean;
   error?: string;
   needsPuzzleReview?: boolean;
 }
@@ -46,6 +51,7 @@ export const createPuzzleRuntime = (puzzle: PuzzleDefinition): PuzzleRuntime => 
   credits: Object.fromEntries(puzzle.words.map((word) => [word.id, word.cells.map(() => null)])),
   claimedBonusWords: {},
   failedGuesses: [],
+  claimedMysteryGems: {},
   skipped: false
 });
 
@@ -198,14 +204,18 @@ const completeVisibleWords = (
 ) => {
   const solved: string[] = [];
   const scoreAwarded = emptyScore();
+  const wordScores: Record<string, ScoreBreakdown> = {};
   let hints = 0;
   const completed = new Set(runtime.completedWordIds);
 
   for (const word of puzzle.words) {
     if (completed.has(word.id) || !isWordVisible(puzzle, runtime, word.id)) continue;
+    const wordScore = emptyScore();
     for (let position = 0; position < word.cells.length; position += 1) {
-      awardPosition(puzzle, runtime, participants, actorId, word.id, position, scoreAwarded);
+      awardPosition(puzzle, runtime, participants, actorId, word.id, position, wordScore);
     }
+    mergeBreakdown(scoreAwarded, wordScore);
+    wordScores[word.id] = wordScore;
     completed.add(word.id);
     runtime.completedWordIds.push(word.id);
     solved.push(word.id);
@@ -214,7 +224,7 @@ const completeVisibleWords = (
 
   const actor = getParticipant(participants, actorId);
   if (actor && hints > 0) actor.hintCredits += hints;
-  return { solved, scoreAwarded, hints };
+  return { solved, scoreAwarded, wordScores, hints };
 };
 
 export const submitGuess = (
@@ -224,7 +234,8 @@ export const submitGuess = (
   actorId: string,
   rawGuess: string,
   dictionaryWords?: ReadonlySet<string>,
-  includeBonusWordsWhenPossible = false
+  includeBonusWordsWhenPossible = false,
+  random: () => number = Math.random
 ): PuzzleActionResult => {
   const actor = getParticipant(participants, actorId);
   if (!actor) return failure("Participant not found.");
@@ -242,16 +253,27 @@ export const submitGuess = (
       revealPosition(puzzle, runtime, actorId, word.id, position);
       awardPosition(puzzle, runtime, participants, actorId, word.id, position, scoreAwarded);
     }
+    const primaryScoreAwarded = { ...scoreAwarded };
     const completed = completeVisibleWords(puzzle, runtime, participants, actorId);
     mergeBreakdown(scoreAwarded, completed.scoreAwarded);
-    return {
+    const wordScores = completed.wordScores;
+    const primaryScore = wordScores[word.id] ?? emptyScore();
+    mergeBreakdown(primaryScore, primaryScoreAwarded);
+    wordScores[word.id] = primaryScore;
+    const result: PuzzleActionResult = {
       changed: true,
       kind: "word",
       solvedWords: completed.solved,
       pointsAwarded: scoreAwarded.total,
       scoreAwarded,
-      hintCreditsAwarded: completed.hints
+      hintCreditsAwarded: completed.hints,
+      wordScores,
+      mysteryRewards: [],
+      retainTurn: false,
+      freePowerUsed: false
     };
+    resolveMysteryRewards(puzzle, runtime, participants, actorId, result, random);
+    return result;
   }
 
   if (puzzle.bonusWords.includes(guess)) {
@@ -266,7 +288,11 @@ export const submitGuess = (
       claimedBonusWord: guess,
       pointsAwarded: 0,
       scoreAwarded: emptyScore(),
-      hintCreditsAwarded: award
+      hintCreditsAwarded: award,
+      wordScores: {},
+      mysteryRewards: [],
+      retainTurn: false,
+      freePowerUsed: false
     };
   }
 
@@ -300,8 +326,20 @@ export const useHint = (
   if (enabledPowerUps && enabledPowerUps[request.hint] === false) {
     return failure("That power-up is disabled for this session.");
   }
+  if (request.hint === "letter" && request.wordId && request.position !== undefined) {
+    const requestedWord = puzzle.words.find((word) => word.id === request.wordId);
+    const requestedCell = requestedWord?.cells[request.position];
+    const targetsMysteryGem = requestedCell && (puzzle.mysteryGems ?? []).some(
+      (gem) => gem.cell.row === requestedCell.row && gem.cell.col === requestedCell.col
+    );
+    if (targetsMysteryGem) {
+      return failure("Mystery gems can only be uncovered by solving their word.");
+    }
+  }
   const cost = HINT_COSTS[request.hint];
-  if (actor.hintCredits < cost) return failure("Not enough hint credits.");
+  const bankedFreePowers = actor.freePowerTokens ?? 0;
+  const usesFreePower = bankedFreePowers > 0;
+  if (!usesFreePower && actor.hintCredits < cost) return failure("Not enough hint credits.");
 
   const unfinished = puzzle.words.filter((word) => !runtime.completedWordIds.includes(word.id));
   const targets: Array<{ wordId: string; position: number }> = [];
@@ -349,10 +387,13 @@ export const useHint = (
 
   if (targets.length === 0) return failure("That hint has no eligible target.");
 
-  actor.hintCredits -= cost;
+  if (usesFreePower) actor.freePowerTokens = bankedFreePowers - 1;
+  else actor.hintCredits -= cost;
   const scoreAwarded = emptyScore();
+  const wordScores: Record<string, ScoreBreakdown> = {};
   for (const target of targets) {
     revealPosition(puzzle, runtime, actorId, target.wordId, target.position);
+    const wordScore = wordScores[target.wordId] ?? (wordScores[target.wordId] = emptyScore());
     awardPosition(
       puzzle,
       runtime,
@@ -360,23 +401,200 @@ export const useHint = (
       actorId,
       target.wordId,
       target.position,
-      scoreAwarded
+      wordScore
     );
   }
+  Object.values(wordScores).forEach((score) => mergeBreakdown(scoreAwarded, score));
   const completed = completeVisibleWords(puzzle, runtime, participants, actorId);
   mergeBreakdown(scoreAwarded, completed.scoreAwarded);
-  return {
+  for (const [wordId, score] of Object.entries(completed.wordScores)) {
+    const aggregate = wordScores[wordId] ?? (wordScores[wordId] = emptyScore());
+    mergeBreakdown(aggregate, score);
+  }
+  const result: PuzzleActionResult = {
     changed: true,
     kind: "hint",
     solvedWords: completed.solved,
     pointsAwarded: scoreAwarded.total,
     scoreAwarded,
-    hintCreditsAwarded: completed.hints
+    hintCreditsAwarded: completed.hints,
+    wordScores,
+    mysteryRewards: [],
+    retainTurn: false,
+    freePowerUsed: usesFreePower
   };
+  resolveMysteryRewards(puzzle, runtime, participants, actorId, result, random);
+  return result;
 };
 
 export const puzzleIsComplete = (puzzle: PuzzleDefinition, runtime: PuzzleRuntime) =>
   runtime.completedWordIds.length === puzzle.words.length;
+
+const mergeWordScore = (
+  wordScores: Record<string, ScoreBreakdown>,
+  wordId: string,
+  score: ScoreBreakdown
+) => {
+  const aggregate = wordScores[wordId] ?? (wordScores[wordId] = emptyScore());
+  mergeBreakdown(aggregate, score);
+};
+
+const shuffleInPlace = <T>(items: T[], random: () => number) => {
+  for (let index = items.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(random() * (index + 1));
+    [items[index], items[swap]] = [items[swap], items[index]];
+  }
+  return items;
+};
+
+const bloomGems = (
+  puzzle: PuzzleDefinition,
+  runtime: PuzzleRuntime,
+  random: () => number
+) => {
+  const mysteryCells = new Set((puzzle.mysteryGems ?? []).map((gem) => cellKey(gem.cell.row, gem.cell.col)));
+  const ranks = { none: 0, emerald: 1, ruby: 2, diamond: 3 } as const;
+  const candidates = new Map<string, {
+    cell: { row: number; col: number };
+    refs: Array<{ word: PuzzleDefinition["words"][number]; position: number }>;
+  }>();
+  for (const word of puzzle.words) {
+    word.cells.forEach((cell, position) => {
+      const key = cellKey(cell.row, cell.col);
+      if (mysteryCells.has(key) || runtime.visibleCells[key]) return;
+      const candidate = candidates.get(key) ?? { cell, refs: [] };
+      candidate.refs.push({ word, position });
+      candidates.set(key, candidate);
+    });
+  }
+
+  const upgradeable = [...candidates.values()].filter((candidate) =>
+    candidate.refs.every(({ word, position }) => (word.gems[position] ?? "none") !== "diamond")
+  );
+  return shuffleInPlace(upgradeable, random).slice(0, 3).map((target) => {
+    const strongest = [...target.refs].sort((left, right) =>
+      ranks[right.word.gems[right.position] ?? "none"] - ranks[left.word.gems[left.position] ?? "none"]
+    )[0];
+    const current = strongest.word.gems[strongest.position] ?? "none";
+    strongest.word.gems[strongest.position] =
+      current === "none" ? "emerald" : current === "emerald" ? "ruby" : "diamond";
+    return target.cell;
+  });
+};
+
+const applyLetterBurst = (
+  puzzle: PuzzleDefinition,
+  runtime: PuzzleRuntime,
+  participants: Participant[],
+  actorId: string,
+  result: PuzzleActionResult,
+  random: () => number
+) => {
+  const hiddenByLetter = new Map<string, Map<string, { row: number; col: number }>>();
+  for (const word of puzzle.words) {
+    word.cells.forEach((cell, position) => {
+      const key = cellKey(cell.row, cell.col);
+      if (runtime.visibleCells[key]) return;
+      const letter = word.answer[position].toUpperCase();
+      const cells = hiddenByLetter.get(letter) ?? new Map();
+      cells.set(key, cell);
+      hiddenByLetter.set(letter, cells);
+    });
+  }
+  const letters = [...hiddenByLetter.keys()];
+  if (letters.length === 0) return { letter: "", cells: [] as Array<{ row: number; col: number }> };
+  const letter = letters[Math.min(letters.length - 1, Math.floor(random() * letters.length))];
+  const targets = hiddenByLetter.get(letter)!;
+  const burstScores: Record<string, ScoreBreakdown> = {};
+
+  for (const word of puzzle.words) {
+    word.cells.forEach((cell, position) => {
+      if (word.answer[position].toUpperCase() !== letter || !targets.has(cellKey(cell.row, cell.col))) return;
+      revealPosition(puzzle, runtime, actorId, word.id, position);
+      const wordScore = burstScores[word.id] ?? (burstScores[word.id] = emptyScore());
+      awardPosition(puzzle, runtime, participants, actorId, word.id, position, wordScore);
+    });
+  }
+
+  for (const [wordId, score] of Object.entries(burstScores)) {
+    mergeWordScore(result.wordScores, wordId, score);
+    mergeBreakdown(result.scoreAwarded, score);
+    result.pointsAwarded += score.total;
+  }
+  const completed = completeVisibleWords(puzzle, runtime, participants, actorId);
+  for (const [wordId, score] of Object.entries(completed.wordScores)) {
+    mergeWordScore(result.wordScores, wordId, score);
+  }
+  mergeBreakdown(result.scoreAwarded, completed.scoreAwarded);
+  result.pointsAwarded += completed.scoreAwarded.total;
+  result.hintCreditsAwarded += completed.hints;
+  for (const wordId of completed.solved) {
+    if (!result.solvedWords.includes(wordId)) result.solvedWords.push(wordId);
+  }
+  return { letter, cells: [...targets.values()] };
+};
+
+const resolveMysteryRewards = (
+  puzzle: PuzzleDefinition,
+  runtime: PuzzleRuntime,
+  participants: Participant[],
+  actorId: string,
+  result: PuzzleActionResult,
+  random: () => number
+) => {
+  const actor = getParticipant(participants, actorId);
+  const mysteryGems = puzzle.mysteryGems ?? [];
+  if (!actor || mysteryGems.length === 0) return;
+  const claimedMysteryGems = runtime.claimedMysteryGems ?? (runtime.claimedMysteryGems = {});
+  actor.freePowerTokens ??= 0;
+  const queue = [...result.solvedWords];
+  const inspected = new Set<string>();
+
+  while (queue.length > 0) {
+    const wordId = queue.shift()!;
+    if (inspected.has(wordId)) continue;
+    inspected.add(wordId);
+    const mystery = mysteryGems.find(
+      (gem) => gem.wordId === wordId && !claimedMysteryGems[gem.id]
+    );
+    if (!mystery) continue;
+    claimedMysteryGems[mystery.id] = { actorId, effect: mystery.effect, at: Date.now() };
+    const reward: MysteryRewardPresentation = {
+      id: mystery.id,
+      effect: mystery.effect,
+      wordId,
+      cell: mystery.cell
+    };
+
+    if (mystery.effect === "triple-word") {
+      const wordScore = result.wordScores[wordId] ?? emptyScore();
+      const extraPoints = wordScore.total * 2;
+      if (extraPoints > 0) {
+        actor.score.bonus = (actor.score.bonus ?? 0) + extraPoints;
+        actor.score.total = scoreTotal(actor.score);
+        result.scoreAwarded.bonus += extraPoints;
+        result.scoreAwarded.total = scoreTotal(result.scoreAwarded);
+        wordScore.bonus += extraPoints;
+        wordScore.total = scoreTotal(wordScore);
+        result.pointsAwarded += extraPoints;
+      }
+      reward.extraPoints = extraPoints;
+    } else if (mystery.effect === "extra-turn") {
+      result.retainTurn = true;
+    } else if (mystery.effect === "free-power") {
+      actor.freePowerTokens += 1;
+    } else if (mystery.effect === "gem-bloom") {
+      reward.affectedCells = bloomGems(puzzle, runtime, random);
+    } else if (mystery.effect === "letter-burst") {
+      const before = new Set(result.solvedWords);
+      const burst = applyLetterBurst(puzzle, runtime, participants, actorId, result, random);
+      reward.letter = burst.letter;
+      reward.affectedCells = burst.cells;
+      result.solvedWords.filter((id) => !before.has(id)).forEach((id) => queue.push(id));
+    }
+    result.mysteryRewards.push(reward);
+  }
+};
 
 const failure = (error: string): PuzzleActionResult => ({
   changed: false,
@@ -385,6 +603,10 @@ const failure = (error: string): PuzzleActionResult => ({
   pointsAwarded: 0,
   scoreAwarded: emptyScore(),
   hintCreditsAwarded: 0,
+  wordScores: {},
+  mysteryRewards: [],
+  retainTurn: false,
+  freePowerUsed: false,
   error
 });
 

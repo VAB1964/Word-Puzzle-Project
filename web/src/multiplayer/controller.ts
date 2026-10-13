@@ -1,13 +1,30 @@
 import type {
   AiLevel,
   HintKind,
+  MysteryRewardPresentation,
   PresentationEvent,
   PublicPuzzle,
   RoomSnapshot,
   ScoreBreakdown
 } from "../../../shared/multiplayer/types";
 import { Assets } from "../assets";
-import { playSpellTone, playWordSuccess, sampleVolume, unlockGameAudio } from "../core/gameAudio";
+import {
+  gameAudioVolume,
+  isGameAudioMuted,
+  playBonusTallyStep,
+  playGemBloomSparkle,
+  playMysteryReveal,
+  playMysteryTarget,
+  playScoreFlight,
+  playScoreImpact,
+  playSolvedWordBell,
+  playSolvedTileCascade,
+  playSpellTone,
+  sampleVolume,
+  setGameAudioMuted,
+  setGameAudioVolume,
+  unlockGameAudio
+} from "../core/gameAudio";
 import { MultiplayerClient } from "./client";
 
 const AI_LEVELS: AiLevel[] = ["High School", "College", "Professional"];
@@ -29,6 +46,11 @@ const escapeHtml = (value: string | number) =>
 const cellKey = (row: number, col: number) => `${row},${col}`;
 const GEM_RANK: Record<string, number> = { none: 0, emerald: 1, ruby: 2, diamond: 3 };
 const GEM_BONUS: Record<string, number> = { none: 0, emerald: 5, ruby: 10, diamond: 15 };
+const SOLVED_WORD_SPOTLIGHT_MS = 1250;
+const FINAL_BONUS_LEAD_IN_MS = 1450;
+const FINAL_BONUS_SEAT_STAGGER_MS = 180;
+const FINAL_BONUS_COUNT_MS = 1100;
+const FINAL_BONUS_SETTLE_MS = 350;
 const rarityGem = (rarity: number) => (rarity >= 4 ? "diamond" : rarity === 3 ? "ruby" : rarity === 2 ? "emerald" : "none");
 const safeWordGems = (word: { gems?: string[]; length: number; rarity?: number }) =>
   Array.isArray(word.gems) && word.gems.length > 0
@@ -44,6 +66,7 @@ interface ScoreFlightComponents {
   emerald: number;
   ruby: number;
   diamond: number;
+  bonus: number;
   strongestGem: GemName;
 }
 
@@ -51,6 +74,7 @@ interface FinalBonusPresentation {
   startedAt: number;
   skipped: boolean;
   awards: Map<string, number>;
+  soundStep: number;
 }
 
 export class MultiplayerController {
@@ -80,7 +104,6 @@ export class MultiplayerController {
   private presentedScores = new Map<string, ScoreBreakdown>();
   private pendingScoreAnimations = new Map<string, number>();
   private finalBonusPresentation: FinalBonusPresentation | null = null;
-  private finalBonusSoundPlayed = false;
   private readonly handleViewportResize = () => this.fitBoardToViewport();
 
   constructor(
@@ -115,10 +138,7 @@ export class MultiplayerController {
       const showingTurnPopup = this.turnOrderPopup !== null;
       const finalBonusComplete = this.isFinalBonusTallyComplete();
       const tallyingFinalBonus = Boolean(this.finalBonusPresentation && !finalBonusComplete);
-      if (this.finalBonusPresentation && finalBonusComplete && !this.finalBonusSoundPlayed) {
-        this.finalBonusSoundPlayed = true;
-        this.playSound("win");
-      }
+      if (tallyingFinalBonus) this.updateFinalBonusTallySound();
       if (activeCountdown || showingTurnPopup || tallyingFinalBonus) this.render();
     }, 100);
   }
@@ -164,7 +184,6 @@ export class MultiplayerController {
   }
 
   setSnapshot(snapshot: RoomSnapshot, events: PresentationEvent[]) {
-    const previousStatus = this.snapshot?.status ?? null;
     const previousSnapshot = this.snapshot;
     this.prepareFinalBonusPresentation(snapshot, previousSnapshot);
     const puzzleChanged = snapshot.puzzle?.id !== this.snapshot?.puzzle?.id;
@@ -195,12 +214,6 @@ export class MultiplayerController {
     this.render();
     this.ensureAnimationLayer();
     const uiChanged = this.processPresentationEvents(events, snapshot, previousSnapshot);
-    if (
-      previousStatus === "playing" &&
-      (snapshot.status === "puzzle-summary" || snapshot.status === "completed")
-    ) {
-      this.playSound("win");
-    }
     if (uiChanged) this.render();
   }
 
@@ -229,13 +242,19 @@ export class MultiplayerController {
           <button class="mp-link-button" data-action="leave">Leave</button>
           <strong>Room ${escapeHtml(snapshot.roomCode)}</strong>
           <span class="mp-room-details">${escapeHtml(snapshot.settings.mode)} · ${escapeHtml(snapshot.settings.playMode)} · ${escapeHtml(String(snapshot.settings.turnTimeLimit))} · ${escapeHtml(snapshot.settings.difficulty)} · ${escapeHtml(String(snapshot.settings.puzzlesPerRound))} Puzzles</span>
-          <button class="mp-link-button" data-action="copy-invite">Copy Invite</button>
+          <div class="mp-header-actions">
+            <label class="mp-volume-control" title="Sound effect volume">
+              <input data-audio-volume type="range" min="0" max="1" step="0.05" value="${gameAudioVolume()}" aria-label="Sound effect volume">
+            </label>
+            <button class="mp-link-button mp-sound-toggle" data-action="toggle-sound" aria-pressed="${isGameAudioMuted()}" title="${isGameAudioMuted() ? "Turn sound on" : "Mute sound effects"}">${isGameAudioMuted() ? "Sound Off" : "Sound On"}</button>
+            <button class="mp-link-button mp-copy-invite" data-action="copy-invite">Copy Invite</button>
+          </div>
         </header>
         ${
           snapshot.status === "lobby"
             ? this.renderLobby(snapshot, host)
             : snapshot.status === "playing"
-              ? this.renderPlay(snapshot, local?.hintCredits ?? 0, host)
+              ? this.renderPlay(snapshot, local?.hintCredits ?? 0, local?.freePowerTokens ?? 0, host)
               : snapshot.status === "puzzle-summary"
                 ? this.renderSummary(snapshot, local?.hintCredits ?? 0, Boolean(local?.continued))
                 : this.renderResults(snapshot, host)
@@ -358,7 +377,7 @@ export class MultiplayerController {
       </main>`;
   }
 
-  private renderPlay(snapshot: RoomSnapshot, hintCredits: number, host: boolean) {
+  private renderPlay(snapshot: RoomSnapshot, hintCredits: number, freePowerTokens: number, host: boolean) {
     const puzzle = snapshot.puzzle;
     if (!puzzle) return `<main class="mp-paper"><h1>Preparing puzzle…</h1></main>`;
     const localTurn = this.isLocalTurn(snapshot);
@@ -369,7 +388,7 @@ export class MultiplayerController {
       <div class="mp-play-status">
         <span>Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</span>
         <span style="color:${escapeHtml(this.activeTurnColor(snapshot))};font-weight:800;">${escapeHtml(this.roundTurnText(snapshot))}</span>
-        <span>Hint Credits: <strong>${hintCredits}</strong></span>
+        <span>Hints: <strong>${hintCredits}</strong>${freePowerTokens > 0 ? ` Â· Free: <strong>${freePowerTokens}</strong>` : ""}</span>
         <span>${escapeHtml(this.timeStatusText(snapshot))}</span>
       </div>
       ${this.renderTurnOrderPopup()}
@@ -395,11 +414,11 @@ export class MultiplayerController {
                     (hint) => {
                       const disabledBySettings = !snapshot.settings.enabledPowerUps[hint.kind];
                       const disabledByTurn = controlsDisabled;
-                      const disabledByCredits = hintCredits < hint.cost;
+                      const disabledByCredits = hintCredits < hint.cost && freePowerTokens === 0;
                       const disabled = disabledBySettings || disabledByTurn || disabledByCredits;
 
                       let reasonClass = "is-ready";
-                      let badge = `${hint.cost}`;
+                      let badge = freePowerTokens > 0 ? "FREE" : `${hint.cost}`;
                       let title = `${hint.description}\nCost ${hint.cost}`;
 
                       if (disabledBySettings) {
@@ -414,6 +433,8 @@ export class MultiplayerController {
                         reasonClass = "is-credits";
                         badge = `${hintCredits}/${hint.cost}`;
                         title = `${hint.description}\nNeed ${hint.cost} credits`;
+                      } else if (freePowerTokens > 0) {
+                        title = `${hint.description}\nUses one banked Free Power`;
                       }
 
                       return `<button data-action="hint" data-hint="${hint.kind}" class="${reasonClass}" title="${escapeHtml(title)}" ${
@@ -548,6 +569,8 @@ export class MultiplayerController {
             <span data-score-field="emerald">E ${score.emerald}</span> ·
             <span data-score-field="ruby">R ${score.ruby}</span> ·
             <span data-score-field="diamond">D ${score.diamond}</span>
+            &middot; <span data-score-field="bonus">M ${score.bonus}</span>
+            ${(participant.freePowerTokens ?? 0) > 0 ? `&middot; <span class="mp-free-power-count">Free ${(participant.freePowerTokens ?? 0)}</span>` : ""}
           </small>
         </article>`;
       })
@@ -577,6 +600,7 @@ export class MultiplayerController {
               <span data-score-field="emerald">E ${score.emerald}</span>
               <span data-score-field="ruby">R ${score.ruby}</span>
               <span data-score-field="diamond">D ${score.diamond}</span>
+              <span data-score-field="bonus">M ${score.bonus}</span>
             </small>
           </article>`;
         })
@@ -615,6 +639,11 @@ export class MultiplayerController {
 
   private renderBoard(puzzle: PublicPuzzle, snapshot: RoomSnapshot) {
     const cells = new Map<string, { row: number; col: number; refs: Array<{ wordId: string; position: number }> }>();
+    const mysteryByCell = new Map(
+      puzzle.mysteryGems
+        .filter((gem) => !gem.claimed)
+        .map((gem) => [cellKey(gem.cell.row, gem.cell.col), gem])
+    );
     const occupiedCols = new Set<number>();
     for (const word of puzzle.words) {
       word.cells.forEach((cell, position) => {
@@ -650,6 +679,7 @@ export class MultiplayerController {
       ${[...cells.entries()]
         .map(([key, cell]) => {
           const visible = puzzle.visibleCells[key];
+          const mystery = mysteryByCell.get(key);
           const hintTarget = !visible && (this.awaitingLetterHint || this.awaitingFullWordHint);
           const owner = snapshot.participants.find((participant) => participant.id === visible?.ownerId);
           const ref = cell.refs.find(
@@ -667,13 +697,16 @@ export class MultiplayerController {
             })
             .reduce((best, current) => (GEM_RANK[current] > GEM_RANK[best] ? current : best), "none");
           const mobilePosition = mobileLayout?.positions.get(key) ?? { row: cell.row, col: cell.col };
-          return `<button class="mp-cell ${visible ? "filled" : ""} ${hintTarget ? "mp-cell-hint-target" : ""} ${completedWord ? "has-word-info" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--mobile-row:${mobilePosition.row + 1};--mobile-col:${mobilePosition.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
+          return `<button class="mp-cell ${visible ? "filled" : ""} ${mystery ? "has-mystery" : ""} ${hintTarget ? "mp-cell-hint-target" : ""} ${completedWord ? "has-word-info" : ""}" style="grid-row:${cell.row + 1};grid-column:${cell.col + 1};--mobile-row:${mobilePosition.row + 1};--mobile-col:${mobilePosition.col + 1};--owner-color:${owner?.color ?? "#5b4631"}"
             data-action="board-cell" data-word="${ref.wordId}" data-position="${ref.position}"
+            ${mystery ? `data-mystery-id="${escapeHtml(mystery.id)}"` : ""}
             ${completedWord ? `data-word-info="${escapeHtml(completedWord.id)}"` : ""}
             data-row="${cell.row}" data-col="${cell.col}"
             aria-label="${visible ? `${visible.letter}, owned by ${owner?.name ?? "player"}${completedWord ? "; definition available" : ""}` : "Unrevealed letter"}">
             ${
-              !visible && gem !== "none"
+              !visible && mystery
+                ? `<span class="mp-mystery-gem" aria-hidden="true">?</span>`
+                : !visible && gem !== "none"
                 ? `<img class="mp-cell-gem" src="${escapeHtml(gemArtwork(gem))}" alt="" aria-hidden="true" title="${gem} word">`
                 : ""
             }
@@ -697,7 +730,7 @@ export class MultiplayerController {
       this.root.querySelector<HTMLElement>(".mp-board-stage") ??
       this.root.querySelector<HTMLElement>(".mp-summary-layout .mp-board-scroll");
     const board = this.root.querySelector<HTMLElement>(".mp-board");
-    if (!puzzle || !stage || !board || window.matchMedia("(min-width: 1501px)").matches) {
+    if (!puzzle || !stage || !board) {
       board?.style.removeProperty("--cell-size");
       return;
     }
@@ -730,7 +763,16 @@ export class MultiplayerController {
     // Landscape shares the viewport with the controls, so it must also respect the
     // stage height or the complete gameplay workspace can overflow vertically.
     const widthOnlyTabletLayout = portraitTabletLayout;
-    const maxCellSize = portraitTabletLayout ? 64 : landscapeTabletLayout ? 52 : 42;
+    const desktopLayout = window.matchMedia("(min-width: 1501px)").matches;
+    const maxCellSize = desktopLayout
+      ? 72
+      : portraitTabletLayout
+        ? 64
+        : landscapeTabletLayout
+          ? 56
+          : phoneLayout
+            ? 48
+            : 52;
     const cellSize = Math.max(
       1,
       widthOnlyTabletLayout
@@ -952,10 +994,12 @@ export class MultiplayerController {
   private prepareFinalBonusPresentation(snapshot: RoomSnapshot, previousSnapshot: RoomSnapshot | null) {
     if (snapshot.status !== "completed") {
       this.finalBonusPresentation = null;
-      this.finalBonusSoundPlayed = false;
       return;
     }
     if (previousSnapshot?.status !== "puzzle-summary") return;
+
+    // Celebrate the completed round once, then let the bonus tally take over.
+    this.playSound("win");
 
     const awards = new Map<string, number>();
     for (const participant of snapshot.participants) {
@@ -967,9 +1011,9 @@ export class MultiplayerController {
     this.finalBonusPresentation = {
       startedAt: performance.now(),
       skipped: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-      awards
+      awards,
+      soundStep: -1
     };
-    this.finalBonusSoundPlayed = this.finalBonusPresentation.skipped;
   }
 
   private finalBonusProgress(participantId: string) {
@@ -977,9 +1021,27 @@ export class MultiplayerController {
     if (!presentation || presentation.skipped) return 1;
     const participant = this.snapshot?.participants.find((candidate) => candidate.id === participantId);
     const seat = participant?.seat ?? 0;
-    const elapsed = performance.now() - presentation.startedAt - 450 - seat * 180;
-    const linear = Math.max(0, Math.min(1, elapsed / 1100));
+    const elapsed =
+      performance.now() -
+      presentation.startedAt -
+      FINAL_BONUS_LEAD_IN_MS -
+      seat * FINAL_BONUS_SEAT_STAGGER_MS;
+    const linear = Math.max(0, Math.min(1, elapsed / FINAL_BONUS_COUNT_MS));
     return 1 - Math.pow(1 - linear, 3);
+  }
+
+  private updateFinalBonusTallySound() {
+    const presentation = this.finalBonusPresentation;
+    if (!presentation || presentation.skipped) return;
+    const seats = this.snapshot?.participants.map((participant) => participant.seat) ?? [0];
+    const lastSeat = Math.max(0, ...seats);
+    const scaleDuration = FINAL_BONUS_COUNT_MS + lastSeat * FINAL_BONUS_SEAT_STAGGER_MS;
+    const elapsed = performance.now() - presentation.startedAt - FINAL_BONUS_LEAD_IN_MS;
+    if (elapsed < 0) return;
+    const step = Math.min(8, Math.floor((Math.min(elapsed, scaleDuration) / scaleDuration) * 8));
+    if (step <= presentation.soundStep) return;
+    presentation.soundStep = step;
+    playBonusTallyStep(step);
   }
 
   private isFinalBonusTallyComplete() {
@@ -987,7 +1049,13 @@ export class MultiplayerController {
     if (!presentation || presentation.skipped) return true;
     const seats = this.snapshot?.participants.map((participant) => participant.seat) ?? [0];
     const lastSeat = Math.max(0, ...seats);
-    return performance.now() - presentation.startedAt >= 450 + lastSeat * 180 + 1450;
+    return (
+      performance.now() - presentation.startedAt >=
+      FINAL_BONUS_LEAD_IN_MS +
+        lastSeat * FINAL_BONUS_SEAT_STAGGER_MS +
+        FINAL_BONUS_COUNT_MS +
+        FINAL_BONUS_SETTLE_MS
+    );
   }
 
   private canUseWheel() {
@@ -1142,7 +1210,8 @@ export class MultiplayerController {
       this.suppressNextLetterClick = false;
       return;
     }
-    if (action !== "letter") this.playSound("click");
+    const choosingLetterTarget = action === "board-cell" && this.awaitingLetterHint;
+    if (action !== "letter" && !choosingLetterTarget) this.playSound("click");
     const local = snapshot.participants.find((participant) => participant.id === snapshot.localParticipantId);
     const turnLocked =
       snapshot.settings.playMode === "Turn Based" &&
@@ -1161,6 +1230,12 @@ export class MultiplayerController {
         () => this.setError("Invite link copied."),
         () => this.setError(invite)
       );
+    } else if (action === "toggle-sound") {
+      const nextMuted = !isGameAudioMuted();
+      setGameAudioMuted(nextMuted);
+      for (const sound of Object.values(this.sounds)) sound.muted = nextMuted;
+      this.render();
+      if (!nextMuted) this.playSound("click");
     } else if (action === "toggle-ready") {
       this.client.send({ type: "set-ready", ready: !local?.ready });
     } else if (action === "start") {
@@ -1239,8 +1314,18 @@ export class MultiplayerController {
         this.client.send({ type: "use-hint", hint });
       }
     } else if (action === "board-cell" && this.awaitingLetterHint) {
+      const row = Number(button.dataset.row);
+      const col = Number(button.dataset.col);
       const cellKeyValue = `${button.dataset.row ?? ""},${button.dataset.col ?? ""}`;
       if (snapshot.puzzle?.visibleCells[cellKeyValue]) return;
+      const mysteryGem = snapshot.puzzle?.mysteryGems.find(
+        (gem) => !gem.claimed && gem.cell.row === row && gem.cell.col === col
+      );
+      if (mysteryGem) {
+        this.playSound("error");
+        this.setError("Mystery gems can only be uncovered by solving their word.");
+        return;
+      }
       this.awaitingLetterHint = false;
       this.client.send({
         type: "use-hint",
@@ -1290,8 +1375,6 @@ export class MultiplayerController {
       this.client.send({ type: "continue" });
     } else if (action === "skip-bonus-tally") {
       if (this.finalBonusPresentation) this.finalBonusPresentation.skipped = true;
-      this.finalBonusSoundPlayed = true;
-      this.playSound("win");
       this.render();
     } else if (action === "resume") {
       this.client.send({ type: "resume" });
@@ -1310,6 +1393,12 @@ export class MultiplayerController {
   }
 
   private handleChange(event: Event) {
+    const audioVolume = (event.target as HTMLElement).closest<HTMLInputElement>("[data-audio-volume]");
+    if (audioVolume) {
+      setGameAudioVolume(Number(audioVolume.value));
+      if (!isGameAudioMuted()) this.playSound("select");
+      return;
+    }
     const optionToggle = (event.target as HTMLElement).closest<HTMLInputElement>("[data-setting-option]");
     const snapshot = this.snapshot;
     if (optionToggle && snapshot) {
@@ -1482,8 +1571,7 @@ export class MultiplayerController {
       if (this.processedEventSequences.has(event.sequence)) continue;
       this.processedEventSequences.add(event.sequence);
 
-      if (event.type === "word-solved") playWordSuccess();
-      else if (event.type === "bonus-claimed") this.playSound("hintUsed");
+      if (event.type === "bonus-claimed") this.playSound("hintUsed");
       else if (event.type === "hint-used") this.playSound("hintUsed");
       else if (event.type === "puzzle-skipped" || event.type === "guess-rejected") this.playSound("error");
       else if (event.type === "turn-order") {
@@ -1495,10 +1583,40 @@ export class MultiplayerController {
       if (!event.actorId || !event.points || event.points <= 0) continue;
       if (event.type !== "word-solved" && event.type !== "hint-used") continue;
 
-      const wordIdsForEvent =
-        event.type === "word-solved" ? pendingWordIds.splice(0, 1) : pendingWordIds.splice(0);
-      const components = this.calculateFlightComponents(snapshot, wordIdsForEvent, event.points);
-      this.spawnScoreFlight(event.actorId, event.points, components, wordIdsForEvent);
+      const wordIdsForEvent = event.wordIds ??
+        (event.type === "word-solved" ? pendingWordIds.splice(0, 1) : pendingWordIds.splice(0));
+      const highlightedCellCount = this.animateSolvedCells(wordIdsForEvent);
+      const solvedWordDelay = highlightedCellCount > 0 ? SOLVED_WORD_SPOTLIGHT_MS : 0;
+      const components = event.score
+        ? {
+            letters: event.score.letters,
+            emerald: event.score.emerald,
+            ruby: event.score.ruby,
+            diamond: event.score.diamond,
+            bonus: event.score.bonus,
+            strongestGem: this.strongestGemForScore(event.score)
+          }
+        : this.calculateFlightComponents(snapshot, wordIdsForEvent, event.points);
+      const mysteryRewards = event.mysteryRewards ?? [];
+      if (mysteryRewards.length > 0) {
+        mysteryRewards.forEach((reward, index) => {
+          window.setTimeout(() => this.triggerMysteryEffect(reward), solvedWordDelay + index * 180);
+        });
+        const gemBloomIndex = mysteryRewards.findIndex((reward) => reward.effect === "gem-bloom");
+        const gemBloom = gemBloomIndex >= 0 ? mysteryRewards[gemBloomIndex] : null;
+        const scoreDelay = gemBloom
+          ? solvedWordDelay + gemBloomIndex * 180 + 1200 + Math.min(10, gemBloom.affectedCells?.length ?? 0) * 120
+          : solvedWordDelay + 320;
+        window.setTimeout(
+          () => this.spawnScoreFlight(event.actorId!, event.points!, components, wordIdsForEvent, mysteryRewards),
+          scoreDelay
+        );
+      } else {
+        window.setTimeout(
+          () => this.spawnScoreFlight(event.actorId!, event.points!, components, wordIdsForEvent, []),
+          solvedWordDelay
+        );
+      }
     }
 
     if (this.processedEventSequences.size > 500) {
@@ -1523,13 +1641,119 @@ export class MultiplayerController {
       .map((word) => word.id);
   }
 
+  private strongestGemForScore(score: ScoreBreakdown): GemName {
+    if (score.diamond > 0) return "diamond";
+    if (score.ruby > 0) return "ruby";
+    if (score.emerald > 0) return "emerald";
+    return "none";
+  }
+
+  private animateSolvedCells(wordIds: string[]) {
+    const puzzle = this.snapshot?.puzzle;
+    if (!puzzle) return 0;
+    const seen = new Set<string>();
+    const cells: Array<{ row: number; col: number }> = [];
+    for (const wordId of wordIds) {
+      const word = puzzle.words.find((candidate) => candidate.id === wordId);
+      if (!word) continue;
+      for (const cell of word.cells) {
+        const key = cellKey(cell.row, cell.col);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        cells.push(cell);
+      }
+    }
+
+    if (cells.length > 0) {
+      // A turn-advanced event can cause one final synchronous render after this
+      // method is called. Apply the spotlight on the next frame so that render
+      // cannot replace the animated elements before they are ever painted.
+      window.requestAnimationFrame(() => {
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const board = this.root.querySelector<HTMLElement>(".mp-board");
+        const highlighted: HTMLElement[] = [];
+        cells.forEach((cell, order) => {
+          const element = this.root.querySelector<HTMLElement>(
+            `.mp-cell[data-row="${cell.row}"][data-col="${cell.col}"]`
+          );
+          if (!element) return;
+          element.style.setProperty("--solve-delay", `${order * 55}ms`);
+          element.classList.add("mp-word-solved-focus");
+          highlighted.push(element);
+          if (!reducedMotion) {
+            element.classList.remove("mp-cell-solved-pop");
+            void element.offsetHeight;
+            element.classList.add("mp-cell-solved-pop");
+          }
+        });
+        if (highlighted.length === 0) return;
+        board?.classList.add("mp-board-word-focus");
+        playSolvedWordBell();
+        playSolvedTileCascade(highlighted.length);
+        window.setTimeout(() => {
+          board?.classList.remove("mp-board-word-focus");
+          for (const element of highlighted) {
+            element.classList.remove("mp-cell-solved-pop", "mp-word-solved-focus");
+            element.style.removeProperty("--solve-delay");
+          }
+        }, SOLVED_WORD_SPOTLIGHT_MS);
+      });
+    }
+    return cells.length;
+  }
+
+  private triggerMysteryEffect(reward: MysteryRewardPresentation) {
+    playMysteryReveal(reward.effect);
+    const source = this.root.querySelector<HTMLElement>(
+      `.mp-cell[data-row="${reward.cell.row}"][data-col="${reward.cell.col}"]`
+    );
+    if (source) {
+      source.classList.add("mp-mystery-target");
+      window.setTimeout(() => source.classList.remove("mp-mystery-target"), 720);
+    }
+
+    for (const [index, cell] of (reward.affectedCells ?? []).entries()) {
+      window.setTimeout(() => {
+        const target = this.root.querySelector<HTMLElement>(
+          `.mp-cell[data-row="${cell.row}"][data-col="${cell.col}"]`
+        );
+        if (!target) return;
+        if (reward.effect === "gem-bloom") {
+          if (index < 10) playGemBloomSparkle(index);
+          target.classList.remove("mp-gem-bloom-target");
+          void target.offsetHeight;
+          target.classList.add("mp-gem-bloom-target");
+          this.spawnGemBloomBurst(target);
+          window.setTimeout(() => target.classList.remove("mp-gem-bloom-target"), 1800);
+        } else {
+          if (index < 8) playMysteryTarget(index);
+          target.classList.add("mp-mystery-target");
+          window.setTimeout(() => target.classList.remove("mp-mystery-target"), 720);
+        }
+      }, 300 + index * 120);
+    }
+  }
+
+  private spawnGemBloomBurst(target: HTMLElement) {
+    if (!this.animationLayer || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const rect = target.getBoundingClientRect();
+    const burst = document.createElement("span");
+    burst.className = "mp-gem-bloom-burst";
+    burst.textContent = "✦";
+    burst.style.left = `${rect.left + rect.width / 2}px`;
+    burst.style.top = `${rect.top + rect.height / 2}px`;
+    burst.style.setProperty("--bloom-size", `${Math.max(rect.width, rect.height)}px`);
+    this.animationLayer.appendChild(burst);
+    window.setTimeout(() => burst.remove(), 1450);
+  }
+
   private calculateFlightComponents(
     snapshot: RoomSnapshot,
     wordIds: string[],
     fallbackTotal: number
   ): ScoreFlightComponents {
     if (!snapshot.puzzle || wordIds.length === 0) {
-      return { letters: fallbackTotal, emerald: 0, ruby: 0, diamond: 0, strongestGem: "none" };
+      return { letters: fallbackTotal, emerald: 0, ruby: 0, diamond: 0, bonus: 0, strongestGem: "none" };
     }
 
     let letters = 0;
@@ -1552,20 +1776,23 @@ export class MultiplayerController {
 
     const combined = letters + emerald + ruby + diamond;
     if (combined <= 0) {
-      return { letters: fallbackTotal, emerald: 0, ruby: 0, diamond: 0, strongestGem: "none" };
+      return { letters: fallbackTotal, emerald: 0, ruby: 0, diamond: 0, bonus: 0, strongestGem: "none" };
     }
     if (combined < fallbackTotal) letters += fallbackTotal - combined;
-    return { letters, emerald, ruby, diamond, strongestGem };
+    return { letters, emerald, ruby, diamond, bonus: 0, strongestGem };
   }
 
   private spawnScoreFlight(
     participantId: string,
     points: number,
     components: ScoreFlightComponents,
-    wordIds: string[]
+    wordIds: string[],
+    mysteryRewards: MysteryRewardPresentation[]
   ) {
     const snapshot = this.snapshot;
     if (!snapshot || !this.animationLayer) return;
+
+    playScoreFlight();
 
     const source = this.resolveFlightSource(snapshot, wordIds);
     const initialDestination = this.resolveFlightDestination(participantId);
@@ -1590,9 +1817,9 @@ export class MultiplayerController {
           y: Math.round(gridBounds.top + gridBounds.height * 0.5)
         }
       : { x: Math.round(window.innerWidth * 0.5), y: Math.round(window.innerHeight * 0.5) };
-    const centerTravelMs = 700;
-    const centerHoldMs = 1400;
-    const panelTravelMs = 460;
+    const centerTravelMs = 380;
+    const centerHoldMs = mysteryRewards.length > 0 ? 2200 : 620;
+    const panelTravelMs = 340;
     const completedWords = wordIds
       .map((wordId) => snapshot.puzzle?.words.find((word) => word.id === wordId)?.answer)
       .filter((answer): answer is string => Boolean(answer))
@@ -1605,6 +1832,25 @@ export class MultiplayerController {
         <span>+${score}</span>
       </span>`;
 
+    const mysteryRows = mysteryRewards.map((reward) => {
+      const details: Record<MysteryRewardPresentation["effect"], [string, string, string]> = {
+        "triple-word": ["3X", "Triple Word", "Word score tripled"],
+        "extra-turn": ["AGAIN", "Go Again", "Take another turn"],
+        "free-power": ["FREE", "Free Power", "Banked for later"],
+        "gem-bloom": ["+GEM", "Gem Bloom", `${reward.affectedCells?.length ?? 0} gem cells upgraded`],
+        "letter-burst": [
+          reward.letter || "A",
+          "Letter Burst",
+          `${reward.affectedCells?.length ?? 0} ${reward.letter || "letter"} tiles revealed`
+        ]
+      };
+      const [symbol, label, description] = details[reward.effect];
+      return `<div class="mp-score-mystery-row effect-${reward.effect}">
+        <span class="mp-score-mystery-symbol">${escapeHtml(symbol)}</span>
+        <span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(description)}</small></span>
+      </div>`;
+    }).join("");
+
     const flight = document.createElement("div");
     flight.className = `mp-score-flight gem-${strongestGem}`;
     flight.style.setProperty("--owner-color", ownerColor);
@@ -1616,7 +1862,9 @@ export class MultiplayerController {
         ${components.emerald > 0 ? gemScore("emerald", components.emerald) : ""}
         ${components.ruby > 0 ? gemScore("ruby", components.ruby) : ""}
         ${components.diamond > 0 ? gemScore("diamond", components.diamond) : ""}
-      </div>`;
+        ${components.bonus > 0 ? `<span class="mp-mystery-score">Mystery +${components.bonus}</span>` : ""}
+      </div>
+      ${mysteryRows ? `<div class="mp-score-mysteries"><b>Mystery Gem Reward</b>${mysteryRows}</div>` : ""}`;
     this.animationLayer.appendChild(flight);
 
     if (reducedMotion) {
@@ -1704,6 +1952,7 @@ export class MultiplayerController {
       presented.emerald += components.emerald;
       presented.ruby += components.ruby;
       presented.diamond += components.diamond;
+      presented.bonus += components.bonus;
       presented.total += points;
     }
 
@@ -1781,6 +2030,7 @@ export class MultiplayerController {
     if (!card) return;
     const total = card.querySelector<HTMLElement>('[data-score-field="total"]');
     if (!total) return;
+    playScoreImpact(gem);
 
     card.classList.remove("mp-score-impact-panel");
     total.classList.remove("mp-score-impact-total", "gem-emerald", "gem-ruby", "gem-diamond");
@@ -1791,7 +2041,7 @@ export class MultiplayerController {
     total.classList.add("mp-score-impact-total");
     if (gem !== "none") total.classList.add(`gem-${gem}`);
 
-    const flashField = (field: "letters" | "emerald" | "diamond" | "ruby", active: boolean) => {
+    const flashField = (field: "letters" | "emerald" | "diamond" | "ruby" | "bonus", active: boolean) => {
       if (!active) return;
       const el = card.querySelector<HTMLElement>(`[data-score-field="${field}"]`);
       if (!el) return;
@@ -1806,6 +2056,7 @@ export class MultiplayerController {
     flashField("emerald", components.emerald > 0);
     flashField("ruby", components.ruby > 0);
     flashField("diamond", components.diamond > 0);
+    flashField("bonus", components.bonus > 0);
 
     const totalRect = total.getBoundingClientRect();
     for (let i = 0; i < 8; i += 1) {
@@ -1862,8 +2113,9 @@ export class MultiplayerController {
 
   private playSound(name: keyof typeof Assets.sounds) {
     const sound = this.sounds[name];
-    if (!sound) return;
-    sound.volume = sampleVolume(name);
+    if (!sound || isGameAudioMuted()) return;
+    sound.muted = false;
+    sound.volume = sampleVolume(name) * gameAudioVolume();
     sound.currentTime = 0;
     sound.play().catch(() => undefined);
   }

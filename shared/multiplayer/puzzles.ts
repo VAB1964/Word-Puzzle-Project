@@ -2,6 +2,9 @@ import type {
   Difficulty,
   GemType,
   GameMode,
+  MysteryEffect,
+  MysteryGemDefinition,
+  PlayMode,
   PuzzleCellRef,
   PuzzleDefinition,
   PuzzleWordDefinition
@@ -166,6 +169,78 @@ const buildWordGems = (wordLength: number, rarity: number, random: () => number)
   return gems;
 };
 
+const buildMysteryGems = (
+  words: PuzzleWordDefinition[],
+  playMode: PlayMode,
+  random: () => number
+): MysteryGemDefinition[] => {
+  const cellUseCounts = new Map<string, number>();
+  for (const word of words) {
+    for (const cell of word.cells) {
+      const key = `${cell.row},${cell.col}`;
+      cellUseCounts.set(key, (cellUseCounts.get(key) ?? 0) + 1);
+    }
+  }
+
+  const wordCandidates = shuffled(words, random)
+    .map((word) => {
+      const nonIntersections = word.cells
+        .map((cell, position) => ({ cell, position }))
+        .filter(({ cell }) => cellUseCounts.get(`${cell.row},${cell.col}`) === 1);
+      const positions = nonIntersections.length > 0
+        ? nonIntersections
+        : word.cells.map((cell, position) => ({ cell, position }));
+      return { word, positions };
+    })
+    .filter(({ positions }) => positions.length > 0);
+
+  const optionalPool: MysteryEffect[] = playMode === "Turn Based"
+    ? ["extra-turn", "free-power", "gem-bloom", "letter-burst"]
+    : ["free-power", "gem-bloom", "letter-burst"];
+  const effects: MysteryEffect[] = ["triple-word", ...shuffled(optionalPool, random).slice(0, 2)];
+
+  const selected: Array<{
+    word: PuzzleWordDefinition;
+    choice: { cell: PuzzleCellRef; position: number };
+  }> = [];
+  const usedCells = new Set<string>();
+  for (const candidate of wordCandidates) {
+    if (selected.length >= 3) break;
+    const available = candidate.positions.filter(
+      ({ cell }) => !usedCells.has(`${cell.row},${cell.col}`)
+    );
+    if (available.length === 0) continue;
+    const choice = available[Math.floor(random() * available.length)];
+    usedCells.add(`${choice.cell.row},${choice.cell.col}`);
+    selected.push({ word: candidate.word, choice });
+  }
+  if (selected.length < 3) {
+    const remaining = shuffled(
+      wordCandidates.flatMap(({ word, positions }) => positions.map((choice) => ({ word, choice }))),
+      random
+    );
+    for (const candidate of remaining) {
+      if (selected.length >= 3) break;
+      const key = `${candidate.choice.cell.row},${candidate.choice.cell.col}`;
+      if (usedCells.has(key)) continue;
+      usedCells.add(key);
+      selected.push(candidate);
+    }
+  }
+
+  return selected.map(({ word, choice }, index) => {
+    // Mystery gems replace ordinary gems rather than stacking with them.
+    word.gems[choice.position] = "none";
+    return {
+      id: `m${index}`,
+      wordId: word.id,
+      position: choice.position,
+      cell: choice.cell,
+      effect: effects[index]
+    };
+  });
+};
+
 const chooseBase = (
   words: PuzzleWordData[],
   difficulty: Difficulty,
@@ -309,7 +384,8 @@ export const generateMultiplayerPuzzle = (
   seed: string,
   puzzleIndex: number,
   puzzleCount: number,
-  usedBases: Set<string>
+  usedBases: Set<string>,
+  playMode: PlayMode = "Turn Based"
 ): PuzzleDefinition => {
   const random = randomForSeed(seed);
   const lastPuzzle = puzzleIndex === puzzleCount - 1;
@@ -363,6 +439,7 @@ export const generateMultiplayerPuzzle = (
     gems: buildWordGems(entry.word.text.length, entry.word.rarity, random),
     cells: entry.word.text.split("").map((_, position) => coordinates(entry, position))
   }));
+  const mysteryGems = buildMysteryGems(words, playMode, random);
   return {
     id: `${seed}-${puzzleIndex}`,
     mode,
@@ -371,6 +448,7 @@ export const generateMultiplayerPuzzle = (
     rows,
     cols,
     words,
+    mysteryGems,
     bonusWords
   };
 };
