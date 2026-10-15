@@ -45,7 +45,7 @@ constexpr float HINT_BTN_HEIGHT = SCRAMBLE_BTN_HEIGHT;
 const int MIN_WORD_LENGTH = 3;
 const int HARD_MIN_WORD_LENGTH = 4;
 
-const int EASY_MAX_SOLUTIONS = 7;
+const int EASY_MAX_SOLUTIONS = 10;
 const int MEDIUM_MAX_SOLUTIONS = 12;
 const int HARD_MAX_SOLUTIONS = 15;
 const int MIN_DESIRED_GRID_WORDS = 5;

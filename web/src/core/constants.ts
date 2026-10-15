@@ -39,7 +39,7 @@ export const HINT_BTN_HEIGHT = SCRAMBLE_BTN_HEIGHT;
 export const MIN_WORD_LENGTH = 3;
 export const HARD_MIN_WORD_LENGTH = 4;
 
-export const EASY_MAX_SOLUTIONS = 7;
+export const EASY_MAX_SOLUTIONS = 10;
 export const MEDIUM_MAX_SOLUTIONS = 12;
 export const HARD_MAX_SOLUTIONS = 15;
 export const MIN_DESIRED_GRID_WORDS = 5;

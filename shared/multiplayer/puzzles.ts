@@ -127,7 +127,7 @@ const canSpell = (word: string, letters: string) => {
 };
 
 const limits = {
-  Casual: { Easy: 7, Medium: 12, Hard: 15 },
+  Casual: { Easy: 10, Medium: 12, Hard: 15 },
   Crossword: { Easy: 10, Medium: 15, Hard: 20 }
 } satisfies Record<GameMode, Record<Difficulty, number>>;
 

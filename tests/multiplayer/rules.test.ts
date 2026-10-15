@@ -83,6 +83,37 @@ describe("end-of-session bonus", () => {
 });
 
 describe("multiplayer scoring rules", () => {
+  it("awards hint credits from visible gems and not from word rarity or mystery cells", () => {
+    const puzzle: PuzzleDefinition = {
+      id: "gem-hint-credits",
+      mode: "Casual",
+      baseLetters: "GEMS",
+      rows: 1,
+      cols: 4,
+      bonusWords: [],
+      words: [{
+        id: "gems",
+        answer: "gems",
+        rarity: 1,
+        gems: ["emerald", "ruby", "diamond", "none"],
+        cells: Array.from({ length: 4 }, (_, col) => ({ row: 0, col }))
+      }],
+      mysteryGems: [{
+        id: "m0",
+        wordId: "gems",
+        position: 3,
+        cell: { row: 0, col: 3 },
+        effect: "free-power"
+      }]
+    };
+    const players = [participant("Alice", 0)];
+
+    const result = submitGuess(puzzle, createPuzzleRuntime(puzzle), players, "Alice", "gems");
+
+    expect(result.hintCreditsAwarded).toBe(6);
+    expect(players[0].hintCredits).toBe(6);
+  });
+
   it("triples the completed word total and records the mystery reward", () => {
     const puzzle: PuzzleDefinition = {
       id: "triple-mystery",

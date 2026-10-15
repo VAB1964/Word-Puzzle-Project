@@ -6,6 +6,7 @@ import {
   totalCreditValue
 } from "./scoring";
 import type {
+  GemType,
   HintKind,
   MysteryRewardPresentation,
   Participant,
@@ -21,10 +22,11 @@ export const HINT_COSTS: Record<HintKind, number> = {
   "first-of-each": 20
 };
 
-export const GEM_HINT_REWARDS: Record<number, number> = {
-  2: 2,
-  3: 4,
-  4: 6
+export const GEM_HINT_REWARDS: Record<GemType, number> = {
+  none: 0,
+  emerald: 1,
+  ruby: 2,
+  diamond: 3
 };
 
 export interface PuzzleActionResult {
@@ -219,7 +221,10 @@ const completeVisibleWords = (
     completed.add(word.id);
     runtime.completedWordIds.push(word.id);
     solved.push(word.id);
-    hints += GEM_HINT_REWARDS[word.rarity] ?? 0;
+    hints += word.gems.reduce(
+      (total, gem) => total + (GEM_HINT_REWARDS[gem] ?? 0),
+      0
+    );
   }
 
   const actor = getParticipant(participants, actorId);

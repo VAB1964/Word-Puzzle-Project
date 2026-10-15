@@ -581,7 +581,11 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           .map((id) => state.puzzle!.words.find((word) => word.id === id)?.answer.toUpperCase())
           .filter(Boolean)
           .join(", ");
-        const summary = `${actor.name} solved ${solved || "a word"} +${result.pointsAwarded}.`;
+        const hintAward =
+          result.hintCreditsAwarded > 0
+            ? ` and earned +${result.hintCreditsAwarded} hint credit${result.hintCreditsAwarded === 1 ? "" : "s"}`
+            : "";
+        const summary = `${actor.name} solved ${solved || "a word"} +${result.pointsAwarded}${hintAward}.`;
         const text = `${summary}\n${this.formatAwardBreakdown(result.scoreAwarded)}`;
         events.push(
           this.event(
@@ -629,6 +633,10 @@ export class WordPuzzleRoom extends DurableObject<Env> {
           "hint-used",
           `${actor.name} used ${command.hint}, scored +${result.pointsAwarded}${
             solved.length > 0 ? `, and completed ${solved.join(", ")}` : ""
+          }${
+            result.hintCreditsAwarded > 0
+              ? `, earning +${result.hintCreditsAwarded} hint credit${result.hintCreditsAwarded === 1 ? "" : "s"}`
+              : ""
           }.`,
           actor.id,
           result.pointsAwarded,
@@ -826,7 +834,11 @@ export class WordPuzzleRoom extends DurableObject<Env> {
             .map((id) => next.puzzle!.words.find((candidate) => candidate.id === id)?.answer.toUpperCase())
             .filter(Boolean)
             .join(", ");
-          const summary = `${ai.name} solved ${solved || word.answer.toUpperCase()} +${result.pointsAwarded}.`;
+          const hintAward =
+            result.hintCreditsAwarded > 0
+              ? ` and earned +${result.hintCreditsAwarded} hint credit${result.hintCreditsAwarded === 1 ? "" : "s"}`
+              : "";
+          const summary = `${ai.name} solved ${solved || word.answer.toUpperCase()} +${result.pointsAwarded}${hintAward}.`;
           const text = `${summary}\n${this.formatAwardBreakdown(result.scoreAwarded)}`;
           events.push(
             this.event(

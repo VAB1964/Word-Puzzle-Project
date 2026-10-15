@@ -561,7 +561,7 @@ export class MultiplayerController {
             <strong>${escapeHtml(participant.name)}</strong>
             <span class="mp-player-level">${
               participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human"
-            }</span>
+            } · Hint Points: ${participant.hintCredits}</span>
           </div>
           <b class="mp-score-total" data-score-field="total">${score.total}</b>
           <small class="mp-score-breakdown">
@@ -569,7 +569,7 @@ export class MultiplayerController {
             <span data-score-field="emerald">E ${score.emerald}</span> ·
             <span data-score-field="ruby">R ${score.ruby}</span> ·
             <span data-score-field="diamond">D ${score.diamond}</span>
-            &middot; <span data-score-field="bonus">M ${score.bonus}</span>
+            &middot; <span data-score-field="bonus">? ${score.bonus}</span>
             ${(participant.freePowerTokens ?? 0) > 0 ? `&middot; <span class="mp-free-power-count">Free ${(participant.freePowerTokens ?? 0)}</span>` : ""}
           </small>
         </article>`;
@@ -587,7 +587,9 @@ export class MultiplayerController {
           const score = this.presentedScores.get(participant.id) ?? participant.score;
           const activeClass =
             snapshot.settings.playMode === "Turn Based" && participant.id === activeTurnId ? "mp-active-turn" : "";
-          const level = participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human";
+          const level = `${
+            participant.kind === "ai" ? `AI · ${escapeHtml(participant.aiLevel ?? "College")}` : "Human"
+          } · Hint Points: ${participant.hintCredits}`;
           return `<article class="mp-compact-score-row ${activeClass}" style="--player-color:${participant.color}" data-participant-id="${participant.id}">
             <span class="mp-color-dot" aria-hidden="true"></span>
             <span class="mp-compact-player">
@@ -600,7 +602,7 @@ export class MultiplayerController {
               <span data-score-field="emerald">E ${score.emerald}</span>
               <span data-score-field="ruby">R ${score.ruby}</span>
               <span data-score-field="diamond">D ${score.diamond}</span>
-              <span data-score-field="bonus">M ${score.bonus}</span>
+              <span data-score-field="bonus">? ${score.bonus}</span>
             </small>
           </article>`;
         })
@@ -930,13 +932,13 @@ export class MultiplayerController {
             ${snapshot.puzzle ? this.renderBoard(snapshot.puzzle, snapshot) : ""}
           </div>
           ${this.renderFeedbackText(this.feedback)}
+        </section>
         <aside class="mp-paper mp-summary-card">
           <h1>${snapshot.puzzle?.skipped ? "Puzzle Skipped" : "Puzzle Complete"}</h1>
           <p>Puzzle ${snapshot.puzzleIndex + 1} of ${snapshot.puzzleCount}</p>
           <p>Review the completed board, then continue when you are ready.</p>
           <button class="mp-primary" data-action="continue" ${continued ? "disabled" : ""}>${continued ? "Waiting for others…" : "Continue"}</button>
         </aside>
-        </section>
       </main>
       ${this.renderBonusInfo(snapshot)}
       ${this.showBonusList ? this.renderBonusListPopup(snapshot) : ""}`;
@@ -1976,7 +1978,7 @@ export class MultiplayerController {
       emerald: `E ${score.emerald}`,
       ruby: `R ${score.ruby}`,
       diamond: `D ${score.diamond}`,
-      bonus: `B ${score.bonus}`
+      bonus: `? ${score.bonus}`
     };
     for (const card of cards) {
       for (const [field, value] of Object.entries(values)) {

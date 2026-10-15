@@ -1620,19 +1620,17 @@ select {
 }
 
 .mp-summary-card {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 30;
+  position: static;
   width: min(22rem, calc(100% - 2rem));
   box-sizing: border-box;
+  margin: 0 auto;
   padding: clamp(1.25rem, 3vw, 2rem);
   text-align: center;
-  transform: translate(-50%, -50%);
 }
 
 .mp-summary-layout {
   grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
 }
 
 .mp-summary-layout .mp-board-panel {
@@ -2066,8 +2064,7 @@ select {
 }
 
 /* Puzzle review keeps the same compact tablet shell and full-width board used
-   during play. The completion card is layered over the board instead of
-   forcing the review into a separate desktop column. */
+   during play, with the completion card flowing beneath the finished board. */
 @media (min-width: 761px) and (max-width: 1500px) {
   #appEntry:has(.mp-shell-puzzle-summary) {
     overflow: hidden;
@@ -2110,8 +2107,8 @@ select {
 
   .mp-shell-puzzle-summary .mp-summary-layout {
     display: grid;
-    grid-template-rows: auto;
-    gap: 0;
+    grid-template-rows: auto auto;
+    gap: 0.35rem;
     width: 100%;
     min-height: 0;
     margin: 0;
@@ -2674,7 +2671,6 @@ select {
     gap: 0 0.22rem;
   }
 
-  .mp-shell-playing .mp-compact-player small,
   .mp-shell-playing .mp-compact-breakdown {
     display: none;
   }
