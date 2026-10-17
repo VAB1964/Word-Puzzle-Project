@@ -146,6 +146,8 @@ import {
   campaignWheelLetterMaxRadiusFactor,
   campaignWheelLetterScale,
   campaignLevel,
+  createCampaignSeed,
+  freshCampaignProgress,
   loadCampaignProgress,
   saveCampaignProgress,
   type CampaignProgress
@@ -193,6 +195,10 @@ const KEYBOARD_LETTER_PULSE_DURATION_SEC = 0.16;
 const KEYBOARD_LETTER_PULSE_SCALE_MAX = 1.1;
 const UI_INK: Color = { r: 53, g: 39, b: 26, a: 255 };
 const UI_TEXT: Color = UI_INK;
+const PHONE_PORTRAIT_MAX_WIDTH = 760;
+const TABLET_PORTRAIT_MAX_WIDTH = 1200;
+const PHONE_PORTRAIT_LAYOUT_WIDTH = 600;
+const TABLET_PORTRAIT_LAYOUT_WIDTH = 720;
 
 export class Game {
   private readonly campaignEnabled: boolean;
@@ -202,6 +208,7 @@ export class Game {
   private campaignLevelButtons: Array<{ level: number; rect: Rect }> = [];
   private campaignPreviousButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private campaignNextButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private campaignNewButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private campaignBackButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private width = 0;
   private height = 0;
@@ -209,6 +216,7 @@ export class Game {
   private layoutWidth = REF_W;
   private layoutHeight = REF_H;
   private isPortraitLayout = false;
+  private isTabletPortraitLayout = false;
   private uiScale = 1;
   private fontFamily = "WordPuzzleFont";
   private dpr = 1;
@@ -232,7 +240,7 @@ export class Game {
   private canResumeGameFromMainMenu = false;
   private resumeScreenFromMainMenu: GameScreen = GameScreen.Playing;
   private showExitConfirmDialog = false;
-  private pendingExitAction: "closeWindow" | "exitToMainMenu" | null = null;
+  private pendingExitAction: "closeWindow" | "exitToMainMenu" | "newCampaign" | null = null;
   private showRulesDialog = false;
 
   private mousePos: Vec2 = { x: 0, y: 0 };
@@ -352,8 +360,14 @@ export class Game {
     this.width = width;
     this.height = height;
     this.dpr = dpr;
-    this.isPortraitLayout = width <= 760 && height > width;
-    this.layoutWidth = this.isPortraitLayout ? 600 : REF_W;
+    this.isPortraitLayout = width <= TABLET_PORTRAIT_MAX_WIDTH && height > width;
+    this.isTabletPortraitLayout =
+      this.isPortraitLayout && width > PHONE_PORTRAIT_MAX_WIDTH;
+    this.layoutWidth = this.isTabletPortraitLayout
+      ? TABLET_PORTRAIT_LAYOUT_WIDTH
+      : this.isPortraitLayout
+        ? PHONE_PORTRAIT_LAYOUT_WIDTH
+        : REF_W;
     this.layoutHeight = this.isPortraitLayout ? this.layoutWidth * (height / Math.max(1, width)) : REF_H;
     this.view = createViewTransform(width, height, this.layoutWidth, this.layoutHeight);
     this.uiScale = this.isPortraitLayout
@@ -1245,6 +1259,11 @@ export class Game {
       this.updateCampaignSelectLayout();
       return;
     }
+    if (rectContains(this.campaignNewButton, world)) {
+      this.playSound("click");
+      this.requestExitConfirmation("newCampaign");
+      return;
+    }
     if (rectContains(this.campaignBackButton, world)) {
       this.playSound("click");
       this.currentScreen = GameScreen.MainMenu;
@@ -1252,7 +1271,7 @@ export class Game {
   }
 
   private startCampaignLevel(levelNumber: number) {
-    const level = campaignLevel(levelNumber);
+    const level = campaignLevel(levelNumber, this.campaignProgress.campaignSeed);
     this.activeCampaignLevel = level.level;
     this.campaignProgress.currentLevel = level.level;
     saveCampaignProgress(this.campaignProgress);
@@ -1283,7 +1302,9 @@ export class Game {
     this.updateMenuLayout();
   }
 
-  private requestExitConfirmation(action: "closeWindow" | "exitToMainMenu") {
+  private requestExitConfirmation(
+    action: "closeWindow" | "exitToMainMenu" | "newCampaign"
+  ) {
     this.showRulesDialog = false;
     this.pendingExitAction = action;
     this.showExitConfirmDialog = true;
@@ -1308,8 +1329,26 @@ export class Game {
         this.requestBrowserClose();
       } else if (action === "exitToMainMenu") {
         this.exitToMainMenu();
+      } else if (action === "newCampaign") {
+        this.startNewCampaign();
       }
     }
+  }
+
+  private startNewCampaign() {
+    const entropy = Date.now() + Math.floor(Math.random() * 1_000_000);
+    const seed = createCampaignSeed(this.campaignProgress.campaignSeed, entropy);
+    const campaignNumber = this.campaignProgress.campaignNumber + 1;
+    this.campaignProgress = freshCampaignProgress(seed, campaignNumber);
+    this.activeCampaignLevel = 1;
+    this.campaignPage = 0;
+    this.currentScore = 0;
+    this.hintPoints = this.campaignProgress.hintPoints;
+    this.canResumeGameFromMainMenu = false;
+    this.isInSession = false;
+    this.clearDragState();
+    saveCampaignProgress(this.campaignProgress);
+    this.updateCampaignSelectLayout();
   }
 
   private handleRulesDialogInput(world: Vec2) {
@@ -1713,7 +1752,10 @@ export class Game {
   }
 
   private rebuildCampaignLevel() {
-    const level = campaignLevel(this.activeCampaignLevel);
+    const level = campaignLevel(
+      this.activeCampaignLevel,
+      this.campaignProgress.campaignSeed
+    );
     const rackWord = level.rackWord.toLowerCase();
     const wordByText = new Map(this.fullWordList.map((word) => [word.text.toLowerCase(), word]));
     const fallbackWord = (text: string): WordInfo => ({
@@ -1964,9 +2006,15 @@ export class Game {
       width: 140,
       height: 52
     };
+    this.campaignNewButton = {
+      x: this.layoutWidth / 2 - 105,
+      y: navigationY + 66,
+      width: 210,
+      height: 52
+    };
     this.campaignBackButton = {
       x: this.layoutWidth / 2 - 75,
-      y: navigationY + 70,
+      y: navigationY + 132,
       width: 150,
       height: 52
     };
@@ -2181,7 +2229,8 @@ export class Game {
               this.wheelCenter.x +
                 this.visualBgRadius * 0.45 -
                 scrambleSize / 2 +
-                scrambleSize,
+                scrambleSize +
+                (this.isTabletPortraitLayout ? scrambleSize * 0.5 : 0),
               18,
               this.layoutWidth - scrambleSize - 18
             ),
@@ -2375,7 +2424,7 @@ export class Game {
       this.drawMenuPanel(ctx, "Word Journey", buttons);
       drawCenteredText(
         ctx,
-        `${this.campaignProgress.completedLevels.length} of ${CAMPAIGN_LEVELS.length} levels complete`,
+        `Campaign ${this.campaignProgress.campaignNumber} · ${this.campaignProgress.completedLevels.length} of ${CAMPAIGN_LEVELS.length} complete`,
         {
           x: this.layoutWidth / 2,
           y: this.mainMenuButtons[0].y - 24
@@ -2421,7 +2470,7 @@ export class Game {
     );
     drawCenteredText(
       ctx,
-      `Levels ${pageStart}–${pageEnd}`,
+      `Campaign ${this.campaignProgress.campaignNumber} · Levels ${pageStart}–${pageEnd}`,
       { x: this.layoutWidth / 2, y: panel.y + 38 },
       UI_TEXT,
       this.font(18, true)
@@ -2430,7 +2479,10 @@ export class Game {
     for (const entry of this.campaignLevelButtons) {
       const locked = entry.level > this.campaignProgress.highestUnlockedLevel;
       const completed = this.campaignProgress.completedLevels.includes(entry.level);
-      const level = campaignLevel(entry.level);
+      const level = campaignLevel(
+        entry.level,
+        this.campaignProgress.campaignSeed
+      );
       const fill = locked
         ? { r: 126, g: 116, b: 101, a: 255 }
         : completed
@@ -2467,6 +2519,12 @@ export class Game {
         ? this.currentTheme.menuButtonNormal
         : { r: 126, g: 116, b: 101, a: 255 }
     );
+    this.drawButton(
+      ctx,
+      this.campaignNewButton,
+      "New Campaign",
+      this.currentTheme.menuButtonNormal
+    );
     this.drawButton(ctx, this.campaignBackButton, "Back", this.currentTheme.menuButtonNormal);
   }
 
@@ -2479,13 +2537,23 @@ export class Game {
     const panel = this.exitConfirmPanel;
     this.drawElevatedPanel(ctx, panel.x, panel.y, panel.width, panel.height);
 
+    const replacingCampaign = this.pendingExitAction === "newCampaign";
     drawCenteredText(
       ctx,
-      "Are you sure?",
+      replacingCampaign ? "Start a new campaign?" : "Are you sure?",
       { x: panel.x + panel.width / 2, y: panel.y + 50 },
       UI_TEXT,
-      this.font(28, true)
+      this.font(replacingCampaign ? 23 : 28, true)
     );
+    if (replacingCampaign) {
+      drawCenteredText(
+        ctx,
+        "Current progress will be replaced.",
+        { x: panel.x + panel.width / 2, y: panel.y + 82 },
+        UI_TEXT,
+        this.font(14)
+      );
+    }
 
     this.drawButton(
       ctx,

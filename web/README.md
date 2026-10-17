@@ -38,8 +38,9 @@ npm.cmd run android:sync
 npm.cmd run android:open
 ```
 
-Open `web/android` directly in Android Studio when preferred. The fixed
-campaign catalog is regenerated from the repository root with:
+Open `web/android` directly in Android Studio when preferred. The original
+campaign and its prevalidated replay variants are regenerated from the
+repository root with:
 
 ```powershell
 npm.cmd run campaign-levels

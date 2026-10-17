@@ -1,7 +1,7 @@
-"""Generate the fixed single-player mobile campaign.
+"""Generate prevalidated single-player mobile campaigns.
 
-The generator is deterministic. Re-running it against the same dictionary
-produces the same catalog, which makes campaign saves and level reports stable.
+The generator is deterministic. Re-running it against the same dictionary and
+seeds produces the same catalogs, which makes campaign saves reproducible.
 """
 
 from __future__ import annotations
@@ -18,6 +18,10 @@ ROOT = Path(__file__).resolve().parents[1]
 DICTIONARY = ROOT / "words_processed.csv"
 OUTPUT = ROOT / "web" / "src" / "data" / "campaign-levels.json"
 SEED = 20261016
+CAMPAIGN_COUNT = 8
+# These connected word sets do not place completely with the app's
+# deterministic crossword-board generator, so they intentionally remain Casual.
+UNSUITABLE_CROSSWORDS = {(6, 58), (7, 45)}
 
 
 @dataclass(frozen=True)
@@ -117,13 +121,14 @@ def choose_required_words(
     return selected
 
 
-def generate() -> dict:
-    words = load_words()
+def generate_campaign(
+    words: list[Word], seed: int, campaign_number: int
+) -> list[dict]:
     roots_by_length = {
         length: [word for word in words if len(word.text) == length]
         for length in range(3, 8)
     }
-    rng = random.Random(SEED)
+    rng = random.Random(seed)
     used_letter_sets: set[str] = set()
     levels: list[dict] = []
 
@@ -139,7 +144,11 @@ def generate() -> dict:
             )
             target_count = 1 + (rack_length - 3) + int(4 * progress + 0.999999)
             maximum_rarity = min(4, 1 + int(3 * progress))
-            wants_crossword = level_number > 3 and level_number % 5 in (0, 3)
+            wants_crossword = (
+                level_number > 3
+                and level_number % 5 in (0, 3)
+                and (campaign_number, level_number) not in UNSUITABLE_CROSSWORDS
+            )
 
             candidates = [
                 root
@@ -190,6 +199,21 @@ def generate() -> dict:
                 }
             )
 
+    return levels
+
+
+def generate() -> dict:
+    words = load_words()
+    campaigns = [
+        {
+            "id": index,
+            "seed": SEED + index * 7919,
+            "levels": generate_campaign(
+                words, SEED + index * 7919, index + 1
+            ),
+        }
+        for index in range(CAMPAIGN_COUNT)
+    ]
     return {
         "version": 1,
         "formula": {
@@ -198,7 +222,9 @@ def generate() -> dict:
             "targetWords": "1 + (rackLength - 3) + ceil(4 * stageProgress)",
             "maximumRarity": "1 + floor(3 * stageProgress)",
         },
-        "levels": levels,
+        # Keep the original field for compatibility and as Campaign 1.
+        "levels": campaigns[0]["levels"],
+        "campaigns": campaigns,
     }
 
 
@@ -206,7 +232,10 @@ def main() -> None:
     catalog = generate()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(catalog, indent=2) + "\n", encoding="utf-8")
-    print(f"Wrote {len(catalog['levels'])} levels to {OUTPUT}")
+    print(
+        f"Wrote {len(catalog['campaigns'])} campaigns "
+        f"({len(catalog['levels'])} levels each) to {OUTPUT}"
+    )
 
 
 if __name__ == "__main__":

@@ -14,6 +14,11 @@ export interface CampaignLevel {
 interface CampaignCatalog {
   version: number;
   levels: CampaignLevel[];
+  campaigns?: Array<{
+    id: number;
+    seed: number;
+    levels: CampaignLevel[];
+  }>;
 }
 
 export interface CampaignProgress {
@@ -24,13 +29,18 @@ export interface CampaignProgress {
   totalScore: number;
   hintPoints: number;
   tutorialCompleted: boolean;
+  campaignSeed: number;
+  campaignNumber: number;
 }
 
 const STORAGE_KEY = "wordpuzzle.campaign.v1";
 const catalog = catalogJson as CampaignCatalog;
+const campaignVariants =
+  catalog.campaigns?.map((campaign) => campaign.levels) ?? [catalog.levels];
 
 export const CAMPAIGN_LEVELS = catalog.levels;
 export const CAMPAIGN_VERSION = catalog.version;
+export const CAMPAIGN_VARIANT_COUNT = campaignVariants.length;
 
 export const campaignTileScaleLimit = (rackLength: number, wordCount: number) => {
   const rackAdjustment = Math.max(0, rackLength - 3) * 0.1;
@@ -44,20 +54,44 @@ export const campaignWheelLetterScale = (rackLength: number) =>
 export const campaignWheelLetterMaxRadiusFactor = (rackLength: number) =>
   Math.max(0.2, 0.3 - Math.max(0, rackLength - 3) * 0.025);
 
-const freshProgress = (): CampaignProgress => ({
+export const campaignVariantIndex = (seed: number) => {
+  if (campaignVariants.length <= 1 || seed === 0) return 0;
+  return (Math.trunc(seed) >>> 0) % campaignVariants.length;
+};
+
+export const campaignLevels = (seed = 0) =>
+  campaignVariants[campaignVariantIndex(seed)] ?? CAMPAIGN_LEVELS;
+
+export const createCampaignSeed = (currentSeed: number, entropy = Date.now()) => {
+  if (campaignVariants.length <= 1) return 0;
+  const currentVariant = campaignVariantIndex(currentSeed);
+  let candidate = (Math.trunc(entropy) >>> 0) || 1;
+  while (campaignVariantIndex(candidate) === currentVariant) {
+    candidate = (candidate + 1) >>> 0;
+    if (candidate === 0) candidate = 1;
+  }
+  return candidate;
+};
+
+export const freshCampaignProgress = (
+  campaignSeed = 0,
+  campaignNumber = 1
+): CampaignProgress => ({
   version: CAMPAIGN_VERSION,
   currentLevel: 1,
   highestUnlockedLevel: 1,
   completedLevels: [],
   totalScore: 0,
   hintPoints: 3,
-  tutorialCompleted: false
+  tutorialCompleted: false,
+  campaignSeed,
+  campaignNumber
 });
 
 export const loadCampaignProgress = (): CampaignProgress => {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "") as Partial<CampaignProgress>;
-    if (parsed.version !== CAMPAIGN_VERSION) return freshProgress();
+    if (parsed.version !== CAMPAIGN_VERSION) return freshCampaignProgress();
     const completedLevels = Array.isArray(parsed.completedLevels)
       ? parsed.completedLevels.filter((level) => Number.isInteger(level) && level > 0)
       : [];
@@ -75,10 +109,12 @@ export const loadCampaignProgress = (): CampaignProgress => {
       completedLevels,
       totalScore: Math.max(0, Number(parsed.totalScore) || 0),
       hintPoints: Math.max(0, Number(parsed.hintPoints) || 0),
-      tutorialCompleted: Boolean(parsed.tutorialCompleted)
+      tutorialCompleted: Boolean(parsed.tutorialCompleted),
+      campaignSeed: Math.max(0, Math.trunc(Number(parsed.campaignSeed) || 0)),
+      campaignNumber: Math.max(1, Math.trunc(Number(parsed.campaignNumber) || 1))
     };
   } catch {
-    return freshProgress();
+    return freshCampaignProgress();
   }
 };
 
@@ -90,5 +126,7 @@ export const saveCampaignProgress = (progress: CampaignProgress) => {
   }
 };
 
-export const campaignLevel = (levelNumber: number) =>
-  CAMPAIGN_LEVELS.find((level) => level.level === levelNumber) ?? CAMPAIGN_LEVELS[0];
+export const campaignLevel = (levelNumber: number, seed = 0) => {
+  const levels = campaignLevels(seed);
+  return levels.find((level) => level.level === levelNumber) ?? levels[0];
+};

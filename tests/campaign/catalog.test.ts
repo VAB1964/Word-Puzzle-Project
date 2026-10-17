@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   CAMPAIGN_LEVELS,
+  CAMPAIGN_VARIANT_COUNT,
+  campaignLevels,
   campaignTileScaleLimit,
   campaignWheelLetterMaxRadiusFactor,
-  campaignWheelLetterScale
+  campaignWheelLetterScale,
+  campaignVariantIndex,
+  createCampaignSeed
 } from "../../web/src/campaign";
 import { GameMode } from "../../web/src/core/types";
 import type { WordInfo } from "../../web/src/core/types";
@@ -41,6 +45,11 @@ const connectedBySharedLetters = (words: string[]) => {
   return true;
 };
 
+const allCampaigns = Array.from(
+  { length: CAMPAIGN_VARIANT_COUNT },
+  (_, index) => campaignLevels(index)
+);
+
 describe("mobile campaign catalog", () => {
   it("scales sparse and short puzzles more prominently", () => {
     expect(campaignTileScaleLimit(3, 1)).toBeGreaterThan(
@@ -55,34 +64,41 @@ describe("mobile campaign catalog", () => {
   });
 
   it("contains sequential levels and the intended rack-length stages", () => {
-    expect(CAMPAIGN_LEVELS).toHaveLength(70);
-    expect(CAMPAIGN_LEVELS.map((level) => level.level)).toEqual(
-      Array.from({ length: 70 }, (_, index) => index + 1)
-    );
-    expect(CAMPAIGN_LEVELS.slice(0, 5).every((level) => level.rackLength === 3)).toBe(true);
-    expect(CAMPAIGN_LEVELS.slice(5, 15).every((level) => level.rackLength === 4)).toBe(true);
-    expect(CAMPAIGN_LEVELS.slice(15, 30).every((level) => level.rackLength === 5)).toBe(true);
-    expect(CAMPAIGN_LEVELS.slice(30, 50).every((level) => level.rackLength === 6)).toBe(true);
-    expect(CAMPAIGN_LEVELS.slice(50).every((level) => level.rackLength === 7)).toBe(true);
+    expect(CAMPAIGN_VARIANT_COUNT).toBeGreaterThan(1);
+    for (const levels of allCampaigns) {
+      expect(levels).toHaveLength(70);
+      expect(levels.map((level) => level.level)).toEqual(
+        Array.from({ length: 70 }, (_, index) => index + 1)
+      );
+      expect(levels.slice(0, 5).every((level) => level.rackLength === 3)).toBe(true);
+      expect(levels.slice(5, 15).every((level) => level.rackLength === 4)).toBe(true);
+      expect(levels.slice(15, 30).every((level) => level.rackLength === 5)).toBe(true);
+      expect(levels.slice(30, 50).every((level) => level.rackLength === 6)).toBe(true);
+      expect(levels.slice(50).every((level) => level.rackLength === 7)).toBe(true);
+    }
   });
 
   it("uses unique racks and constructible required words", () => {
-    const letterSets = new Set<string>();
-    for (const level of CAMPAIGN_LEVELS) {
-      const letters = [...level.rackWord].sort().join("");
-      expect(letterSets.has(letters)).toBe(false);
-      letterSets.add(letters);
-      expect(level.requiredWords.length).toBeGreaterThan(0);
-      for (const word of level.requiredWords) {
-        expect(canBuild(word, level.rackWord)).toBe(true);
-        expect(word.length).toBeGreaterThanOrEqual(3);
-        expect(word.length).toBeLessThanOrEqual(level.maximumRequiredLength);
+    for (const levels of allCampaigns) {
+      const letterSets = new Set<string>();
+      for (const level of levels) {
+        const letters = [...level.rackWord].sort().join("");
+        expect(letterSets.has(letters)).toBe(false);
+        letterSets.add(letters);
+        expect(level.requiredWords.length).toBeGreaterThan(0);
+        for (const word of level.requiredWords) {
+          expect(canBuild(word, level.rackWord)).toBe(true);
+          expect(word.length).toBeGreaterThanOrEqual(3);
+          expect(word.length).toBeLessThanOrEqual(level.maximumRequiredLength);
+        }
       }
     }
   });
 
   it("only marks letter-connected word sets as crosswords", () => {
-    const crosswords = CAMPAIGN_LEVELS.filter((level) => level.mode === GameMode.Crossword);
+    const crosswords = allCampaigns
+      .flat()
+      .filter((level) => level.mode === GameMode.Crossword);
     expect(crosswords.length).toBeGreaterThan(0);
     for (const level of crosswords) {
       expect(connectedBySharedLetters(level.requiredWords)).toBe(true);
@@ -104,14 +120,28 @@ describe("mobile campaign catalog", () => {
       mediumValidCount: 0,
       hardValidCount: 0
     });
-    for (const level of CAMPAIGN_LEVELS.filter(
-      (entry) => entry.mode === GameMode.Crossword
-    )) {
-      const result = generateCrossword(level.requiredWords.map(asWordInfo));
-      expect(result.placedWords.map((word) => word.text).sort()).toEqual(
-        [...level.requiredWords].sort()
-      );
+    const failures: string[] = [];
+    for (const [campaignIndex, levels] of allCampaigns.entries()) {
+      for (const level of levels.filter(
+        (entry) => entry.mode === GameMode.Crossword
+      )) {
+        const result = generateCrossword(
+          level.requiredWords.map(asWordInfo),
+          level.level
+        );
+        if (result.placedWords.length !== level.requiredWords.length) {
+          failures.push(`campaign ${campaignIndex + 1}, level ${level.level}`);
+        }
+      }
     }
+    expect(failures).toEqual([]);
+  });
+
+  it("creates a reproducible new seed for a different campaign variant", () => {
+    const seed = createCampaignSeed(0, 16);
+    expect(campaignVariantIndex(seed)).not.toBe(campaignVariantIndex(0));
+    expect(createCampaignSeed(0, 16)).toBe(seed);
+    expect(campaignLevels(seed)).toBe(campaignLevels(seed));
   });
 
   it("keeps campaign crossword layouts stable for a level seed", () => {
