@@ -1,4 +1,14 @@
 export const Assets = {
+  livingLibrary: {
+    libraryBackground: new URL("../../assets/living-library/gameplay-background.webp", import.meta.url).toString(),
+    libraryWheel: new URL("../../assets/living-library/letter-wheel.svg", import.meta.url).toString(),
+    libraryTileEmpty: new URL("../../assets/living-library/tile-empty.svg", import.meta.url).toString(),
+    libraryTileSolved: new URL("../../assets/living-library/tile-solved.svg", import.meta.url).toString(),
+    libraryBook0: new URL("../../assets/living-library/book-emerald.webp", import.meta.url).toString(),
+    libraryBook1: new URL("../../assets/living-library/book-sapphire.webp", import.meta.url).toString(),
+    libraryBook2: new URL("../../assets/living-library/book-ruby.webp", import.meta.url).toString(),
+    libraryBook3: new URL("../../assets/living-library/book-amethyst.webp", import.meta.url).toString(),
+  },
   menuBackground: new URL("../../assets/cozy-library/paper.svg", import.meta.url).toString(),
   mainBackground: new URL("../../assets/cozy-library/desktop.png", import.meta.url).toString(),
   sapphire: new URL("../../assets/cozy-library/emerald.svg", import.meta.url).toString(),

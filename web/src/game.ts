@@ -527,6 +527,7 @@ export class Game {
     const imageMap: Record<string, string> = {
       menuBackground: Assets.menuBackground,
       mainBackground: Assets.mainBackground,
+      ...(this.campaignEnabled ? Assets.livingLibrary : {}),
       sapphire: Assets.sapphire,
       ruby: Assets.ruby,
       diamond: Assets.diamond
@@ -2423,7 +2424,7 @@ export class Game {
             { label: "Levels", rect: this.mainMenuButtons[1] },
             { label: "How to Play", rect: this.mainMenuButtons[2] }
           ];
-      this.drawMenuPanel(ctx, "Word Journey", buttons);
+      this.drawMenuPanel(ctx, "The Living Library", buttons);
       drawCenteredText(
         ctx,
         `Campaign ${this.campaignProgress.campaignNumber} · ${this.campaignProgress.completedLevels.length} of ${CAMPAIGN_LEVELS.length} puzzles complete`,
@@ -2758,10 +2759,10 @@ export class Game {
       !this.campaignProgress.tutorialCompleted &&
       this.currentScreen === GameScreen.Playing
     ) {
-      const y = this.wheelZone.y - 10;
+      const y = this.wheelCenter.y - this.visualBgRadius - 20;
       drawCenteredText(
         ctx,
-        "Swipe across the letters to spell HAD",
+        `Swipe across the letters to spell ${campaignLevel(this.activeCampaignLevel, this.campaignProgress.campaignSeed).rackWord.toUpperCase()}`,
         { x: this.layoutWidth / 2, y },
         { r: 255, g: 243, b: 216, a: 255 },
         this.font(18, true)
@@ -2934,18 +2935,29 @@ export class Game {
       );
       drawCenteredText(
         ctx,
-        `L${campaignGroup(this.activeCampaignLevel)} · P${campaignPuzzleInGroup(this.activeCampaignLevel)}`,
-        { x: zone.x + zone.width * 0.25, y: zone.y + zone.height / 2 },
+        `Level ${campaignGroup(this.activeCampaignLevel)}`,
+        { x: zone.x + zone.width * 0.25, y: zone.y + zone.height * 0.35 },
         UI_TEXT,
         this.font(17, true)
       );
       drawCenteredText(
         ctx,
-        this.currentScore.toLocaleString("en-US"),
-        { x: zone.x + zone.width * 0.72, y: zone.y + zone.height / 2 },
+        this.hintPoints.toLocaleString("en-US"),
+        { x: zone.x + zone.width * 0.75, y: zone.y + zone.height * 0.66 },
         UI_TEXT,
         this.font(20, true)
       );
+      drawCenteredText(ctx, `Puzzle ${campaignPuzzleInGroup(this.activeCampaignLevel)}/10`,
+        { x: zone.x + zone.width * 0.25, y: zone.y + zone.height * 0.7 }, UI_TEXT, this.font(12, true));
+      drawCenteredText(ctx, "Hint Points",
+        { x: zone.x + zone.width * 0.75, y: zone.y + zone.height * 0.28 }, UI_TEXT, this.font(12, true));
+      ctx.save();
+      ctx.strokeStyle = "#b79a60";
+      ctx.beginPath();
+      ctx.moveTo(zone.x + zone.width / 2, zone.y + zone.height * 0.2);
+      ctx.lineTo(zone.x + zone.width / 2, zone.y + zone.height * 0.8);
+      ctx.stroke();
+      ctx.restore();
       return;
     }
     const centerX = zone.x + zone.width / 2;
@@ -3340,7 +3352,7 @@ export class Game {
       ctx.fillText(bonusText, zone.x + 4, zone.y + 12);
       this.bonusWordsTextRect = { x: zone.x, y: zone.y, width: 150, height: 24 };
       ctx.textAlign = "right";
-      ctx.fillText(`Hints ${this.hintPoints}`, zone.x + zone.width - 4, zone.y + 12);
+      ctx.fillText(`Score ${this.currentScore.toLocaleString("en-US")}`, zone.x + zone.width - 4, zone.y + 12);
 
       for (let index = 0; index < this.hintClickableRegions.length; index += 1) {
         const rect = this.hintClickableRegions[index];
@@ -3389,8 +3401,16 @@ export class Game {
       this.drawButton(ctx, rect, "", hover || flashing ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal);
       const dotX = rect.x + 17;
       const midY = rect.y + rect.height / 2;
+      const book = this.campaignEnabled ? this.images[`libraryBook${i}`] : undefined;
+      if (book) {
+        const size = rect.height * 0.88;
+        ctx.save();
+        ctx.globalAlpha = affordable ? 1 : 0.48;
+        ctx.drawImage(book, rect.x + 5, midY - size / 2, size, size);
+        ctx.restore();
+      }
       ctx.beginPath();
-      ctx.arc(dotX, midY, 5, 0, Math.PI * 2);
+      ctx.arc(dotX, midY, book ? 0 : 5, 0, Math.PI * 2);
       ctx.fillStyle = affordable ? "#648346" : "#a69b88";
       ctx.fill();
       ctx.strokeStyle = affordable ? "#3e5b2f" : "#817563";
@@ -3400,7 +3420,7 @@ export class Game {
       ctx.fillStyle = affordable ? "#35271a" : "#746956";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.fillText(HINT_LABELS[i], rect.x + 31, midY);
+      ctx.fillText(HINT_LABELS[i], rect.x + (book ? rect.height + 8 : 31), midY);
       ctx.textAlign = "right";
       ctx.fillText(String(hintCost), rect.x + rect.width - 12, midY);
     }
@@ -3495,6 +3515,19 @@ export class Game {
     rect: Rect,
     affordable: boolean
   ) {
+    const book = this.images[`libraryBook${index}`];
+    if (book) {
+      const size = Math.min(rect.width * 0.72, rect.height * 0.7);
+      ctx.save();
+      ctx.globalAlpha = affordable ? 1 : 0.48;
+      if (this.hintFrameClickAnimTimers[index] > 0 || this.hoveredHintIndex === index) {
+        ctx.shadowColor = "#ffd780";
+        ctx.shadowBlur = 10;
+      }
+      ctx.drawImage(book, rect.x + (rect.width - size) / 2, rect.y + rect.height * 0.03, size, size);
+      ctx.restore();
+      return;
+    }
     const color = affordable ? colorToCss(UI_TEXT) : "rgb(116, 105, 86)";
     const centerX = rect.x + rect.width / 2;
     const centerY = rect.y + rect.height * 0.4;
@@ -4572,6 +4605,15 @@ export class Game {
   }
 
   private drawLibraryTile(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, filled: boolean, highlighted = false) {
+    const tile = this.images[filled ? "libraryTileSolved" : "libraryTileEmpty"];
+    if (this.campaignEnabled && tile) {
+      ctx.drawImage(tile, x, y, size, size);
+      if (highlighted) {
+        drawRoundedRect(ctx, x + 1, y + 1, size - 2, size - 2, Math.min(5, size * 0.12),
+          undefined, { r: 191, g: 139, b: 45 }, 2);
+      }
+      return;
+    }
     ctx.save();
     ctx.shadowColor = "rgba(55, 35, 17, 0.38)";
     ctx.shadowBlur = 5;
@@ -4586,6 +4628,15 @@ export class Game {
   private renderLibraryPanels(ctx: CanvasRenderingContext2D) {
     if (this.campaignEnabled && this.isPortraitLayout) {
       const interactionScale = this.wheelInteractionScaleActive ? this.getExpandedWheelScale() : 1;
+      const wheel = this.images.libraryWheel;
+      if (wheel) {
+        // The SVG's visible rim is inset 13.5px: align it with the existing wheel radius.
+        const radius = this.visualBgRadius * interactionScale;
+        const size = radius * 1024 / 498.5;
+        ctx.drawImage(wheel, this.wheelCenter.x - size / 2,
+          this.wheelCenter.y - size * 506 / 1024, size, size);
+        return;
+      }
       ctx.save();
       ctx.shadowColor = "rgba(35, 22, 11, 0.35)";
       ctx.shadowBlur = 18;
@@ -4641,7 +4692,7 @@ export class Game {
   }
 
   private drawBackground(ctx: CanvasRenderingContext2D) {
-    const bg = this.images.mainBackground;
+    const bg = this.campaignEnabled ? this.images.libraryBackground : this.images.mainBackground;
     if (!bg) return;
     const scale = Math.max(this.layoutWidth / bg.width, this.layoutHeight / bg.height);
     const width = bg.width * scale;
