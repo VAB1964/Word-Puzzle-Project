@@ -1,5 +1,6 @@
 export const Assets = {
   livingLibrary: {
+    libraryLadder: new URL("../../assets/living-library/ladder-background.webp", import.meta.url).toString(),
     libraryBackground: new URL("../../assets/living-library/gameplay-background.webp", import.meta.url).toString(),
     libraryWheel: new URL("../../assets/living-library/letter-wheel.svg", import.meta.url).toString(),
     libraryTileEmpty: new URL("../../assets/living-library/tile-empty.svg", import.meta.url).toString(),

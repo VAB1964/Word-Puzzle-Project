@@ -1,3 +1,4 @@
+import { LIBRARY_ROOMS, journeyLayout } from "./campaignJourney";
 import { Assets } from "./assets";
 import {
   BONUS_POPUP_SCROLL_SPEED,
@@ -207,6 +208,7 @@ export class Game {
   private campaignProgress: CampaignProgress;
   private activeCampaignLevel = 1;
   private campaignPage = 0;
+  private campaignRoomOpen = false;
   private campaignLevelButtons: Array<{ level: number; rect: Rect }> = [];
   private campaignPreviousButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private campaignNextButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -1187,6 +1189,7 @@ export class Game {
         this.playSound("click");
         this.campaignPage = Math.floor((this.campaignProgress.currentLevel - 1) / 10);
         this.currentScreen = GameScreen.CampaignSelect;
+        this.campaignRoomOpen = false;
         this.updateCampaignSelectLayout();
         return;
       }
@@ -1239,6 +1242,30 @@ export class Game {
   }
 
   private handleCampaignSelectInput(world: Vec2) {
+    const layout = journeyLayout(this.layoutWidth, this.layoutHeight);
+    if (!this.campaignRoomOpen) {
+      const room = layout.rooms.findIndex(rect => rectContains(rect, world));
+      if (room >= 0) {
+        this.playSound("click");
+        this.campaignPage = room;
+        this.campaignRoomOpen = true;
+        this.updateCampaignSelectLayout();
+        return;
+      }
+      if (rectContains(this.campaignNewButton, world)) {
+        this.playSound("click");
+        this.requestExitConfirmation("newCampaign");
+      } else if (rectContains(this.campaignBackButton, world)) {
+        this.playSound("click");
+        this.currentScreen = GameScreen.MainMenu;
+      }
+      return;
+    }
+    if (rectContains(layout.close, world)) {
+      this.playSound("click");
+      this.campaignRoomOpen = false;
+      return;
+    }
     for (const entry of this.campaignLevelButtons) {
       if (!rectContains(entry.rect, world)) continue;
       if (entry.level > this.campaignProgress.highestUnlockedLevel) {
@@ -1261,15 +1288,6 @@ export class Game {
       this.campaignPage += 1;
       this.updateCampaignSelectLayout();
       return;
-    }
-    if (rectContains(this.campaignNewButton, world)) {
-      this.playSound("click");
-      this.requestExitConfirmation("newCampaign");
-      return;
-    }
-    if (rectContains(this.campaignBackButton, world)) {
-      this.playSound("click");
-      this.currentScreen = GameScreen.MainMenu;
     }
   }
 
@@ -1345,6 +1363,7 @@ export class Game {
     this.campaignProgress = freshCampaignProgress(seed, campaignNumber);
     this.activeCampaignLevel = 1;
     this.campaignPage = 0;
+    this.campaignRoomOpen = false;
     this.currentScore = 0;
     this.hintPoints = this.campaignProgress.hintPoints;
     this.canResumeGameFromMainMenu = false;
@@ -1465,6 +1484,7 @@ export class Game {
         this.campaignProgress.completedLevels.includes(CAMPAIGN_LEVELS.length)
       ) {
         this.currentScreen = GameScreen.CampaignSelect;
+        this.campaignRoomOpen = false;
         this.campaignPage = Math.ceil(CAMPAIGN_LEVELS.length / 10) - 1;
         this.updateCampaignSelectLayout();
       } else {
@@ -1977,50 +1997,14 @@ export class Game {
   }
 
   private updateCampaignSelectLayout() {
-    const pageStart = this.campaignPage * 10 + 1;
-    const gapX = 16;
-    const gapY = 14;
-    const marginX = 60;
-    const top = 175;
-    const buttonWidth = (this.layoutWidth - marginX * 2 - gapX) / 2;
-    const buttonHeight = 72;
-    this.campaignLevelButtons = [];
-    for (let index = 0; index < 10; index += 1) {
-      const level = pageStart + index;
-      if (level > CAMPAIGN_LEVELS.length) break;
-      const col = index % 2;
-      const row = Math.floor(index / 2);
-      this.campaignLevelButtons.push({
-        level,
-        rect: {
-          x: marginX + col * (buttonWidth + gapX),
-          y: top + row * (buttonHeight + gapY),
-          width: buttonWidth,
-          height: buttonHeight
-        }
-      });
-    }
-
-    const navigationY = top + 5 * (buttonHeight + gapY) + 4;
-    this.campaignPreviousButton = { x: 60, y: navigationY, width: 140, height: 52 };
-    this.campaignNextButton = {
-      x: this.layoutWidth - 200,
-      y: navigationY,
-      width: 140,
-      height: 52
-    };
-    this.campaignNewButton = {
-      x: this.layoutWidth / 2 - 105,
-      y: navigationY + 66,
-      width: 210,
-      height: 52
-    };
-    this.campaignBackButton = {
-      x: this.layoutWidth / 2 - 75,
-      y: navigationY + 132,
-      width: 150,
-      height: 52
-    };
+    const layout = journeyLayout(this.layoutWidth, this.layoutHeight);
+    this.campaignLevelButtons = layout.puzzles.map((rect, index) => ({
+      level: this.campaignPage * 10 + index + 1, rect
+    }));
+    this.campaignPreviousButton = layout.previous;
+    this.campaignNextButton = layout.next;
+    this.campaignNewButton = layout.newCampaign;
+    this.campaignBackButton = layout.back;
   }
 
   private updateGridLayout() {
@@ -2409,7 +2393,7 @@ export class Game {
       const buttons = this.canResumeGameFromMainMenu
         ? [
             { label: "Return to Puzzle", rect: this.mainMenuButtons[0] },
-            { label: "Levels", rect: this.mainMenuButtons[1] },
+            { label: "Library Journey", rect: this.mainMenuButtons[1] },
             { label: "How to Play", rect: this.mainMenuButtons[2] }
           ]
         : [
@@ -2421,7 +2405,7 @@ export class Game {
                   : `Continue L${campaignGroup(this.campaignProgress.currentLevel)} · P${campaignPuzzleInGroup(this.campaignProgress.currentLevel)}`,
               rect: this.mainMenuButtons[0]
             },
-            { label: "Levels", rect: this.mainMenuButtons[1] },
+            { label: "Library Journey", rect: this.mainMenuButtons[1] },
             { label: "How to Play", rect: this.mainMenuButtons[2] }
           ];
       this.drawMenuPanel(ctx, "The Living Library", buttons);
@@ -2455,87 +2439,106 @@ export class Game {
   }
 
   private renderCampaignSelect(ctx: CanvasRenderingContext2D) {
-    const pageStart = this.campaignPage * 10 + 1;
-    const pageEnd = Math.min(CAMPAIGN_LEVELS.length, pageStart + 9);
-    const groupNumber = campaignGroup(pageStart);
-    const panel = {
-      x: 35,
-      y: 110,
-      width: this.layoutWidth - 70,
-      height: Math.min(700, this.layoutHeight - 180)
-    };
-    this.drawElevatedPanel(ctx, panel.x, panel.y, panel.width, panel.height, 18);
-    drawCenteredText(
-      ctx,
-      "Choose a Puzzle",
-      { x: this.layoutWidth / 2, y: 64 },
-      { r: 255, g: 242, b: 213 },
-      this.font(32, true)
-    );
-    drawCenteredText(
-      ctx,
-      `Campaign ${this.campaignProgress.campaignNumber} · Level ${groupNumber}`,
-      { x: this.layoutWidth / 2, y: panel.y + 38 },
-      UI_TEXT,
-      this.font(18, true)
-    );
+    const layout = journeyLayout(this.layoutWidth, this.layoutHeight);
+    const gold = { r: 232, g: 192, b: 111 };
+    const cream = { r: 255, g: 242, b: 213 };
+    const completed = this.campaignProgress.completedLevels;
+    const unlocked = this.campaignProgress.highestUnlockedLevel;
+    ctx.save();
+    const shade = ctx.createLinearGradient(0, 0, 0, this.layoutHeight);
+    shade.addColorStop(0, "rgba(3,18,25,0.94)");
+    shade.addColorStop(0.22, "rgba(3,18,25,0.12)");
+    shade.addColorStop(0.8, "rgba(3,18,25,0.08)");
+    shade.addColorStop(1, "rgba(3,18,25,0.94)");
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, this.layoutWidth, this.layoutHeight);
+    drawCenteredText(ctx, "The Living Library", { x: this.layoutWidth / 2, y: 45 }, cream, "bold 32px Georgia, serif");
+    drawCenteredText(ctx, completed.length === 60 ? "The library is complete · revisit any room" : "Solve words · climb through six rooms",
+      { x: this.layoutWidth / 2, y: 80 }, cream, this.font(15));
 
-    for (const entry of this.campaignLevelButtons) {
-      const locked = entry.level > this.campaignProgress.highestUnlockedLevel;
-      const completed = this.campaignProgress.completedLevels.includes(entry.level);
-      const level = campaignLevel(
-        entry.level,
-        this.campaignProgress.campaignSeed
-      );
-      const fill = locked
-        ? { r: 126, g: 116, b: 101, a: 255 }
-        : completed
-          ? { r: 106, g: 139, b: 78, a: 255 }
-          : this.currentTheme.menuButtonNormal;
-      this.drawButton(
-        ctx,
-        entry.rect,
-        locked ? "Locked" : `Puzzle ${campaignPuzzleInGroup(entry.level)}`,
-        fill,
-        UI_TEXT
-      );
-      if (!locked) {
-        drawCenteredText(
-          ctx,
-          `${level.rackLength} letters · ${level.mode === GameMode.Crossword ? "Crossword" : "Words"}`,
-          {
-            x: entry.rect.x + entry.rect.width / 2,
-            y: entry.rect.y + entry.rect.height - 13
-          },
-          UI_TEXT,
-          this.font(10, false)
-        );
+    // Connect the six destinations with a gilded path, climbing from room one.
+    const centers = layout.rooms.map(rect => ({ x: rect.x + 36, y: rect.y + rect.height / 2 }));
+    for (let i = 0; i < centers.length - 1; i += 1) {
+      const a = centers[i], b = centers[i + 1];
+      const reached = unlocked > (i + 1) * 10;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.bezierCurveTo(a.x + 85, (a.y + b.y) / 2, b.x - 85, (a.y + b.y) / 2, b.x, b.y);
+      ctx.strokeStyle = reached ? "#efc679" : "rgba(155,180,184,0.6)";
+      ctx.lineWidth = reached ? 4 : 2;
+      ctx.setLineDash(reached ? [] : [4, 7]);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    for (let i = 0; i < LIBRARY_ROOMS.length; i += 1) {
+      const rect = layout.rooms[i];
+      const first = i * 10 + 1;
+      const count = completed.filter(n => n >= first && n < first + 10).length;
+      const locked = first > unlocked;
+      const current = !locked && count < 10 && campaignGroup(unlocked) === i + 1;
+      const ink = locked ? { r: 167, g: 186, b: 191 } : cream;
+      if (current) {
+        ctx.shadowColor = "#ffc45d";
+        ctx.shadowBlur = 14 + Math.sin(performance.now() / 650) * 4;
+      }
+      drawRoundedRect(ctx, rect.x, rect.y, rect.width, rect.height, 14,
+        { r: 6, g: 27, b: 35, a: 242 }, locked ? { r: 86, g: 112, b: 123 } : gold, current ? 3 : 1.5);
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(rect.x + 36, rect.y + rect.height / 2, 25, 0, Math.PI * 2);
+      ctx.fillStyle = current ? "#f8db94" : count === 10 ? "#335650" : "#122f3a";
+      ctx.fill();
+      ctx.strokeStyle = locked ? "#627d87" : "#d7ae62";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      drawCenteredText(ctx, String(i + 1), { x: rect.x + 36, y: rect.y + rect.height / 2 },
+        current ? UI_TEXT : ink, "bold 27px Georgia, serif");
+      drawCenteredText(ctx, LIBRARY_ROOMS[i].name,
+        { x: rect.x + (rect.width + 65) / 2, y: rect.y + rect.height * 0.29 }, ink, "bold 19px Georgia, serif");
+      drawCenteredText(ctx, locked ? "Locked" : count === 10 ? "Complete · 10/10" : `${count}/10 puzzles complete`,
+        { x: rect.x + (rect.width + 65) / 2, y: rect.y + rect.height * 0.57 }, ink, this.font(12));
+      const pipX = rect.x + 91;
+      const pipStep = (rect.width - 122) / 9;
+      for (let p = 0; p < 10; p += 1) {
+        ctx.beginPath();
+        ctx.arc(pipX + p * pipStep, rect.y + rect.height * 0.81, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = completed.includes(first + p) ? "#ffe3a0" : first + p === unlocked ? "#f1ba55" : "#49636c";
+        ctx.fill();
       }
     }
+    drawCenteredText(ctx, `Campaign ${this.campaignProgress.campaignNumber} · ${completed.length}/60 puzzles`,
+      { x: this.layoutWidth / 2, y: this.layoutHeight - 115 }, cream, this.font(16, true));
+    this.drawButton(ctx, layout.back, "Menu", this.currentTheme.menuButtonNormal);
+    this.drawButton(ctx, layout.newCampaign, "New Campaign", this.currentTheme.menuButtonNormal);
+    ctx.restore();
+    if (!this.campaignRoomOpen) return;
 
-    this.drawButton(
-      ctx,
-      this.campaignPreviousButton,
-      "Previous",
-      this.campaignPage > 0
-        ? this.currentTheme.menuButtonNormal
-        : { r: 126, g: 116, b: 101, a: 255 }
-    );
-    this.drawButton(
-      ctx,
-      this.campaignNextButton,
-      "Next",
-      pageEnd < CAMPAIGN_LEVELS.length
-        ? this.currentTheme.menuButtonNormal
-        : { r: 126, g: 116, b: 101, a: 255 }
-    );
-    this.drawButton(
-      ctx,
-      this.campaignNewButton,
-      "New Campaign",
-      this.currentTheme.menuButtonNormal
-    );
-    this.drawButton(ctx, this.campaignBackButton, "Back", this.currentTheme.menuButtonNormal);
+    ctx.save();
+    ctx.fillStyle = "rgba(2,12,18,0.83)";
+    ctx.fillRect(0, 0, this.layoutWidth, this.layoutHeight);
+    const panel = layout.panel;
+    this.drawElevatedPanel(ctx, panel.x, panel.y, panel.width, panel.height, 18);
+    const room = LIBRARY_ROOMS[this.campaignPage];
+    drawCenteredText(ctx, `Level ${this.campaignPage + 1} · ${room.name}`,
+      { x: this.layoutWidth / 2, y: panel.y + 36 }, UI_TEXT, "bold 22px Georgia, serif");
+    drawCenteredText(ctx, room.rule, { x: this.layoutWidth / 2, y: panel.y + 69 }, UI_TEXT, this.font(15));
+    const lockedRoom = this.campaignPage * 10 + 1 > unlocked;
+    drawCenteredText(ctx, lockedRoom ? "Complete the preceding puzzles to enter" : "Choose a puzzle · completed puzzles can be replayed",
+      { x: this.layoutWidth / 2, y: panel.y + 102 }, UI_TEXT, this.font(13));
+    for (const entry of this.campaignLevelButtons) {
+      const locked = entry.level > unlocked;
+      const done = completed.includes(entry.level);
+      const current = entry.level === unlocked && !done;
+      this.drawButton(ctx, entry.rect,
+        `Puzzle ${campaignPuzzleInGroup(entry.level)}`,
+        locked ? { r: 216, g: 209, b: 191 } : done ? { r: 204, g: 223, b: 196 } : { r: 255, g: 226, b: 160 });
+      drawCenteredText(ctx, locked ? "Locked" : done ? "Complete · replay" : current ? "Play next" : "Available",
+        { x: entry.rect.x + entry.rect.width / 2, y: entry.rect.y + entry.rect.height - 13 }, UI_TEXT, this.font(11));
+    }
+    this.drawButton(ctx, layout.previous, "Previous", this.campaignPage > 0 ? this.currentTheme.menuButtonNormal : { r: 216, g: 209, b: 191 });
+    this.drawButton(ctx, layout.close, "Journey", this.currentTheme.menuButtonNormal);
+    this.drawButton(ctx, layout.next, "Next", this.campaignPage < 5 ? this.currentTheme.menuButtonNormal : { r: 216, g: 209, b: 191 });
+    ctx.restore();
   }
 
   private renderExitConfirmDialog(ctx: CanvasRenderingContext2D) {
@@ -4692,7 +4695,9 @@ export class Game {
   }
 
   private drawBackground(ctx: CanvasRenderingContext2D) {
-    const bg = this.campaignEnabled ? this.images.libraryBackground : this.images.mainBackground;
+    const bg = this.campaignEnabled
+      ? this.currentScreen === GameScreen.CampaignSelect ? this.images.libraryLadder : this.images.libraryBackground
+      : this.images.mainBackground;
     if (!bg) return;
     const scale = Math.max(this.layoutWidth / bg.width, this.layoutHeight / bg.height);
     const width = bg.width * scale;
