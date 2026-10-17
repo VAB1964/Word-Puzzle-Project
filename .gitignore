@@ -370,8 +370,8 @@ NewDirectory/*.json
 
 # Vite build output
 web/dist/
+web/dist-mobile/
 web/.wrangler/
-web/dist/
 .wrangler/
 *.cpuprofile
 

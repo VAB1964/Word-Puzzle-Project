@@ -1,0 +1,1075 @@
+{
+  "version": 1,
+  "formula": {
+    "stageSize": "5 * (rackLength - 2), with repeating 20-level chapters at 7",
+    "maximumRequiredLength": "3 + floor((rackLength - 2) * stageProgress)",
+    "targetWords": "1 + (rackLength - 3) + ceil(4 * stageProgress)",
+    "maximumRarity": "1 + floor(3 * stageProgress)"
+  },
+  "levels": [
+    {
+      "level": 1,
+      "mode": "Casual",
+      "rackWord": "had",
+      "requiredWords": [
+        "had"
+      ],
+      "rackLength": 3,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 2,
+      "mode": "Casual",
+      "rackWord": "how",
+      "requiredWords": [
+        "how",
+        "who"
+      ],
+      "rackLength": 3,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 3,
+      "mode": "Casual",
+      "rackWord": "pit",
+      "requiredWords": [
+        "tip",
+        "pit"
+      ],
+      "rackLength": 3,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 2
+    },
+    {
+      "level": 4,
+      "mode": "Casual",
+      "rackWord": "wed",
+      "requiredWords": [
+        "dew",
+        "wed"
+      ],
+      "rackLength": 3,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 3
+    },
+    {
+      "level": 5,
+      "mode": "Crossword",
+      "rackWord": "lie",
+      "requiredWords": [
+        "lie",
+        "lei"
+      ],
+      "rackLength": 3,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 4
+    },
+    {
+      "level": 6,
+      "mode": "Casual",
+      "rackWord": "hand",
+      "requiredWords": [
+        "and",
+        "had"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 7,
+      "mode": "Casual",
+      "rackWord": "damn",
+      "requiredWords": [
+        "man",
+        "and"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 8,
+      "mode": "Crossword",
+      "rackWord": "name",
+      "requiredWords": [
+        "men",
+        "man"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 9,
+      "mode": "Casual",
+      "rackWord": "easy",
+      "requiredWords": [
+        "yes",
+        "say",
+        "sea",
+        "yea"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 2
+    },
+    {
+      "level": 10,
+      "mode": "Crossword",
+      "rackWord": "bust",
+      "requiredWords": [
+        "but",
+        "bus",
+        "sub"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 2
+    },
+    {
+      "level": 11,
+      "mode": "Casual",
+      "rackWord": "gets",
+      "requiredWords": [
+        "gets",
+        "set",
+        "get"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 12,
+      "mode": "Casual",
+      "rackWord": "gray",
+      "requiredWords": [
+        "gray",
+        "ray",
+        "gay",
+        "rag",
+        "gar"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 3
+    },
+    {
+      "level": 13,
+      "mode": "Crossword",
+      "rackWord": "dine",
+      "requiredWords": [
+        "die",
+        "end",
+        "den",
+        "dine",
+        "din"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 3
+    },
+    {
+      "level": 14,
+      "mode": "Casual",
+      "rackWord": "vies",
+      "requiredWords": [
+        "vies",
+        "vise",
+        "vie"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 3
+    },
+    {
+      "level": 15,
+      "mode": "Crossword",
+      "rackWord": "paid",
+      "requiredWords": [
+        "paid",
+        "pad",
+        "aid",
+        "dip"
+      ],
+      "rackLength": 4,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 4
+    },
+    {
+      "level": 16,
+      "mode": "Casual",
+      "rackWord": "ideas",
+      "requiredWords": [
+        "sea",
+        "die"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 17,
+      "mode": "Casual",
+      "rackWord": "money",
+      "requiredWords": [
+        "men",
+        "one"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 18,
+      "mode": "Crossword",
+      "rackWord": "eight",
+      "requiredWords": [
+        "the",
+        "hit",
+        "get"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 19,
+      "mode": "Casual",
+      "rackWord": "range",
+      "requiredWords": [
+        "are",
+        "age"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 20,
+      "mode": "Crossword",
+      "rackWord": "walls",
+      "requiredWords": [
+        "all",
+        "saw",
+        "was",
+        "law"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 21,
+      "mode": "Casual",
+      "rackWord": "billy",
+      "requiredWords": [
+        "bill",
+        "ill"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 22,
+      "mode": "Casual",
+      "rackWord": "noted",
+      "requiredWords": [
+        "done",
+        "note",
+        "end",
+        "one",
+        "not"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 23,
+      "mode": "Crossword",
+      "rackWord": "tires",
+      "requiredWords": [
+        "site",
+        "rest",
+        "sir",
+        "set",
+        "its"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 24,
+      "mode": "Casual",
+      "rackWord": "aimed",
+      "requiredWords": [
+        "idea",
+        "made",
+        "die",
+        "aid",
+        "dam",
+        "mad"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 25,
+      "mode": "Crossword",
+      "rackWord": "fever",
+      "requiredWords": [
+        "free",
+        "ever",
+        "eve",
+        "fee",
+        "rev"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 26,
+      "mode": "Casual",
+      "rackWord": "usage",
+      "requiredWords": [
+        "gas",
+        "sea",
+        "use",
+        "age",
+        "usage",
+        "ages"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 3
+    },
+    {
+      "level": 27,
+      "mode": "Casual",
+      "rackWord": "defer",
+      "requiredWords": [
+        "free",
+        "red",
+        "feed",
+        "reed",
+        "deer",
+        "fee",
+        "fed"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 3
+    },
+    {
+      "level": 28,
+      "mode": "Crossword",
+      "rackWord": "dudes",
+      "requiredWords": [
+        "used",
+        "dues",
+        "due",
+        "use",
+        "dudes",
+        "sued",
+        "dude"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 3
+    },
+    {
+      "level": 29,
+      "mode": "Casual",
+      "rackWord": "photo",
+      "requiredWords": [
+        "hot",
+        "top",
+        "too",
+        "photo",
+        "pot",
+        "tho",
+        "hop"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 3
+    },
+    {
+      "level": 30,
+      "mode": "Crossword",
+      "rackWord": "ester",
+      "requiredWords": [
+        "rest",
+        "see",
+        "set",
+        "trees",
+        "tree",
+        "reset",
+        "ester"
+      ],
+      "rackLength": 5,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 4
+    },
+    {
+      "level": 31,
+      "mode": "Casual",
+      "rackWord": "police",
+      "requiredWords": [
+        "oil",
+        "ice"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 32,
+      "mode": "Casual",
+      "rackWord": "charge",
+      "requiredWords": [
+        "car",
+        "age",
+        "are",
+        "her"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 33,
+      "mode": "Crossword",
+      "rackWord": "fewest",
+      "requiredWords": [
+        "set",
+        "few",
+        "see"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 34,
+      "mode": "Casual",
+      "rackWord": "access",
+      "requiredWords": [
+        "ass",
+        "sea"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 35,
+      "mode": "Crossword",
+      "rackWord": "action",
+      "requiredWords": [
+        "act",
+        "can",
+        "not"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 36,
+      "mode": "Casual",
+      "rackWord": "legals",
+      "requiredWords": [
+        "all",
+        "age",
+        "gas",
+        "sea"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 1
+    },
+    {
+      "level": 37,
+      "mode": "Casual",
+      "rackWord": "asking",
+      "requiredWords": [
+        "king",
+        "sign",
+        "ask",
+        "gas"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 1
+    },
+    {
+      "level": 38,
+      "mode": "Crossword",
+      "rackWord": "awakes",
+      "requiredWords": [
+        "saw",
+        "ask",
+        "was",
+        "sea",
+        "sake",
+        "weak"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 39,
+      "mode": "Casual",
+      "rackWord": "butler",
+      "requiredWords": [
+        "blue",
+        "true",
+        "but",
+        "let",
+        "tube",
+        "rule"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 40,
+      "mode": "Crossword",
+      "rackWord": "caring",
+      "requiredWords": [
+        "car",
+        "can",
+        "air",
+        "rain",
+        "gain",
+        "ring"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 41,
+      "mode": "Casual",
+      "rackWord": "ignore",
+      "requiredWords": [
+        "gone",
+        "one",
+        "reign",
+        "ring",
+        "iron",
+        "nor",
+        "ego"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 2
+    },
+    {
+      "level": 42,
+      "mode": "Casual",
+      "rackWord": "desire",
+      "requiredWords": [
+        "reds",
+        "side",
+        "sir",
+        "see",
+        "die",
+        "red",
+        "rides"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 2
+    },
+    {
+      "level": 43,
+      "mode": "Crossword",
+      "rackWord": "potted",
+      "requiredWords": [
+        "top",
+        "poet",
+        "toed",
+        "pot",
+        "dot",
+        "pet",
+        "toe"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 2
+    },
+    {
+      "level": 44,
+      "mode": "Casual",
+      "rackWord": "coping",
+      "requiredWords": [
+        "icon",
+        "coin",
+        "pig",
+        "pin",
+        "ion",
+        "cop",
+        "pic"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 3
+    },
+    {
+      "level": 45,
+      "mode": "Crossword",
+      "rackWord": "averts",
+      "requiredWords": [
+        "rest",
+        "east",
+        "save",
+        "ares",
+        "rate",
+        "star",
+        "sea"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 3
+    },
+    {
+      "level": 46,
+      "mode": "Casual",
+      "rackWord": "swedes",
+      "requiredWords": [
+        "see",
+        "weeds",
+        "seeds",
+        "sees",
+        "weed",
+        "seed",
+        "swedes",
+        "sewed"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 3
+    },
+    {
+      "level": 47,
+      "mode": "Casual",
+      "rackWord": "ruffed",
+      "requiredWords": [
+        "red",
+        "due",
+        "rude",
+        "fur",
+        "fed",
+        "ruffed",
+        "feud",
+        "rued"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 3
+    },
+    {
+      "level": 48,
+      "mode": "Crossword",
+      "rackWord": "curdle",
+      "requiredWords": [
+        "led",
+        "due",
+        "red",
+        "clued",
+        "cruel",
+        "crude",
+        "ruled",
+        "cured"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 3
+    },
+    {
+      "level": 49,
+      "mode": "Casual",
+      "rackWord": "metros",
+      "requiredWords": [
+        "terms",
+        "store",
+        "sort",
+        "more",
+        "some",
+        "term",
+        "rest",
+        "most"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 3
+    },
+    {
+      "level": 50,
+      "mode": "Crossword",
+      "rackWord": "moored",
+      "requiredWords": [
+        "roomed",
+        "door",
+        "more",
+        "room",
+        "red",
+        "mood",
+        "demo",
+        "mode"
+      ],
+      "rackLength": 6,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 4
+    },
+    {
+      "level": 51,
+      "mode": "Casual",
+      "rackWord": "balling",
+      "requiredWords": [
+        "all",
+        "big"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 52,
+      "mode": "Casual",
+      "rackWord": "offices",
+      "requiredWords": [
+        "ice",
+        "off"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 53,
+      "mode": "Crossword",
+      "rackWord": "amounts",
+      "requiredWords": [
+        "man",
+        "son",
+        "not",
+        "out"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 54,
+      "mode": "Casual",
+      "rackWord": "dailies",
+      "requiredWords": [
+        "die",
+        "led",
+        "sea"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 3,
+      "maximumRarity": 1
+    },
+    {
+      "level": 55,
+      "mode": "Crossword",
+      "rackWord": "listens",
+      "requiredWords": [
+        "list",
+        "sent",
+        "line",
+        "less",
+        "lets",
+        "site"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 1
+    },
+    {
+      "level": 56,
+      "mode": "Casual",
+      "rackWord": "staffed",
+      "requiredWords": [
+        "date",
+        "safe",
+        "fast",
+        "east",
+        "set",
+        "eat",
+        "sea"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 1
+    },
+    {
+      "level": 57,
+      "mode": "Casual",
+      "rackWord": "someone",
+      "requiredWords": [
+        "ones",
+        "seen",
+        "some",
+        "soon",
+        "seem",
+        "son",
+        "see"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 1
+    },
+    {
+      "level": 58,
+      "mode": "Crossword",
+      "rackWord": "domains",
+      "requiredWords": [
+        "mans",
+        "mind",
+        "main",
+        "damn",
+        "said",
+        "son",
+        "and"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 4,
+      "maximumRarity": 2
+    },
+    {
+      "level": 59,
+      "mode": "Casual",
+      "rackWord": "monster",
+      "requiredWords": [
+        "terms",
+        "store",
+        "sent",
+        "more",
+        "term",
+        "most",
+        "sort"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 2
+    },
+    {
+      "level": 60,
+      "mode": "Crossword",
+      "rackWord": "echoing",
+      "requiredWords": [
+        "once",
+        "gone",
+        "nice",
+        "one",
+        "ice",
+        "inch",
+        "chin"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 2
+    },
+    {
+      "level": 61,
+      "mode": "Casual",
+      "rackWord": "auction",
+      "requiredWords": [
+        "anti",
+        "into",
+        "out",
+        "not",
+        "cut",
+        "can",
+        "act",
+        "count"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 2
+    },
+    {
+      "level": 62,
+      "mode": "Casual",
+      "rackWord": "lengths",
+      "requiredWords": [
+        "then",
+        "sent",
+        "lets",
+        "gets",
+        "ten",
+        "the",
+        "she",
+        "set"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 5,
+      "maximumRarity": 2
+    },
+    {
+      "level": 63,
+      "mode": "Crossword",
+      "rackWord": "stencil",
+      "requiredWords": [
+        "listen",
+        "since",
+        "site",
+        "list",
+        "lets",
+        "line",
+        "nice",
+        "sent"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 2
+    },
+    {
+      "level": 64,
+      "mode": "Casual",
+      "rackWord": "roomful",
+      "requiredWords": [
+        "four",
+        "from",
+        "room",
+        "form",
+        "for",
+        "our",
+        "floor",
+        "flour"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 3
+    },
+    {
+      "level": 65,
+      "mode": "Crossword",
+      "rackWord": "snooper",
+      "requiredWords": [
+        "person",
+        "ones",
+        "poor",
+        "open",
+        "soon",
+        "son",
+        "one",
+        "per"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 3
+    },
+    {
+      "level": 66,
+      "mode": "Casual",
+      "rackWord": "postage",
+      "requiredWords": [
+        "stage",
+        "pages",
+        "tops",
+        "gets",
+        "goes",
+        "post",
+        "past",
+        "page",
+        "east"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 6,
+      "maximumRarity": 3
+    },
+    {
+      "level": 67,
+      "mode": "Casual",
+      "rackWord": "laments",
+      "requiredWords": [
+        "names",
+        "means",
+        "teams",
+        "least",
+        "late",
+        "sent",
+        "name",
+        "mans",
+        "last"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 7,
+      "maximumRarity": 3
+    },
+    {
+      "level": 68,
+      "mode": "Crossword",
+      "rackWord": "bungler",
+      "requiredWords": [
+        "bluer",
+        "blue",
+        "run",
+        "begun",
+        "lung",
+        "urge",
+        "burn",
+        "rule",
+        "bug"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 7,
+      "maximumRarity": 3
+    },
+    {
+      "level": 69,
+      "mode": "Casual",
+      "rackWord": "testily",
+      "requiredWords": [
+        "titles",
+        "style",
+        "title",
+        "lets",
+        "site",
+        "list",
+        "test",
+        "yet",
+        "its"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 7,
+      "maximumRarity": 3
+    },
+    {
+      "level": 70,
+      "mode": "Crossword",
+      "rackWord": "caimans",
+      "requiredWords": [
+        "mans",
+        "cans",
+        "main",
+        "man",
+        "can",
+        "cams",
+        "aims",
+        "scan",
+        "aim"
+      ],
+      "rackLength": 7,
+      "maximumRequiredLength": 7,
+      "maximumRarity": 4
+    }
+  ]
+}

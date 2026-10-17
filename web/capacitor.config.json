@@ -1,0 +1,9 @@
+{
+  "appId": "com.vabgames.wordpuzzle",
+  "appName": "Word Puzzle",
+  "webDir": "dist-mobile",
+  "backgroundColor": "#2b2018",
+  "android": {
+    "allowMixedContent": false
+  }
+}

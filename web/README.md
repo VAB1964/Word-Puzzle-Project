@@ -28,6 +28,23 @@ npm --prefix web run preview
 The production build is published at `https://vabgames.com/wordpuzzle/`.
 The VABGames landing page and Cribbage are maintained in their own repositories.
 
+## Android campaign app
+
+The Android app uses the mobile-only campaign entry and generated Capacitor
+project. From `web/`:
+
+```powershell
+npm.cmd run android:sync
+npm.cmd run android:open
+```
+
+Open `web/android` directly in Android Studio when preferred. The fixed
+campaign catalog is regenerated from the repository root with:
+
+```powershell
+npm.cmd run campaign-levels
+```
+
 ## Assets + data
 This web port loads assets and `words_processed.csv` from the repo root via Vite's file access:
 - `assets/`, `fonts/`, `words_processed.csv`

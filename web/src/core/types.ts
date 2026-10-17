@@ -15,6 +15,7 @@ export enum GState {
 
 export enum GameScreen {
   MainMenu = "MainMenu",
+  CampaignSelect = "CampaignSelect",
   CasualMenu = "CasualMenu",
   CrosswordMenu = "CrosswordMenu",
   Playing = "Playing",

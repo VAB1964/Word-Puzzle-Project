@@ -84,14 +84,14 @@ function canPlace(
   return { ok: intersections > 0, intersections };
 }
 
-function shuffleArray<T>(arr: T[]): void {
+function shuffleArray<T>(arr: T[], random: () => number): void {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
 }
 
-function generateCrosswordTrial(words: WordInfo[]): CrosswordResult {
+function generateCrosswordTrial(words: WordInfo[], random: () => number): CrosswordResult {
   const result: CrosswordResult = {
     placedWords: [],
     placements: [],
@@ -108,7 +108,7 @@ function generateCrosswordTrial(words: WordInfo[]): CrosswordResult {
     let gj = gi;
     while (gj < sortedWords.length && sortedWords[gj].text.length === sortedWords[gi].text.length) gj++;
     const group = sortedWords.slice(gi, gj);
-    shuffleArray(group);
+    shuffleArray(group, random);
     for (let k = 0; k < group.length; k++) sortedWords[gi + k] = group[k];
     gi = gj;
   }
@@ -170,7 +170,7 @@ function generateCrosswordTrial(words: WordInfo[]): CrosswordResult {
             const newArea = newRows * newCols;
             const density = (occupiedCells.size + candLen - intersections) / Math.max(1, newArea);
             const fit = phoneCellScale(newRows, newCols);
-            const randomJitter = Math.random() * 4;
+            const randomJitter = random() * 4;
             const score =
               intersections * 80 +
               candidate.length * 2 +
@@ -263,17 +263,29 @@ function generateCrosswordTrial(words: WordInfo[]): CrosswordResult {
   return result;
 }
 
-export function generateCrossword(words: WordInfo[]): CrosswordResult {
+const seededRandom = (seed: number) => {
+  let state = seed >>> 0;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+export function generateCrossword(words: WordInfo[], seed?: number): CrosswordResult {
   if (words.length === 0) {
     return { placedWords: [], placements: [], sharedCells: new Map(), gridRows: 0, gridCols: 0 };
   }
 
+  const random = seed === undefined ? Math.random : seededRandom(seed);
   const NUM_TRIALS = Math.max(40, words.length * 4);
   let bestResult: CrosswordResult | null = null;
   let bestScore = -Infinity;
 
   for (let trial = 0; trial < NUM_TRIALS; trial++) {
-    const result = generateCrosswordTrial(words);
+    const result = generateCrosswordTrial(words, random);
     const placed = result.placedWords.length;
     const area = Math.max(1, result.gridRows * result.gridCols);
     const occupiedCells = result.placedWords.reduce((total, word) => total + word.text.length, 0) -

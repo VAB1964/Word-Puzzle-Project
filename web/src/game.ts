@@ -140,6 +140,20 @@ import { drawCenteredText, drawRoundedRect, wrapTextForWidth } from "./render/dr
 import { applyView, createViewTransform, screenToWorld, type ViewTransform } from "./render/view";
 import { VoiceCommentary } from "./core/voiceCommentary";
 import { playSpellTone, playWordSuccess, sampleVolume, unlockGameAudio } from "./core/gameAudio";
+import {
+  CAMPAIGN_LEVELS,
+  campaignTileScaleLimit,
+  campaignWheelLetterMaxRadiusFactor,
+  campaignWheelLetterScale,
+  campaignLevel,
+  loadCampaignProgress,
+  saveCampaignProgress,
+  type CampaignProgress
+} from "./campaign";
+
+export interface GameOptions {
+  campaign?: boolean;
+}
 
 const HINT_LABELS = ["Letter", "Random", "Full Word", "1st Ltr All"];
 const HINT_FRAME_VERTICAL_SPACING = 7;
@@ -181,6 +195,14 @@ const UI_INK: Color = { r: 53, g: 39, b: 26, a: 255 };
 const UI_TEXT: Color = UI_INK;
 
 export class Game {
+  private readonly campaignEnabled: boolean;
+  private campaignProgress: CampaignProgress;
+  private activeCampaignLevel = 1;
+  private campaignPage = 0;
+  private campaignLevelButtons: Array<{ level: number; rect: Rect }> = [];
+  private campaignPreviousButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private campaignNextButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private campaignBackButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private width = 0;
   private height = 0;
   private view: ViewTransform = createViewTransform(1, 1, REF_W, REF_H);
@@ -311,8 +333,15 @@ export class Game {
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
-    private readonly ctx: CanvasRenderingContext2D
+    private readonly ctx: CanvasRenderingContext2D,
+    options: GameOptions = {}
   ) {
+    this.campaignEnabled = options.campaign === true;
+    this.campaignProgress = loadCampaignProgress();
+    if (this.campaignEnabled) {
+      this.hintPoints = this.campaignProgress.hintPoints;
+      this.currentScore = this.campaignProgress.totalScore;
+    }
     this.attachInput();
     this.init().catch((err) => {
       this.loadingError = err instanceof Error ? err.message : "Failed to initialize game.";
@@ -439,6 +468,8 @@ export class Game {
 
     if (this.currentScreen === GameScreen.MainMenu) {
       this.renderMainMenu(ctx);
+    } else if (this.currentScreen === GameScreen.CampaignSelect) {
+      this.renderCampaignSelect(ctx);
     } else if (this.currentScreen === GameScreen.CasualMenu) {
       this.renderCasualMenu(ctx);
     } else if (this.currentScreen === GameScreen.CrosswordMenu) {
@@ -623,6 +654,10 @@ export class Game {
       this.handleMainMenuInput(world);
       return;
     }
+    if (this.currentScreen === GameScreen.CampaignSelect) {
+      this.handleCampaignSelectInput(world);
+      return;
+    }
     if (this.currentScreen === GameScreen.CasualMenu) {
       this.handleCasualMenuInput(world);
       return;
@@ -744,7 +779,8 @@ export class Game {
       }
 
       if (this.revealSpecificGridLetter(clickedTile.wordIdx, clickedTile.charIdx)) {
-        this.hintPoints -= HINT_COST_REVEAL_FIRST;
+        this.hintPoints -= this.getHintCost(0);
+        this.persistCampaignEconomy();
         this.clearPendingLetterHintTarget();
         return;
       }
@@ -755,20 +791,22 @@ export class Game {
 
     for (let i = 0; i < this.hintClickableRegions.length; i += 1) {
       if (rectContains(this.hintClickableRegions[i], world)) {
+        const hintCost = this.getHintCost(i);
         if (this.hintTurnEndedBySolve) {
           this.playSound("error");
           return;
         }
         this.hintFrameClickAnimTimers[i] = 0.15;
         if (i === 0) {
-          if (this.hintPoints >= HINT_COSTS[i] && this.hasAnyValidLetterHintTarget()) {
+          if (this.hintPoints >= hintCost && this.hasAnyValidLetterHintTarget()) {
             this.isAwaitingLetterHintTarget = true;
             this.clearDragState();
           } else {
             this.playSound("error");
           }
-        } else if (this.hintPoints >= HINT_COSTS[i]) {
-          this.hintPoints -= HINT_COSTS[i];
+        } else if (this.hintPoints >= hintCost) {
+          this.hintPoints -= hintCost;
+          this.persistCampaignEconomy();
           this.activateHint(HINT_TYPES[i]);
         } else {
           this.playSound("error");
@@ -809,7 +847,7 @@ export class Game {
     }
     if (!this.dragging) return;
 
-    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    const interactionScale = this.wheelInteractionScaleActive ? this.getExpandedWheelScale() : 1;
     const hitRadius = this.getWheelLetterHitRadius(interactionScale);
     const hitRadiusSq = hitRadius * hitRadius;
     for (let i = 0; i < this.base.length; i += 1) {
@@ -892,6 +930,7 @@ export class Game {
             else if (len >= 6) hintAward = 4;
             if (hintAward > 0) {
               this.hintPoints += hintAward;
+              this.persistCampaignEconomy();
               this.spawnHintPointAnimation(this.bonusWordsTextRect, hintAward);
             }
             this.playSound("place");
@@ -925,6 +964,7 @@ export class Game {
       this.hintPoints += gemHintAward;
       this.spawnHintPointAnimation(this.bonusWordsTextRect, gemHintAward);
     }
+    this.persistCampaignEconomy();
 
     for (let character = 0; character < this.currentGuess.length; character += 1) {
       if (character >= this.path.length) continue;
@@ -947,6 +987,7 @@ export class Game {
     if (this.found.size === this.solutions.length) {
       this.gameState = GState.Solved;
       this.currentScreen = GameScreen.GameOver;
+      this.completeCampaignLevel();
       this.voiceCommentary.onPuzzleSolved();
     }
   }
@@ -1081,6 +1122,10 @@ export class Game {
     return { x: this.wheelCenter.x + dx * scale, y: this.wheelCenter.y + dy * scale };
   }
 
+  private getExpandedWheelScale() {
+    return this.campaignEnabled && this.isPortraitLayout ? 1.08 : WHEEL_INTERACTION_SCALE_FACTOR;
+  }
+
   private getWheelInteractionRadius(scale = 1) {
     const ringRadius = this.letterPositionRadius * scale;
     const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * scale;
@@ -1109,6 +1154,32 @@ export class Game {
   }
 
   private handleMainMenuInput(world: Vec2) {
+    if (this.campaignEnabled) {
+      if (this.mainMenuButtons.length < 3) return;
+      if (rectContains(this.mainMenuButtons[0], world)) {
+        this.playSound("click");
+        if (this.canResumeGameFromMainMenu) {
+          this.currentScreen = this.resumeScreenFromMainMenu;
+          this.canResumeGameFromMainMenu = false;
+        } else {
+          this.startCampaignLevel(this.campaignProgress.currentLevel);
+        }
+        return;
+      }
+      if (rectContains(this.mainMenuButtons[1], world)) {
+        this.playSound("click");
+        this.campaignPage = Math.floor((this.campaignProgress.currentLevel - 1) / 10);
+        this.currentScreen = GameScreen.CampaignSelect;
+        this.updateCampaignSelectLayout();
+        return;
+      }
+      if (rectContains(this.mainMenuButtons[2], world)) {
+        this.playSound("click");
+        this.showRulesDialog = true;
+      }
+      return;
+    }
+
     const hasReturn = this.canResumeGameFromMainMenu;
     if (hasReturn && this.mainMenuButtons.length < 3) return;
     if (!hasReturn && this.mainMenuButtons.length < 3) return;
@@ -1148,6 +1219,51 @@ export class Game {
         this.requestExitConfirmation("closeWindow");
       }
     }
+  }
+
+  private handleCampaignSelectInput(world: Vec2) {
+    for (const entry of this.campaignLevelButtons) {
+      if (!rectContains(entry.rect, world)) continue;
+      if (entry.level > this.campaignProgress.highestUnlockedLevel) {
+        this.playSound("error");
+        return;
+      }
+      this.playSound("click");
+      this.startCampaignLevel(entry.level);
+      return;
+    }
+    if (rectContains(this.campaignPreviousButton, world) && this.campaignPage > 0) {
+      this.playSound("click");
+      this.campaignPage -= 1;
+      this.updateCampaignSelectLayout();
+      return;
+    }
+    const pageCount = Math.ceil(CAMPAIGN_LEVELS.length / 10);
+    if (rectContains(this.campaignNextButton, world) && this.campaignPage + 1 < pageCount) {
+      this.playSound("click");
+      this.campaignPage += 1;
+      this.updateCampaignSelectLayout();
+      return;
+    }
+    if (rectContains(this.campaignBackButton, world)) {
+      this.playSound("click");
+      this.currentScreen = GameScreen.MainMenu;
+    }
+  }
+
+  private startCampaignLevel(levelNumber: number) {
+    const level = campaignLevel(levelNumber);
+    this.activeCampaignLevel = level.level;
+    this.campaignProgress.currentLevel = level.level;
+    saveCampaignProgress(this.campaignProgress);
+    this.gameMode = level.mode;
+    this.selectedDifficulty = DifficultyLevel.None;
+    this.puzzlesPerSession = 1;
+    this.currentPuzzleIndex = 0;
+    this.isInSession = true;
+    this.canResumeGameFromMainMenu = false;
+    this.rebuild();
+    this.currentScreen = GameScreen.Playing;
   }
 
   private requestBrowserClose() {
@@ -1301,6 +1417,19 @@ export class Game {
   }
 
   private handleContinue() {
+    if (this.campaignEnabled) {
+      if (
+        this.activeCampaignLevel === CAMPAIGN_LEVELS.length &&
+        this.campaignProgress.completedLevels.includes(CAMPAIGN_LEVELS.length)
+      ) {
+        this.currentScreen = GameScreen.CampaignSelect;
+        this.campaignPage = Math.ceil(CAMPAIGN_LEVELS.length / 10) - 1;
+        this.updateCampaignSelectLayout();
+      } else {
+        this.startCampaignLevel(this.campaignProgress.currentLevel);
+      }
+      return;
+    }
     if (this.isInSession) {
       if (this.currentPuzzleIndex + 1 < this.puzzlesPerSession) {
         this.currentPuzzleIndex += 1;
@@ -1317,9 +1446,38 @@ export class Game {
     }
   }
 
+  private completeCampaignLevel() {
+    if (!this.campaignEnabled) return;
+    const completedLevel = this.activeCampaignLevel;
+    if (!this.campaignProgress.completedLevels.includes(completedLevel)) {
+      this.campaignProgress.completedLevels.push(completedLevel);
+      this.campaignProgress.completedLevels.sort((a, b) => a - b);
+    }
+    this.campaignProgress.highestUnlockedLevel = Math.min(
+      CAMPAIGN_LEVELS.length,
+      Math.max(this.campaignProgress.highestUnlockedLevel, completedLevel + 1)
+    );
+    this.campaignProgress.currentLevel = this.campaignProgress.highestUnlockedLevel;
+    this.campaignProgress.totalScore = this.currentScore;
+    this.campaignProgress.hintPoints = this.hintPoints;
+    if (completedLevel === 1) this.campaignProgress.tutorialCompleted = true;
+    saveCampaignProgress(this.campaignProgress);
+  }
+
+  private persistCampaignEconomy() {
+    if (!this.campaignEnabled) return;
+    this.campaignProgress.totalScore = this.currentScore;
+    this.campaignProgress.hintPoints = this.hintPoints;
+    saveCampaignProgress(this.campaignProgress);
+  }
+
   private rebuild() {
     if (this.themes.length > 0) {
       this.currentTheme = this.themes[Math.floor(Math.random() * this.themes.length)];
+    }
+    if (this.campaignEnabled) {
+      this.rebuildCampaignLevel();
+      return;
     }
     const criteria = this.getCriteriaForCurrentPuzzle();
     let maxSolutionsForDifficulty = 0;
@@ -1554,8 +1712,76 @@ export class Game {
     this.voiceCommentary.prewarmForPuzzle(this.sorted);
   }
 
+  private rebuildCampaignLevel() {
+    const level = campaignLevel(this.activeCampaignLevel);
+    const rackWord = level.rackWord.toLowerCase();
+    const wordByText = new Map(this.fullWordList.map((word) => [word.text.toLowerCase(), word]));
+    const fallbackWord = (text: string): WordInfo => ({
+      text,
+      rarity: 1,
+      pos: "",
+      definition: "",
+      sentence: "",
+      avgSubLen: 0,
+      countGE3: 0,
+      countGE4: 0,
+      countGE5: 0,
+      easyValidCount: 0,
+      mediumValidCount: 0,
+      hardValidCount: 0
+    });
+
+    this.gameMode = level.mode;
+    this.base = rackWord;
+    this.allPotentialSolutions = puzzleWordCandidates(
+      rackWord,
+      this.fullWordList,
+      [1, 2, 3, 4],
+      MIN_WORD_LENGTH
+    ).all;
+    this.solutions = level.requiredWords.map(
+      (word) => wordByText.get(word.toLowerCase()) ?? fallbackWord(word.toLowerCase())
+    );
+    this.sorted = sortForGrid(this.solutions);
+
+    if (this.gameMode === GameMode.Crossword) {
+      const crossword = generateCrossword(this.sorted, level.level);
+      this.sorted = crossword.placedWords;
+      this.solutions = crossword.placedWords;
+      this.crosswordPlacements = crossword.placements;
+      this.crosswordSharedCells = crossword.sharedCells;
+      this.crosswordGridRows = crossword.gridRows;
+      this.crosswordGridCols = crossword.gridCols;
+    } else {
+      this.crosswordPlacements = [];
+      this.crosswordSharedCells = new Map();
+      this.crosswordGridRows = 0;
+      this.crosswordGridCols = 0;
+    }
+
+    this.base = shuffle(rackWord.split("")).join("");
+    this.keyboardLetterPulseTimers = Array(this.base.length).fill(0);
+    this.grid = this.sorted.map((word) => Array(word.text.length).fill("_"));
+    this.found.clear();
+    this.foundBonusWords.clear();
+    this.letterAnims = [];
+    this.scoreFlourishes = [];
+    this.hintPointAnims = [];
+    this.gridFlourishes = [];
+    this.clearPendingLetterHintTarget();
+    this.hintTurnEndedBySolve = false;
+    this.waitingToEndTurnOnHintSolve = false;
+    this.gameState = GState.Playing;
+    this.bonusWordsCacheIsValid = false;
+    this.bonusWordsPopupScrollOffset = 0;
+    this.wordsSolvedSinceHint = 0;
+    this.updateLayout();
+    this.voiceCommentary.prewarmForPuzzle(this.sorted);
+  }
+
   private updateLayout() {
     this.updateMenuLayout();
+    this.updateCampaignSelectLayout();
     this.updateGridLayout();
     this.updateWheelLayout();
     this.updateHintLayout();
@@ -1566,6 +1792,14 @@ export class Game {
 
   private get gridZone(): Rect {
     if (!this.isPortraitLayout) return GRID_ZONE_RECT_DESIGN;
+    if (this.campaignEnabled) {
+      return {
+        x: 18,
+        y: 92,
+        width: this.layoutWidth - 36,
+        height: clamp(this.layoutHeight * 0.4, 330, 500)
+      };
+    }
     return {
       x: 20,
       y: 82,
@@ -1578,6 +1812,17 @@ export class Game {
     if (!this.isPortraitLayout) return WHEEL_ZONE_RECT_DESIGN;
     const grid = this.gridZone;
     const y = grid.y + grid.height + 22;
+    if (this.campaignEnabled) {
+      const toolbarTop = this.layoutHeight - 112;
+      const availableHeight = Math.max(280, toolbarTop - y - 16);
+      const size = Math.min(440, availableHeight, this.layoutWidth - 80);
+      return {
+        x: (this.layoutWidth - size) / 2,
+        y,
+        width: size,
+        height: size
+      };
+    }
     const availableHeight = Math.max(250, this.lowerPanelY - y - 18);
     const size = Math.min(clamp(this.layoutHeight * 0.3, 280, 400), availableHeight);
     return {
@@ -1600,6 +1845,9 @@ export class Game {
 
   private get hintZone(): Rect {
     if (!this.isPortraitLayout) return HINT_ZONE_RECT_DESIGN;
+    if (this.campaignEnabled) {
+      return { x: 16, y: this.layoutHeight - 102, width: this.layoutWidth - 32, height: 86 };
+    }
     return {
       x: 20,
       y: this.lowerPanelY,
@@ -1610,6 +1858,9 @@ export class Game {
 
   private get scoreZone(): Rect {
     if (!this.isPortraitLayout) return SCORE_ZONE_RECT_DESIGN;
+    if (this.campaignEnabled) {
+      return { x: 178, y: 14, width: this.layoutWidth - 250, height: 58 };
+    }
     return {
       x: 310,
       y: this.lowerPanelY,
@@ -1680,6 +1931,47 @@ export class Game {
     this.bonusWordOptionRect = this.casualMenuButtons[3];
   }
 
+  private updateCampaignSelectLayout() {
+    const pageStart = this.campaignPage * 10 + 1;
+    const gapX = 16;
+    const gapY = 14;
+    const marginX = 60;
+    const top = 175;
+    const buttonWidth = (this.layoutWidth - marginX * 2 - gapX) / 2;
+    const buttonHeight = 72;
+    this.campaignLevelButtons = [];
+    for (let index = 0; index < 10; index += 1) {
+      const level = pageStart + index;
+      if (level > CAMPAIGN_LEVELS.length) break;
+      const col = index % 2;
+      const row = Math.floor(index / 2);
+      this.campaignLevelButtons.push({
+        level,
+        rect: {
+          x: marginX + col * (buttonWidth + gapX),
+          y: top + row * (buttonHeight + gapY),
+          width: buttonWidth,
+          height: buttonHeight
+        }
+      });
+    }
+
+    const navigationY = top + 5 * (buttonHeight + gapY) + 4;
+    this.campaignPreviousButton = { x: 60, y: navigationY, width: 140, height: 52 };
+    this.campaignNextButton = {
+      x: this.layoutWidth - 200,
+      y: navigationY,
+      width: 140,
+      height: 52
+    };
+    this.campaignBackButton = {
+      x: this.layoutWidth / 2 - 75,
+      y: navigationY + 70,
+      width: 150,
+      height: 52
+    };
+  }
+
   private updateGridLayout() {
     const gridZone = this.gridZone;
     const zoneInnerX = gridZone.x + GRID_ZONE_PADDING_X_DESIGN;
@@ -1688,6 +1980,10 @@ export class Game {
     const zoneInnerHeight = gridZone.height - 2 * GRID_ZONE_PADDING_Y_DESIGN;
 
     const wordCount = this.sorted.length || 1;
+    const gridScaleLimit =
+      this.campaignEnabled && this.isPortraitLayout
+        ? campaignTileScaleLimit(this.base.length, wordCount)
+        : 1;
     let numCols = 1;
     let maxRowsPerCol = wordCount;
     let gridScale = 1;
@@ -1696,8 +1992,14 @@ export class Game {
       const totalWidthUnscaled = this.crosswordGridCols * (TILE_SIZE + TILE_PAD) - (this.crosswordGridCols > 0 ? TILE_PAD : 0);
       const totalHeightUnscaled = this.crosswordGridRows * (TILE_SIZE + TILE_PAD) - (this.crosswordGridRows > 0 ? TILE_PAD : 0);
 
-      const scaleToFitX = totalWidthUnscaled > 0 ? Math.min(1, zoneInnerWidth / totalWidthUnscaled) : 1;
-      const scaleToFitY = totalHeightUnscaled > 0 ? Math.min(1, zoneInnerHeight / totalHeightUnscaled) : 1;
+      const scaleToFitX =
+        totalWidthUnscaled > 0
+          ? Math.min(gridScaleLimit, zoneInnerWidth / totalWidthUnscaled)
+          : gridScaleLimit;
+      const scaleToFitY =
+        totalHeightUnscaled > 0
+          ? Math.min(gridScaleLimit, zoneInnerHeight / totalHeightUnscaled)
+          : gridScaleLimit;
       gridScale = Math.min(scaleToFitX, scaleToFitY);
 
       const totalWidthScaled = totalWidthUnscaled * gridScale;
@@ -1758,8 +2060,10 @@ export class Game {
       totalWidth += (numCols - 1) * COL_PAD;
       const totalHeight = maxRowsPerCol * (TILE_SIZE + TILE_PAD) - (maxRowsPerCol > 0 ? TILE_PAD : 0);
 
-      const scaleToFitX = totalWidth > 0 ? Math.min(1, zoneInnerWidth / totalWidth) : 1;
-      const scaleToFitY = totalHeight > 0 ? Math.min(1, zoneInnerHeight / totalHeight) : 1;
+      const scaleToFitX =
+        totalWidth > 0 ? Math.min(gridScaleLimit, zoneInnerWidth / totalWidth) : gridScaleLimit;
+      const scaleToFitY =
+        totalHeight > 0 ? Math.min(gridScaleLimit, zoneInnerHeight / totalHeight) : gridScaleLimit;
       gridScale = Math.min(scaleToFitX, scaleToFitY);
 
       const tileSize = TILE_SIZE * gridScale;
@@ -1809,17 +2113,30 @@ export class Game {
     // On phones, the old resting wheel was already the ideal maximum size.
     // Start smaller so the 1.4x touch expansion lands exactly at that size.
     const portraitRestingScale = 1.35 / WHEEL_INTERACTION_SCALE_FACTOR;
-    const wheelRadiusLimit = this.isPortraitLayout ? WHEEL_R * portraitRestingScale : WHEEL_R;
+    const wheelRadiusLimit =
+      this.isPortraitLayout && this.campaignEnabled
+        ? Math.max(136, 145 - Math.max(0, this.base.length - 3) * 2.25)
+        : this.isPortraitLayout
+          ? WHEEL_R * portraitRestingScale
+          : WHEEL_R;
     this.currentWheelRadius = Math.max(Math.min(maxRadiusForZone, wheelRadiusLimit), LETTER_R * 1.5);
     const wheelScaleFactor = WHEEL_R > 0 ? this.currentWheelRadius / WHEEL_R : 1;
 
     if (this.base.length > 0) {
       let radiusBasedOnCount = (Math.PI * this.currentWheelRadius) / this.base.length;
       radiusBasedOnCount *= 0.75;
-      const radiusBasedOnScale = LETTER_R_BASE_DESIGN * wheelScaleFactor;
+      const sizeAdjustment =
+        this.campaignEnabled && this.isPortraitLayout
+          ? campaignWheelLetterScale(this.base.length)
+          : 1;
+      const radiusBasedOnScale = LETTER_R_BASE_DESIGN * wheelScaleFactor * sizeAdjustment;
       let letterRadius = Math.min(radiusBasedOnCount, radiusBasedOnScale);
       const minAbs = this.currentWheelRadius * MIN_LETTER_RADIUS_FACTOR;
-      const maxAbs = this.currentWheelRadius * MAX_LETTER_RADIUS_FACTOR;
+      const maxRadiusFactor =
+        this.campaignEnabled && this.isPortraitLayout
+          ? campaignWheelLetterMaxRadiusFactor(this.base.length)
+          : MAX_LETTER_RADIUS_FACTOR;
+      const maxAbs = this.currentWheelRadius * maxRadiusFactor;
       letterRadius = clamp(letterRadius, minAbs, maxAbs);
       this.currentLetterRenderRadius = Math.max(letterRadius, 5);
     } else {
@@ -1851,12 +2168,35 @@ export class Game {
       }
     }
 
-    const scrambleSize = this.isPortraitLayout ? 55 : SCRAMBLE_BTN_HEIGHT;
-    this.scrambleButton = this.isPortraitLayout
+    const scrambleSize =
+      this.isPortraitLayout && this.campaignEnabled
+        ? 70
+        : this.isPortraitLayout
+          ? 55
+          : SCRAMBLE_BTN_HEIGHT;
+    this.scrambleButton =
+      this.isPortraitLayout && this.campaignEnabled
+        ? {
+            x: clamp(
+              this.wheelCenter.x +
+                this.visualBgRadius * 0.45 -
+                scrambleSize / 2 +
+                scrambleSize,
+              18,
+              this.layoutWidth - scrambleSize - 18
+            ),
+            y: Math.min(
+              this.hintZone.y - scrambleSize - 10,
+              this.wheelCenter.y + this.visualBgRadius - scrambleSize * 0.55
+            ),
+            width: scrambleSize,
+            height: scrambleSize
+          }
+        : this.isPortraitLayout
       ? {
           x: Math.min(
             this.layoutWidth - scrambleSize - 18,
-            this.wheelCenter.x + this.visualBgRadius * WHEEL_INTERACTION_SCALE_FACTOR + 14
+            this.wheelCenter.x + this.visualBgRadius * this.getExpandedWheelScale() + 14
           ),
           y: this.wheelCenter.y - scrambleSize / 2,
           width: scrambleSize,
@@ -1866,7 +2206,7 @@ export class Game {
           x: this.wheelCenter.x - scrambleSize / 2,
           y: Math.min(
             this.layoutHeight - 58,
-            this.wheelCenter.y + this.visualBgRadius * WHEEL_INTERACTION_SCALE_FACTOR + 8
+            this.wheelCenter.y + this.visualBgRadius * this.getExpandedWheelScale() + 8
           ),
           width: scrambleSize,
           height: scrambleSize
@@ -1884,6 +2224,20 @@ export class Game {
     this.hintClickableRegions = [];
     const zone = this.hintZone;
     const numHintFrames = HINT_LABELS.length;
+    if (this.campaignEnabled && this.isPortraitLayout) {
+      const gap = 8;
+      const buttonWidth = (zone.width - gap * (numHintFrames - 1)) / numHintFrames;
+      for (let index = 0; index < numHintFrames; index += 1) {
+        this.hintClickableRegions.push({
+          x: zone.x + index * (buttonWidth + gap),
+          y: zone.y + 25,
+          width: buttonWidth,
+          height: zone.height - 27
+        });
+      }
+      this.bonusWordsTextRect = { x: zone.x, y: zone.y, width: 145, height: 22 };
+      return;
+    }
     const verticalSpacing = HINT_FRAME_VERTICAL_SPACING;
     const frameImage = this.images.hintFrame;
     const frameTexW = frameImage?.naturalWidth || frameImage?.width || 0;
@@ -1983,8 +2337,10 @@ export class Game {
   }
 
   private updateRulesLayout() {
-    const panelWidth = 860;
-    const panelHeight = 570;
+    const panelWidth = this.isPortraitLayout ? this.layoutWidth - 36 : 860;
+    const panelHeight = this.isPortraitLayout
+      ? Math.min(720, this.layoutHeight - 100)
+      : 570;
     const panelX = (this.layoutWidth - panelWidth) / 2;
     const panelY = (this.layoutHeight - panelHeight) / 2;
     this.rulesPanel = { x: panelX, y: panelY, width: panelWidth, height: panelHeight };
@@ -1997,6 +2353,39 @@ export class Game {
   }
 
   private renderMainMenu(ctx: CanvasRenderingContext2D) {
+    if (this.campaignEnabled) {
+      const buttons = this.canResumeGameFromMainMenu
+        ? [
+            { label: "Return to Puzzle", rect: this.mainMenuButtons[0] },
+            { label: "Levels", rect: this.mainMenuButtons[1] },
+            { label: "How to Play", rect: this.mainMenuButtons[2] }
+          ]
+        : [
+            {
+              label:
+                this.campaignProgress.currentLevel === 1 &&
+                !this.campaignProgress.completedLevels.includes(1)
+                  ? "Start"
+                  : `Continue Level ${this.campaignProgress.currentLevel}`,
+              rect: this.mainMenuButtons[0]
+            },
+            { label: "Levels", rect: this.mainMenuButtons[1] },
+            { label: "How to Play", rect: this.mainMenuButtons[2] }
+          ];
+      this.drawMenuPanel(ctx, "Word Journey", buttons);
+      drawCenteredText(
+        ctx,
+        `${this.campaignProgress.completedLevels.length} of ${CAMPAIGN_LEVELS.length} levels complete`,
+        {
+          x: this.layoutWidth / 2,
+          y: this.mainMenuButtons[0].y - 24
+        },
+        UI_TEXT,
+        this.font(16, false)
+      );
+      return;
+    }
+
     const title = this.canResumeGameFromMainMenu ? "Pause Menu" : "Word Puzzle";
     const buttons = this.canResumeGameFromMainMenu
       ? [
@@ -2011,6 +2400,74 @@ export class Game {
         ];
 
     this.drawMenuPanel(ctx, title, buttons);
+  }
+
+  private renderCampaignSelect(ctx: CanvasRenderingContext2D) {
+    const pageStart = this.campaignPage * 10 + 1;
+    const pageEnd = Math.min(CAMPAIGN_LEVELS.length, pageStart + 9);
+    const panel = {
+      x: 35,
+      y: 110,
+      width: this.layoutWidth - 70,
+      height: Math.min(700, this.layoutHeight - 180)
+    };
+    this.drawElevatedPanel(ctx, panel.x, panel.y, panel.width, panel.height, 18);
+    drawCenteredText(
+      ctx,
+      "Choose a Level",
+      { x: this.layoutWidth / 2, y: 64 },
+      { r: 255, g: 242, b: 213 },
+      this.font(32, true)
+    );
+    drawCenteredText(
+      ctx,
+      `Levels ${pageStart}–${pageEnd}`,
+      { x: this.layoutWidth / 2, y: panel.y + 38 },
+      UI_TEXT,
+      this.font(18, true)
+    );
+
+    for (const entry of this.campaignLevelButtons) {
+      const locked = entry.level > this.campaignProgress.highestUnlockedLevel;
+      const completed = this.campaignProgress.completedLevels.includes(entry.level);
+      const level = campaignLevel(entry.level);
+      const fill = locked
+        ? { r: 126, g: 116, b: 101, a: 255 }
+        : completed
+          ? { r: 106, g: 139, b: 78, a: 255 }
+          : this.currentTheme.menuButtonNormal;
+      this.drawButton(ctx, entry.rect, locked ? "Locked" : `Level ${entry.level}`, fill, UI_TEXT);
+      if (!locked) {
+        drawCenteredText(
+          ctx,
+          `${level.rackLength} letters · ${level.mode === GameMode.Crossword ? "Crossword" : "Words"}`,
+          {
+            x: entry.rect.x + entry.rect.width / 2,
+            y: entry.rect.y + entry.rect.height - 13
+          },
+          UI_TEXT,
+          this.font(10, false)
+        );
+      }
+    }
+
+    this.drawButton(
+      ctx,
+      this.campaignPreviousButton,
+      "Previous",
+      this.campaignPage > 0
+        ? this.currentTheme.menuButtonNormal
+        : { r: 126, g: 116, b: 101, a: 255 }
+    );
+    this.drawButton(
+      ctx,
+      this.campaignNextButton,
+      "Next",
+      pageEnd < CAMPAIGN_LEVELS.length
+        ? this.currentTheme.menuButtonNormal
+        : { r: 126, g: 116, b: 101, a: 255 }
+    );
+    this.drawButton(ctx, this.campaignBackButton, "Back", this.currentTheme.menuButtonNormal);
   }
 
   private renderExitConfirmDialog(ctx: CanvasRenderingContext2D) {
@@ -2067,13 +2524,21 @@ export class Game {
       this.font(30, true)
     );
 
-    const rulesBullets = [
-      "Drag across letters (or type with your keyboard) to spell words in the Letter Wheel.",
-      "Spelling words gives the player points to spend on Hints.",
-      "Click on spelled words to see their definitions.",
-      "Finding bonus words also rewards points to use on hints.",
-      "Hint points are carried over from game to game. For example, if you play on easy and have points leftover, and then play a medium difficulty game, you keep the points you earned on easy and so on."
-    ];
+    const rulesBullets = this.campaignEnabled
+      ? [
+          "Swipe across letters in the wheel to spell every word shown on the board.",
+          "Levels gradually add more letters, longer words, and rarer words.",
+          "Solved words and bonus words earn score and hint points.",
+          "Hint points carry into later levels.",
+          "Green levels on the Levels screen have been completed and can be replayed."
+        ]
+      : [
+          "Drag across letters (or type with your keyboard) to spell words in the Letter Wheel.",
+          "Spelling words gives the player points to spend on Hints.",
+          "Click on spelled words to see their definitions.",
+          "Finding bonus words also rewards points to use on hints.",
+          "Hint points are carried over from game to game. For example, if you play on easy and have points leftover, and then play a medium difficulty game, you keep the points you earned on easy and so on."
+        ];
     const gemRows = [
       { label: "No Gem", rarity: 0, icon: null as HTMLImageElement | null },
       { label: "Emerald", rarity: 2, icon: this.images.sapphire ?? null },
@@ -2210,6 +2675,22 @@ export class Game {
     this.renderGuessDisplay(ctx);
     this.renderSolvedWordPopup(ctx);
 
+    if (
+      this.campaignEnabled &&
+      this.activeCampaignLevel === 1 &&
+      !this.campaignProgress.tutorialCompleted &&
+      this.currentScreen === GameScreen.Playing
+    ) {
+      const y = this.wheelZone.y - 10;
+      drawCenteredText(
+        ctx,
+        "Swipe across the letters to spell HAD",
+        { x: this.layoutWidth / 2, y },
+        { r: 255, g: 243, b: 216, a: 255 },
+        this.font(18, true)
+      );
+    }
+
     if (this.gameState === GState.Solved || this.currentScreen === GameScreen.GameOver) {
       const title = "Puzzle Solved!";
       const titleFont = this.font(24, true);
@@ -2257,7 +2738,11 @@ export class Game {
       this.drawButton(
         ctx,
         this.continueButton,
-        "Continue",
+        this.campaignEnabled && this.activeCampaignLevel === CAMPAIGN_LEVELS.length
+          ? "Level Select"
+          : this.campaignEnabled
+            ? "Next Level"
+            : "Continue",
         hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal,
         UI_TEXT
       );
@@ -2356,6 +2841,34 @@ export class Game {
 
   private renderScoreZone(ctx: CanvasRenderingContext2D) {
     const zone = this.scoreZone;
+    if (this.campaignEnabled && this.isPortraitLayout) {
+      drawRoundedRect(
+        ctx,
+        zone.x,
+        zone.y,
+        zone.width,
+        zone.height,
+        14,
+        { r: 250, g: 238, b: 205, a: 225 },
+        { r: 177, g: 154, b: 112, a: 230 },
+        1
+      );
+      drawCenteredText(
+        ctx,
+        `Level ${this.activeCampaignLevel}`,
+        { x: zone.x + zone.width * 0.25, y: zone.y + zone.height / 2 },
+        UI_TEXT,
+        this.font(17, true)
+      );
+      drawCenteredText(
+        ctx,
+        this.currentScore.toLocaleString("en-US"),
+        { x: zone.x + zone.width * 0.72, y: zone.y + zone.height / 2 },
+        UI_TEXT,
+        this.font(20, true)
+      );
+      return;
+    }
     const centerX = zone.x + zone.width / 2;
     const labelHeight = SCORE_ZONE_LABEL_FONT_SIZE;
     const valueHeight = SCORE_ZONE_VALUE_FONT_SIZE;
@@ -2530,7 +3043,7 @@ export class Game {
 
   private renderPath(ctx: CanvasRenderingContext2D) {
     if (!this.dragging || this.path.length === 0) return;
-    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    const interactionScale = this.wheelInteractionScaleActive ? this.getExpandedWheelScale() : 1;
     ctx.strokeStyle = colorToCss(this.currentTheme.dragLine);
     ctx.lineWidth = 5 * interactionScale;
     ctx.lineCap = "round";
@@ -2547,7 +3060,7 @@ export class Game {
 
   private renderWheel(ctx: CanvasRenderingContext2D) {
     if (!this.base) return;
-    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    const interactionScale = this.wheelInteractionScaleActive ? this.getExpandedWheelScale() : 1;
     const visualRadius = this.currentLetterRenderRadius * WHEEL_LETTER_VISUAL_SCALE * interactionScale;
     const fontScaleRatio = clamp(
       (this.currentLetterRenderRadius / LETTER_R_BASE_DESIGN) * WHEEL_LETTER_VISUAL_SCALE,
@@ -2564,6 +3077,29 @@ export class Game {
       if (pulseTimer > 0) {
         const progress = 1 - pulseTimer / KEYBOARD_LETTER_PULSE_DURATION_SEC;
         letterScale = 1 + (KEYBOARD_LETTER_PULSE_SCALE_MAX - 1) * Math.sin(progress * Math.PI);
+      }
+
+      if (this.campaignEnabled && this.isPortraitLayout) {
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.scale(letterScale, letterScale);
+        const selected = this.path.includes(i);
+        if (selected) {
+          ctx.beginPath();
+          ctx.arc(0, 0, this.currentLetterRenderRadius * 1.1 * interactionScale, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(112, 137, 79, 0.9)";
+          ctx.fill();
+        }
+        ctx.fillStyle = selected ? "#fff9e9" : colorToCss(UI_INK);
+        ctx.font = this.font(
+          clamp(this.currentLetterRenderRadius * 2.05 * interactionScale, 52, 92),
+          true
+        );
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.base[i].toUpperCase(), 0, 1);
+        ctx.restore();
+        continue;
       }
 
       ctx.save();
@@ -2603,6 +3139,9 @@ export class Game {
     this.drawButton(ctx, b, "", rectContains(b, this.mousePos) ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal);
     ctx.save();
     ctx.translate(b.x + b.width / 2, b.y + b.height / 2);
+    const scrambleIconScale =
+      this.campaignEnabled && this.isPortraitLayout ? b.width / 55 : 1;
+    ctx.scale(scrambleIconScale, scrambleIconScale);
     ctx.strokeStyle = colorToCss(UI_INK);
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
@@ -2618,7 +3157,13 @@ export class Game {
       ctx.stroke();
     }
     ctx.restore();
-    drawCenteredText(ctx, "Scramble", { x: b.x + b.width / 2, y: b.y + b.height + 12 }, {r:255,g:243,b:216}, this.font(12, true));
+    drawCenteredText(
+      ctx,
+      "Scramble",
+      { x: b.x + b.width / 2, y: b.y + b.height + 13 },
+      { r: 255, g: 243, b: 216 },
+      this.font(this.campaignEnabled && this.isPortraitLayout ? 14 : 12, true)
+    );
   }
 
   private renderLetterAnims(ctx: CanvasRenderingContext2D) {
@@ -2707,6 +3252,39 @@ export class Game {
   private renderHintZone(ctx: CanvasRenderingContext2D) {
     const zone = this.hintZone;
     const totalBonus = this.calculateTotalPossibleBonusWords();
+    if (this.campaignEnabled && this.isPortraitLayout) {
+      const bonusText = `Bonus ${this.foundBonusWords.size}/${totalBonus}`;
+      ctx.fillStyle = "#fff3d8";
+      ctx.font = this.font(15, true);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(bonusText, zone.x + 4, zone.y + 12);
+      this.bonusWordsTextRect = { x: zone.x, y: zone.y, width: 150, height: 24 };
+      ctx.textAlign = "right";
+      ctx.fillText(`Hints ${this.hintPoints}`, zone.x + zone.width - 4, zone.y + 12);
+
+      for (let index = 0; index < this.hintClickableRegions.length; index += 1) {
+        const rect = this.hintClickableRegions[index];
+        const cost = this.getHintCost(index);
+        const affordable = this.hintPoints >= cost;
+        const active = this.hoveredHintIndex === index || this.hintFrameClickAnimTimers[index] > 0;
+        this.drawButton(
+          ctx,
+          rect,
+          "",
+          active ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal
+        );
+        this.renderCampaignHintIcon(ctx, index, rect, affordable);
+        drawCenteredText(
+          ctx,
+          String(cost),
+          { x: rect.x + rect.width / 2, y: rect.y + rect.height * 0.8 },
+          affordable ? { r: 61, g: 94, b: 42, a: 255 } : { r: 130, g: 120, b: 105, a: 255 },
+          this.font(12, true)
+        );
+      }
+      return;
+    }
     const bonusText = `Bonus Words: ${this.foundBonusWords.size}/${totalBonus}`;
     ctx.font = this.font(HINT_ZONE_BONUS_TEXT_SIZE, true);
     ctx.fillStyle = colorToCss(UI_INK);
@@ -2726,7 +3304,8 @@ export class Game {
     for (let i = 0; i < this.hintClickableRegions.length; i += 1) {
       const rect = this.hintClickableRegions[i];
       const hover = this.hoveredHintIndex === i;
-      const affordable = this.hintPoints >= HINT_COSTS[i];
+      const hintCost = this.getHintCost(i);
+      const affordable = this.hintPoints >= hintCost;
       const flashing = this.hintFrameClickAnimTimers[i] > 0;
       this.drawButton(ctx, rect, "", hover || flashing ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal);
       const dotX = rect.x + 17;
@@ -2744,7 +3323,7 @@ export class Game {
       ctx.textAlign = "left";
       ctx.fillText(HINT_LABELS[i], rect.x + 31, midY);
       ctx.textAlign = "right";
-      ctx.fillText(String(HINT_COSTS[i]), rect.x + rect.width - 12, midY);
+      ctx.fillText(String(hintCost), rect.x + rect.width - 12, midY);
     }
 
     if (this.hoveredHintIndex >= 0) {
@@ -2777,7 +3356,7 @@ export class Game {
         ctx.font = this.font(descFont);
         const wrapped = wrapTextForWidth(ctx, desc, contentWidth);
         const descLines = wrapped.split("\n").filter((line) => line.length > 0);
-        const headerLines = ["Available Points:", `${this.hintPoints}`, `Cost: ${HINT_COSTS[this.hoveredHintIndex]}`];
+        const headerLines = ["Available Points:", `${this.hintPoints}`, `Cost: ${this.getHintCost(this.hoveredHintIndex)}`];
         const headerHeight = headerLines.length * headerFont + Math.max(0, headerLines.length - 1) * spacing;
         const descHeight = descLines.length * descFont + Math.max(0, descLines.length - 1) * spacing;
         const totalHeight = headerHeight + (descLines.length > 0 ? spacing + descHeight : 0);
@@ -2829,6 +3408,61 @@ export class Game {
         }
       }
     }
+  }
+
+  private renderCampaignHintIcon(
+    ctx: CanvasRenderingContext2D,
+    index: number,
+    rect: Rect,
+    affordable: boolean
+  ) {
+    const color = affordable ? colorToCss(UI_TEXT) : "rgb(116, 105, 86)";
+    const centerX = rect.x + rect.width / 2;
+    const centerY = rect.y + rect.height * 0.4;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    if (index === 0 || index === 1) {
+      drawRoundedRect(
+        ctx,
+        centerX - 13,
+        centerY - 13,
+        26,
+        26,
+        5,
+        { r: 255, g: 248, b: 226, a: affordable ? 255 : 170 },
+        affordable ? UI_TEXT : { r: 116, g: 105, b: 86, a: 255 },
+        1.5
+      );
+      drawCenteredText(
+        ctx,
+        index === 0 ? "A" : "?",
+        { x: centerX, y: centerY + 1 },
+        affordable ? UI_TEXT : { r: 116, g: 105, b: 86, a: 255 },
+        this.font(17, true)
+      );
+    } else if (index === 2) {
+      for (let tile = 0; tile < 3; tile += 1) {
+        ctx.strokeRect(centerX - 24 + tile * 17, centerY - 8, 14, 16);
+        ctx.beginPath();
+        ctx.arc(centerX - 17 + tile * 17, centerY, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      for (let row = 0; row < 3; row += 1) {
+        const y = centerY - 12 + row * 10;
+        ctx.strokeRect(centerX - 21, y, 8, 8);
+        ctx.beginPath();
+        ctx.moveTo(centerX - 8, y + 4);
+        ctx.lineTo(centerX + 20, y + 4);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
   }
 
   private renderBonusWordsPopup(ctx: CanvasRenderingContext2D) {
@@ -3069,12 +3703,15 @@ export class Game {
     const info = this.sorted[this.hoveredSolvedWordIndex];
     if (!info) return;
 
-    const popupPadding = WORD_INFO_POPUP_PADDING_DESIGN;
-    const popupMaxWidth = WORD_INFO_POPUP_MAX_WIDTH_DESIGN;
-    const lineSpacing = WORD_INFO_POPUP_LINE_SPACING_DESIGN;
+    const useMobileDictionary = this.campaignEnabled && this.isPortraitLayout;
+    const popupPadding = useMobileDictionary ? 30 : WORD_INFO_POPUP_PADDING_DESIGN;
+    const popupMaxWidth = useMobileDictionary
+      ? this.layoutWidth - 36
+      : WORD_INFO_POPUP_MAX_WIDTH_DESIGN;
+    const lineSpacing = useMobileDictionary ? 9 : WORD_INFO_POPUP_LINE_SPACING_DESIGN;
     const contentWidthLimit = Math.max(120, popupMaxWidth - popupPadding * 2);
-    const titleFontSize = Math.max(10, 16);
-    const bodyFontSize = Math.max(8, 14);
+    const titleFontSize = useMobileDictionary ? 32 : Math.max(10, 16);
+    const bodyFontSize = useMobileDictionary ? 23 : Math.max(8, 14);
 
     const blocks = [
       {
@@ -3123,8 +3760,12 @@ export class Game {
 
     const popupOffset = WORD_INFO_POPUP_OFFSET_FROM_MOUSE_DESIGN;
     const popupMargin = POPUP_SCREEN_MARGIN_DESIGN;
-    let popupX = this.mousePos.x + popupOffset;
-    let popupY = this.mousePos.y + popupOffset;
+    let popupX = useMobileDictionary
+      ? (this.layoutWidth - popupWidth) / 2
+      : this.mousePos.x + popupOffset;
+    let popupY = useMobileDictionary
+      ? this.mousePos.y - popupHeight / 2
+      : this.mousePos.y + popupOffset;
 
     if (popupX + popupWidth > this.layoutWidth - popupMargin) {
       popupX = this.layoutWidth - popupWidth - popupMargin;
@@ -3136,6 +3777,10 @@ export class Game {
     popupY = Math.max(popupY, popupMargin);
 
     ctx.save();
+    if (useMobileDictionary) {
+      ctx.fillStyle = "rgba(20, 13, 8, 0.58)";
+      ctx.fillRect(0, 0, this.layoutWidth, this.layoutHeight);
+    }
     this.drawElevatedPanel(
       ctx,
       popupX,
@@ -3704,11 +4349,13 @@ export class Game {
         this.hintPoints += gemHintAward;
         this.spawnHintPointAnimation(this.bonusWordsTextRect, gemHintAward);
       }
+      this.persistCampaignEconomy();
 
       playWordSuccess();
       if (this.found.size === this.solutions.length) {
         this.gameState = GState.Solved;
         this.currentScreen = GameScreen.GameOver;
+        this.completeCampaignLevel();
         this.playSound("win");
         this.voiceCommentary.onPuzzleSolved();
       }
@@ -3814,6 +4461,13 @@ export class Game {
     return { allowedLengths: [4, 5, 6, 7], allowedRarities: [1, 2, 3, 4] };
   }
 
+  private getHintCost(index: number) {
+    if (this.campaignEnabled) {
+      return [2, 5, 8, 10][index] ?? HINT_COSTS[index] ?? 0;
+    }
+    return HINT_COSTS[index] ?? 0;
+  }
+
   private getCanonicalLetters(word: string) {
     return word.toLowerCase().split("").sort().join("");
   }
@@ -3851,6 +4505,29 @@ export class Game {
   }
 
   private renderLibraryPanels(ctx: CanvasRenderingContext2D) {
+    if (this.campaignEnabled && this.isPortraitLayout) {
+      const interactionScale = this.wheelInteractionScaleActive ? this.getExpandedWheelScale() : 1;
+      ctx.save();
+      ctx.shadowColor = "rgba(35, 22, 11, 0.35)";
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 8;
+      ctx.beginPath();
+      ctx.arc(
+        this.wheelCenter.x,
+        this.wheelCenter.y,
+        this.visualBgRadius * interactionScale,
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = "rgba(255, 250, 234, 0.94)";
+      ctx.fill();
+      ctx.shadowColor = "transparent";
+      ctx.strokeStyle = colorToCss(this.currentTheme.wheelOutline);
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
     const panel = (x: number, y: number, w: number, h: number) => {
       this.drawElevatedPanel(ctx, x, y, w, h, 12, this.currentTheme.menuBg, undefined, true);
     };
@@ -3860,7 +4537,7 @@ export class Game {
     panel(hints.x - 15, hints.y - 16, hints.width + 30, hints.height + 32);
     const score = this.scoreZone;
     panel(score.x - 3, score.y - 22, score.width + 6, score.height + 44);
-    const interactionScale = this.wheelInteractionScaleActive ? WHEEL_INTERACTION_SCALE_FACTOR : 1;
+    const interactionScale = this.wheelInteractionScaleActive ? this.getExpandedWheelScale() : 1;
     ctx.save();
     ctx.shadowColor = "rgba(28, 18, 9, 0.62)";
     ctx.shadowBlur = 15;
