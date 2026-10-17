@@ -1,3 +1,4 @@
+import { LibraryRestorationArt, restorationForPuzzle, earnedRestorations } from "./libraryRestoration";
 import { LIBRARY_ROOMS, journeyLayout } from "./campaignJourney";
 import { Assets } from "./assets";
 import {
@@ -209,6 +210,12 @@ export class Game {
   private activeCampaignLevel = 1;
   private campaignPage = 0;
   private campaignRoomOpen = false;
+  private campaignRoomView: "room" | "puzzles" = "room";
+  private restorationArt = new LibraryRestorationArt();
+  private restorationRevealPuzzle: number | null = null;
+  private restorationRevealTime = 0;
+  private libraryWordBursts: Array<{ wordIdx: number; time: number }> = [];
+  private reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   private campaignLevelButtons: Array<{ level: number; rect: Rect }> = [];
   private campaignPreviousButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private campaignNextButton: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -383,6 +390,9 @@ export class Game {
   update(dt: number) {
     if (!this.ready) return;
 
+    this.restorationRevealTime += dt;
+    for (const burst of this.libraryWordBursts) burst.time += dt;
+    this.libraryWordBursts = this.libraryWordBursts.filter(burst => burst.time < 1.1);
     this.decor.update(dt, { x: this.layoutWidth, y: this.layoutHeight }, this.currentTheme);
 
     if (this.isAwaitingLetterHintTarget) {
@@ -1249,6 +1259,8 @@ export class Game {
         this.playSound("click");
         this.campaignPage = room;
         this.campaignRoomOpen = true;
+        this.campaignRoomView = "room";
+        void this.restorationArt.load(room);
         this.updateCampaignSelectLayout();
         return;
       }
@@ -1266,7 +1278,12 @@ export class Game {
       this.campaignRoomOpen = false;
       return;
     }
-    for (const entry of this.campaignLevelButtons) {
+    if (rectContains(layout.roomTab, world) || rectContains(layout.puzzlesTab, world)) {
+      this.campaignRoomView = rectContains(layout.roomTab, world) ? "room" : "puzzles";
+      this.playSound("click");
+      return;
+    }
+    for (const entry of this.campaignRoomView === "puzzles" ? this.campaignLevelButtons : []) {
       if (!rectContains(entry.rect, world)) continue;
       if (entry.level > this.campaignProgress.highestUnlockedLevel) {
         this.playSound("error");
@@ -1292,6 +1309,10 @@ export class Game {
   }
 
   private startCampaignLevel(levelNumber: number) {
+    this.restorationRevealPuzzle = null;
+    this.restorationRevealTime = 0;
+    this.libraryWordBursts = [];
+    void this.restorationArt.load(campaignGroup(levelNumber) - 1);
     const level = campaignLevel(levelNumber, this.campaignProgress.campaignSeed);
     this.activeCampaignLevel = level.level;
     this.campaignProgress.currentLevel = level.level;
@@ -1364,6 +1385,8 @@ export class Game {
     this.activeCampaignLevel = 1;
     this.campaignPage = 0;
     this.campaignRoomOpen = false;
+    this.restorationRevealPuzzle = null;
+    this.libraryWordBursts = [];
     this.currentScore = 0;
     this.hintPoints = this.campaignProgress.hintPoints;
     this.canResumeGameFromMainMenu = false;
@@ -1512,6 +1535,8 @@ export class Game {
     if (!this.campaignEnabled) return;
     const completedLevel = this.activeCampaignLevel;
     if (!this.campaignProgress.completedLevels.includes(completedLevel)) {
+      this.restorationRevealPuzzle = completedLevel;
+      this.restorationRevealTime = 0;
       this.campaignProgress.completedLevels.push(completedLevel);
       this.campaignProgress.completedLevels.sort((a, b) => a - b);
     }
@@ -2479,7 +2504,7 @@ export class Game {
       const ink = locked ? { r: 167, g: 186, b: 191 } : cream;
       if (current) {
         ctx.shadowColor = "#ffc45d";
-        ctx.shadowBlur = 14 + Math.sin(performance.now() / 650) * 4;
+        ctx.shadowBlur = this.reducedMotion ? 14 : 14 + Math.sin(performance.now() / 650) * 4;
       }
       drawRoundedRect(ctx, rect.x, rect.y, rect.width, rect.height, 14,
         { r: 6, g: 27, b: 35, a: 242 }, locked ? { r: 86, g: 112, b: 123 } : gold, current ? 3 : 1.5);
@@ -2523,9 +2548,20 @@ export class Game {
       { x: this.layoutWidth / 2, y: panel.y + 36 }, UI_TEXT, "bold 22px Georgia, serif");
     drawCenteredText(ctx, room.rule, { x: this.layoutWidth / 2, y: panel.y + 69 }, UI_TEXT, this.font(15));
     const lockedRoom = this.campaignPage * 10 + 1 > unlocked;
-    drawCenteredText(ctx, lockedRoom ? "Complete the preceding puzzles to enter" : "Choose a puzzle · completed puzzles can be replayed",
+    drawCenteredText(ctx, lockedRoom ? "Complete the preceding puzzles to enter" : this.campaignRoomView === "room" ? "Bring this room to life, one puzzle at a time" : "Choose a puzzle · completed puzzles can be replayed",
       { x: this.layoutWidth / 2, y: panel.y + 102 }, UI_TEXT, this.font(13));
-    for (const entry of this.campaignLevelButtons) {
+    this.drawButton(ctx, layout.roomTab, "Room", this.campaignRoomView === "room" ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal);
+    this.drawButton(ctx, layout.puzzlesTab, "Puzzles", this.campaignRoomView === "puzzles" ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal);
+    if (this.campaignRoomView === "room") {
+      this.restorationArt.draw(ctx, this.campaignPage, layout.roomArt, completed);
+      const count = earnedRestorations(this.campaignPage, completed).length;
+      drawCenteredText(ctx, `${count}/10 restorations · one for each puzzle`,
+        { x: this.layoutWidth / 2, y: layout.roomArt.y + layout.roomArt.height + 24 }, UI_TEXT, this.font(15, true));
+      const nextPuzzle = Array.from({ length: 10 }, (_, i) => this.campaignPage * 10 + i + 1).find(puzzle => !completed.includes(puzzle));
+      if (nextPuzzle) drawCenteredText(ctx, `Next: ${restorationForPuzzle(nextPuzzle)?.title ?? "Restore the room"}`,
+        { x: this.layoutWidth / 2, y: layout.roomArt.y + layout.roomArt.height + 48 }, UI_TEXT, this.font(13));
+    }
+    for (const entry of this.campaignRoomView === "puzzles" ? this.campaignLevelButtons : []) {
       const locked = entry.level > unlocked;
       const done = completed.includes(entry.level);
       const current = entry.level === unlocked && !done;
@@ -2747,6 +2783,7 @@ export class Game {
     this.renderTopBar(ctx);
     this.renderScoreZone(ctx);
     this.renderGrid(ctx);
+    this.renderLibraryWordBursts(ctx);
     this.renderPath(ctx);
     this.renderWheel(ctx);
     this.renderLetterAnims(ctx);
@@ -2773,6 +2810,10 @@ export class Game {
     }
 
     if (this.gameState === GState.Solved || this.currentScreen === GameScreen.GameOver) {
+      if (this.campaignEnabled) {
+        this.renderRestorationReward(ctx);
+        return;
+      }
       const title = "Puzzle Solved!";
       const titleFont = this.font(24, true);
       ctx.save();
@@ -2830,6 +2871,78 @@ export class Game {
         UI_TEXT
       );
     }
+  }
+
+  private renderRestorationReward(ctx: CanvasRenderingContext2D) {
+    const room = campaignGroup(this.activeCampaignLevel) - 1;
+    const reward = restorationForPuzzle(this.activeCampaignLevel);
+    const newlyEarned = this.restorationRevealPuzzle === this.activeCampaignLevel;
+    const roomComplete = newlyEarned && campaignPuzzleInGroup(this.activeCampaignLevel) === 10;
+    const finalRoom = this.activeCampaignLevel === CAMPAIGN_LEVELS.length;
+    const width = Math.min(600, this.layoutWidth - 40);
+    const artWidth = Math.min(width - 40, (this.layoutHeight - 310) * 1.5);
+    const artHeight = artWidth * 2 / 3;
+    const height = artHeight + 210;
+    const x = (this.layoutWidth - width) / 2;
+    const y = (this.layoutHeight - height) / 2;
+    const artRect = { x: this.layoutWidth / 2 - artWidth / 2, y: y + 95, width: artWidth, height: artHeight };
+    ctx.save();
+    ctx.fillStyle = "rgba(3,18,25,0.78)";
+    ctx.fillRect(0, 0, this.layoutWidth, this.layoutHeight);
+    this.drawElevatedPanel(ctx, x, y, width, height, 18);
+    const title = roomComplete ? finalRoom ? "The library is restored!" : "Room restored!" : "Puzzle complete!";
+    drawCenteredText(ctx, title, { x: this.layoutWidth / 2, y: y + 31 }, UI_TEXT, "bold 27px Georgia, serif");
+    drawCenteredText(ctx, newlyEarned ? reward?.title ?? "A new restoration" : "Replay complete · your restoration is already earned",
+      { x: this.layoutWidth / 2, y: y + 66 }, UI_TEXT, this.font(14, true));
+    const progress = this.reducedMotion ? 1 : Math.min(1, this.restorationRevealTime / 0.85);
+    const loaded = this.restorationArt.draw(ctx, room, artRect, this.campaignProgress.completedLevels, newlyEarned ? this.activeCampaignLevel : null, progress);
+    // Start the reveal only once the room textures are decoded.
+    if (!loaded && newlyEarned) this.restorationRevealTime = 0;
+    const count = earnedRestorations(room, this.campaignProgress.completedLevels).length;
+    const caption = roomComplete && !finalRoom
+      ? `Unlocked: ${LIBRARY_ROOMS[room + 1].name}`
+      : `${LIBRARY_ROOMS[room].name} · ${count}/10 restored`;
+    drawCenteredText(ctx, caption, { x: this.layoutWidth / 2, y: artRect.y + artHeight + 24 }, UI_TEXT, this.font(15, true));
+    this.continueButton = { x: this.layoutWidth / 2 - 130, y: y + height - 72, width: 260, height: 52 };
+    this.drawButton(ctx, this.continueButton, finalRoom ? "Library Journey" : roomComplete ? "Next Level" : "Next Puzzle",
+      rectContains(this.continueButton, this.mousePos) ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal);
+    ctx.restore();
+  }
+
+  private renderLibraryWordBursts(ctx: CanvasRenderingContext2D) {
+    if (!this.campaignEnabled || this.reducedMotion) return;
+    ctx.save();
+    const size = TILE_SIZE * this.currentGridLayoutScale *
+      (this.currentGridLayoutScale < 1 ? GRID_TILE_RELATIVE_SCALE_WHEN_SHRUNK : 1);
+    for (const burst of this.libraryWordBursts) {
+      const word = this.sorted[burst.wordIdx]?.text;
+      if (!word) continue;
+      for (let c = 0; c < word.length; c += 1) {
+        const t = (burst.time - c * 0.045) / 0.7;
+        if (t < 0 || t > 1) continue;
+        const pos = this.tilePos(burst.wordIdx, c);
+        const x = pos.x + size / 2, y = pos.y + size / 2;
+        ctx.globalAlpha = (1 - t) * 0.85;
+        ctx.strokeStyle = "#ffe4a1";
+        ctx.shadowColor = "#efb64c";
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = Math.max(1.5, size * 0.035);
+        ctx.beginPath();
+        ctx.arc(x, y, size * (0.4 + t * 0.23), 0, Math.PI * 2);
+        ctx.stroke();
+        for (let ray = 0; ray < 4; ray += 1) {
+          const angle = ray * Math.PI / 2 + Math.PI / 4;
+          const radius = size * (0.5 + t * 0.4);
+          const sx = x + Math.cos(angle) * radius, sy = y + Math.sin(angle) * radius;
+          const length = size * 0.08 * (1 - t);
+          ctx.beginPath();
+          ctx.moveTo(sx - length, sy); ctx.lineTo(sx + length, sy);
+          ctx.moveTo(sx, sy - length); ctx.lineTo(sx, sy + length);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
   }
 
   private renderTopBar(ctx: CanvasRenderingContext2D) {
@@ -4212,6 +4325,7 @@ export class Game {
   }
 
   private spawnScoreFlourish(points: number, wordIdx: number) {
+    if (this.campaignEnabled && !this.reducedMotion) this.libraryWordBursts.push({ wordIdx, time: 0 });
     if (points === 0) return;
     const word = this.sorted[wordIdx]?.text;
     if (!word) return;

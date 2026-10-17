@@ -28,14 +28,18 @@ export function journeyLayout(width: number, height: number) {
   const panel: Rect = { x: (width - panelWidth) / 2, y: (height - panelHeight) / 2, width: panelWidth, height: panelHeight };
   const gap = 12;
   const cellWidth = (panelWidth - 60 - gap) / 2;
-  const cellHeight = (panelHeight - 235 - 4 * gap) / 5;
+  const cellHeight = (panelHeight - 285 - 4 * gap) / 5;
   const puzzles: Rect[] = Array.from({ length: 10 }, (_, i) => ({
     x: panel.x + 30 + (i % 2) * (cellWidth + gap),
-    y: panel.y + 135 + Math.floor(i / 2) * (cellHeight + gap),
+    y: panel.y + 185 + Math.floor(i / 2) * (cellHeight + gap),
     width: cellWidth, height: cellHeight
   }));
+  const artWidth = Math.min(panelWidth - 50, (panelHeight - 305) * 1.5);
   return {
     rooms, panel, puzzles,
+    roomTab: { x: panel.x + 30, y: panel.y + 117, width: (panelWidth - 72) / 2, height: 48 },
+    puzzlesTab: { x: panel.x + panelWidth / 2 + 6, y: panel.y + 117, width: (panelWidth - 72) / 2, height: 48 },
+    roomArt: { x: panel.x + (panelWidth - artWidth) / 2, y: panel.y + 185, width: artWidth, height: artWidth * 2 / 3 },
     previous: { x: panel.x + 30, y: panel.y + panelHeight - 75, width: 130, height: 52 },
     next: { x: panel.x + panelWidth - 160, y: panel.y + panelHeight - 75, width: 130, height: 52 },
     close: { x: panel.x + panelWidth / 2 - 65, y: panel.y + panelHeight - 75, width: 130, height: 52 },

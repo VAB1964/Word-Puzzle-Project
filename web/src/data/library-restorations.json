@@ -1,0 +1,758 @@
+[
+  {
+    "id": "01-front-hall",
+    "base": "01-front-hall/base.webp",
+    "restorations": [
+      {
+        "puzzle": 1,
+        "title": "Lay the welcome rug",
+        "file": "01-front-hall/01-welcome-rug.webp",
+        "box": {
+          "x": 50,
+          "y": 98,
+          "w": 48,
+          "h": 21
+        },
+        "layer": 10
+      },
+      {
+        "puzzle": 2,
+        "title": "Light the entrance lantern",
+        "file": "01-front-hall/02-floor-lantern.webp",
+        "box": {
+          "x": 78,
+          "y": 83,
+          "w": 12,
+          "h": 38
+        },
+        "layer": 21
+      },
+      {
+        "puzzle": 3,
+        "title": "Restore the welcome desk",
+        "file": "01-front-hall/03-welcome-console.webp",
+        "box": {
+          "x": 27,
+          "y": 86,
+          "w": 34,
+          "h": 25
+        },
+        "layer": 22
+      },
+      {
+        "puzzle": 4,
+        "title": "Return the first books",
+        "file": "01-front-hall/04-antique-books.webp",
+        "box": {
+          "x": 22,
+          "y": 62.25,
+          "w": 11,
+          "h": 10
+        },
+        "layer": 23
+      },
+      {
+        "puzzle": 5,
+        "title": "Restore the library crest",
+        "file": "01-front-hall/05-library-crest.webp",
+        "box": {
+          "x": 51,
+          "y": 41,
+          "w": 14,
+          "h": 20
+        },
+        "layer": 24
+      },
+      {
+        "puzzle": 6,
+        "title": "Bring life to the hall",
+        "file": "01-front-hall/06-ivy-urn.webp",
+        "box": {
+          "x": 86,
+          "y": 88,
+          "w": 18,
+          "h": 29
+        },
+        "layer": 25
+      },
+      {
+        "puzzle": 7,
+        "title": "Fill the welcome bookcase",
+        "file": "01-front-hall/07-bookcase.webp",
+        "box": {
+          "x": 9,
+          "y": 79,
+          "w": 16,
+          "h": 40
+        },
+        "layer": 26
+      },
+      {
+        "puzzle": 8,
+        "title": "Place the welcome bell",
+        "file": "01-front-hall/08-desk-bell.webp",
+        "box": {
+          "x": 34,
+          "y": 62.25,
+          "w": 7,
+          "h": 7
+        },
+        "layer": 27
+      },
+      {
+        "puzzle": 9,
+        "title": "Reveal the keeper\u2019s key",
+        "file": "01-front-hall/09-key-portrait.webp",
+        "box": {
+          "x": 71,
+          "y": 61,
+          "w": 12,
+          "h": 19
+        },
+        "layer": 28
+      },
+      {
+        "puzzle": 10,
+        "title": "Open the guestbook",
+        "file": "01-front-hall/10-guestbook.webp",
+        "box": {
+          "x": 53,
+          "y": 89,
+          "w": 20,
+          "h": 28
+        },
+        "layer": 29
+      }
+    ]
+  },
+  {
+    "id": "02-garden-atrium",
+    "base": "02-garden-atrium/base.webp",
+    "restorations": [
+      {
+        "puzzle": 11,
+        "title": "Unroll the garden rug",
+        "file": "02-garden-atrium/01-garden-rug.webp",
+        "box": {
+          "x": 50,
+          "y": 98,
+          "w": 46,
+          "h": 20
+        },
+        "layer": 10
+      },
+      {
+        "puzzle": 12,
+        "title": "Restore the first fern",
+        "file": "02-garden-atrium/02-fern-urn.webp",
+        "box": {
+          "x": 13,
+          "y": 87,
+          "w": 19,
+          "h": 34
+        },
+        "layer": 21
+      },
+      {
+        "puzzle": 13,
+        "title": "Restore the orchid stand",
+        "file": "02-garden-atrium/03-plant-stand.webp",
+        "box": {
+          "x": 77,
+          "y": 85,
+          "w": 12,
+          "h": 25
+        },
+        "layer": 22
+      },
+      {
+        "puzzle": 14,
+        "title": "Welcome the orchids",
+        "file": "02-garden-atrium/04-orchids.webp",
+        "box": {
+          "x": 77,
+          "y": 61.25,
+          "w": 14,
+          "h": 19
+        },
+        "layer": 23
+      },
+      {
+        "puzzle": 15,
+        "title": "Restore the fountain",
+        "file": "02-garden-atrium/05-birdbath.webp",
+        "box": {
+          "x": 50,
+          "y": 85,
+          "w": 24,
+          "h": 35
+        },
+        "layer": 24
+      },
+      {
+        "puzzle": 16,
+        "title": "Hang the trailing ivy",
+        "file": "02-garden-atrium/06-hanging-ivy.webp",
+        "box": {
+          "x": 20,
+          "y": 44,
+          "w": 16,
+          "h": 31
+        },
+        "layer": 25
+      },
+      {
+        "puzzle": 17,
+        "title": "Plant the orange tree",
+        "file": "02-garden-atrium/07-orange-tree.webp",
+        "box": {
+          "x": 91,
+          "y": 88,
+          "w": 18,
+          "h": 39
+        },
+        "layer": 26
+      },
+      {
+        "puzzle": 18,
+        "title": "Restore the garden bench",
+        "file": "02-garden-atrium/08-garden-bench.webp",
+        "box": {
+          "x": 30,
+          "y": 92,
+          "w": 35,
+          "h": 24
+        },
+        "layer": 27
+      },
+      {
+        "puzzle": 19,
+        "title": "Awaken the moss garden",
+        "file": "02-garden-atrium/09-terrarium.webp",
+        "box": {
+          "x": 65,
+          "y": 94,
+          "w": 14,
+          "h": 20
+        },
+        "layer": 28
+      },
+      {
+        "puzzle": 20,
+        "title": "Light the glasshouse",
+        "file": "02-garden-atrium/10-hanging-lantern.webp",
+        "box": {
+          "x": 71,
+          "y": 32,
+          "w": 10,
+          "h": 24
+        },
+        "layer": 29
+      }
+    ]
+  },
+  {
+    "id": "03-reading-room",
+    "base": "03-reading-room/base.webp",
+    "restorations": [
+      {
+        "puzzle": 21,
+        "title": "Lay the reading rug",
+        "file": "03-reading-room/01-reading-rug.webp",
+        "box": {
+          "x": 50,
+          "y": 98,
+          "w": 48,
+          "h": 21
+        },
+        "layer": 10
+      },
+      {
+        "puzzle": 22,
+        "title": "Restore a comfortable chair",
+        "file": "03-reading-room/02-armchair.webp",
+        "box": {
+          "x": 30,
+          "y": 89,
+          "w": 24,
+          "h": 32
+        },
+        "layer": 21
+      },
+      {
+        "puzzle": 23,
+        "title": "Restore the side table",
+        "file": "03-reading-room/03-side-table.webp",
+        "box": {
+          "x": 52,
+          "y": 88,
+          "w": 19,
+          "h": 22
+        },
+        "layer": 22
+      },
+      {
+        "puzzle": 24,
+        "title": "Return the shelf books",
+        "file": "03-reading-room/04-shelf-books.webp",
+        "box": {
+          "x": 24,
+          "y": 58,
+          "w": 15,
+          "h": 13
+        },
+        "layer": 23
+      },
+      {
+        "puzzle": 25,
+        "title": "Light the reading corner",
+        "file": "03-reading-room/05-reading-lamp.webp",
+        "box": {
+          "x": 13,
+          "y": 86,
+          "w": 11,
+          "h": 40
+        },
+        "layer": 24
+      },
+      {
+        "puzzle": 26,
+        "title": "Return the book trolley",
+        "file": "03-reading-room/06-book-trolley.webp",
+        "box": {
+          "x": 82,
+          "y": 90,
+          "w": 20,
+          "h": 33
+        },
+        "layer": 25
+      },
+      {
+        "puzzle": 27,
+        "title": "Add a footstool",
+        "file": "03-reading-room/07-footstool.webp",
+        "box": {
+          "x": 35,
+          "y": 97,
+          "w": 15,
+          "h": 15
+        },
+        "layer": 26
+      },
+      {
+        "puzzle": 28,
+        "title": "Hang the moonlit painting",
+        "file": "03-reading-room/08-tree-portrait.webp",
+        "box": {
+          "x": 51,
+          "y": 42,
+          "w": 13,
+          "h": 19
+        },
+        "layer": 27
+      },
+      {
+        "puzzle": 29,
+        "title": "Restore the mantel clock",
+        "file": "03-reading-room/09-mantel-clock.webp",
+        "box": {
+          "x": 51,
+          "y": 48,
+          "w": 8,
+          "h": 12
+        },
+        "layer": 28
+      },
+      {
+        "puzzle": 30,
+        "title": "Open the next story",
+        "file": "03-reading-room/10-open-book.webp",
+        "box": {
+          "x": 52,
+          "y": 67.1,
+          "w": 13,
+          "h": 14
+        },
+        "layer": 29
+      }
+    ]
+  },
+  {
+    "id": "04-wordsmith-study",
+    "base": "04-wordsmith-study/base.webp",
+    "restorations": [
+      {
+        "puzzle": 31,
+        "title": "Lay the study rug",
+        "file": "04-wordsmith-study/01-study-rug.webp",
+        "box": {
+          "x": 50,
+          "y": 98,
+          "w": 48,
+          "h": 21
+        },
+        "layer": 10
+      },
+      {
+        "puzzle": 32,
+        "title": "Restore the writing desk",
+        "file": "04-wordsmith-study/02-writing-desk.webp",
+        "box": {
+          "x": 50,
+          "y": 89,
+          "w": 44,
+          "h": 30
+        },
+        "layer": 21
+      },
+      {
+        "puzzle": 33,
+        "title": "Restore the writer\u2019s chair",
+        "file": "04-wordsmith-study/03-desk-chair.webp",
+        "box": {
+          "x": 21,
+          "y": 92,
+          "w": 20,
+          "h": 32
+        },
+        "layer": 22
+      },
+      {
+        "puzzle": 34,
+        "title": "Return the reference books",
+        "file": "04-wordsmith-study/04-shelf-books.webp",
+        "box": {
+          "x": 17,
+          "y": 53,
+          "w": 17,
+          "h": 15
+        },
+        "layer": 23
+      },
+      {
+        "puzzle": 35,
+        "title": "Light the writing candles",
+        "file": "04-wordsmith-study/05-candelabrum.webp",
+        "box": {
+          "x": 34,
+          "y": 60.5,
+          "w": 12,
+          "h": 20
+        },
+        "layer": 24
+      },
+      {
+        "puzzle": 36,
+        "title": "Prepare the ink and quill",
+        "file": "04-wordsmith-study/06-inkwell.webp",
+        "box": {
+          "x": 44,
+          "y": 60.5,
+          "w": 9,
+          "h": 13
+        },
+        "layer": 25
+      },
+      {
+        "puzzle": 37,
+        "title": "Recover the manuscript",
+        "file": "04-wordsmith-study/07-manuscript.webp",
+        "box": {
+          "x": 54,
+          "y": 60.5,
+          "w": 12,
+          "h": 8
+        },
+        "layer": 26
+      },
+      {
+        "puzzle": 38,
+        "title": "Restore the reading lens",
+        "file": "04-wordsmith-study/08-magnifier.webp",
+        "box": {
+          "x": 64,
+          "y": 60.5,
+          "w": 9,
+          "h": 8
+        },
+        "layer": 27
+      },
+      {
+        "puzzle": 39,
+        "title": "Recover the spellbook",
+        "file": "04-wordsmith-study/09-closed-spellbook.webp",
+        "box": {
+          "x": 56,
+          "y": 60.5,
+          "w": 14,
+          "h": 14
+        },
+        "layer": 28
+      },
+      {
+        "puzzle": 40,
+        "title": "Awaken the living words",
+        "file": "04-wordsmith-study/10-awakened-spellbook.webp",
+        "box": {
+          "x": 56,
+          "y": 60.5,
+          "w": 19,
+          "h": 19
+        },
+        "layer": 29
+      }
+    ]
+  },
+  {
+    "id": "05-map-room",
+    "base": "05-map-room/base.webp",
+    "restorations": [
+      {
+        "puzzle": 41,
+        "title": "Lay the compass rug",
+        "file": "05-map-room/01-compass-rug.webp",
+        "box": {
+          "x": 50,
+          "y": 98,
+          "w": 48,
+          "h": 21
+        },
+        "layer": 10
+      },
+      {
+        "puzzle": 42,
+        "title": "Restore the map table",
+        "file": "05-map-room/02-map-table.webp",
+        "box": {
+          "x": 50,
+          "y": 89,
+          "w": 43,
+          "h": 30
+        },
+        "layer": 21
+      },
+      {
+        "puzzle": 43,
+        "title": "Restore the globe",
+        "file": "05-map-room/03-floor-globe.webp",
+        "box": {
+          "x": 20,
+          "y": 88,
+          "w": 20,
+          "h": 37
+        },
+        "layer": 22
+      },
+      {
+        "puzzle": 44,
+        "title": "Reveal the world map",
+        "file": "05-map-room/04-world-map.webp",
+        "box": {
+          "x": 50,
+          "y": 48,
+          "w": 38,
+          "h": 26
+        },
+        "layer": 23
+      },
+      {
+        "puzzle": 45,
+        "title": "Find true north",
+        "file": "05-map-room/05-compass.webp",
+        "box": {
+          "x": 35,
+          "y": 60.5,
+          "w": 8,
+          "h": 7
+        },
+        "layer": 24
+      },
+      {
+        "puzzle": 46,
+        "title": "Recover the charts",
+        "file": "05-map-room/06-charts.webp",
+        "box": {
+          "x": 45,
+          "y": 60.5,
+          "w": 13,
+          "h": 8
+        },
+        "layer": 25
+      },
+      {
+        "puzzle": 47,
+        "title": "Restore the sextant",
+        "file": "05-map-room/07-sextant.webp",
+        "box": {
+          "x": 54,
+          "y": 60.5,
+          "w": 10,
+          "h": 13
+        },
+        "layer": 26
+      },
+      {
+        "puzzle": 48,
+        "title": "Restore the chart cabinet",
+        "file": "05-map-room/08-chart-cabinet.webp",
+        "box": {
+          "x": 84,
+          "y": 86,
+          "w": 19,
+          "h": 31
+        },
+        "layer": 27
+      },
+      {
+        "puzzle": 49,
+        "title": "Light the chart table",
+        "file": "05-map-room/09-map-lamp.webp",
+        "box": {
+          "x": 64,
+          "y": 60.5,
+          "w": 11,
+          "h": 19
+        },
+        "layer": 28
+      },
+      {
+        "puzzle": 50,
+        "title": "Assemble the armillary",
+        "file": "05-map-room/10-armillary.webp",
+        "box": {
+          "x": 83,
+          "y": 56.55,
+          "w": 16,
+          "h": 23
+        },
+        "layer": 29
+      }
+    ]
+  },
+  {
+    "id": "06-observatory",
+    "base": "06-observatory/base.webp",
+    "restorations": [
+      {
+        "puzzle": 51,
+        "title": "Lay the star rug",
+        "file": "06-observatory/01-star-rug.webp",
+        "box": {
+          "x": 50,
+          "y": 98,
+          "w": 50,
+          "h": 22
+        },
+        "layer": 10
+      },
+      {
+        "puzzle": 52,
+        "title": "Restore the instrument table",
+        "file": "06-observatory/02-instrument-table.webp",
+        "box": {
+          "x": 24,
+          "y": 89,
+          "w": 26,
+          "h": 24
+        },
+        "layer": 21
+      },
+      {
+        "puzzle": 53,
+        "title": "Restore the telescope",
+        "file": "06-observatory/03-telescope.webp",
+        "box": {
+          "x": 57,
+          "y": 91,
+          "w": 34,
+          "h": 49
+        },
+        "layer": 22
+      },
+      {
+        "puzzle": 54,
+        "title": "Reveal the celestial chart",
+        "file": "06-observatory/04-celestial-chart.webp",
+        "box": {
+          "x": 22,
+          "y": 53,
+          "w": 27,
+          "h": 23
+        },
+        "layer": 23
+      },
+      {
+        "puzzle": 55,
+        "title": "Set the planets in motion",
+        "file": "06-observatory/05-orrery.webp",
+        "box": {
+          "x": 22,
+          "y": 66.2,
+          "w": 17,
+          "h": 19
+        },
+        "layer": 24
+      },
+      {
+        "puzzle": 56,
+        "title": "Restore the observing stool",
+        "file": "06-observatory/06-observing-stool.webp",
+        "box": {
+          "x": 77,
+          "y": 96,
+          "w": 16,
+          "h": 19
+        },
+        "layer": 25
+      },
+      {
+        "puzzle": 57,
+        "title": "Return the astronomy books",
+        "file": "06-observatory/07-astronomy-books.webp",
+        "box": {
+          "x": 30,
+          "y": 66.2,
+          "w": 10,
+          "h": 9
+        },
+        "layer": 26
+      },
+      {
+        "puzzle": 58,
+        "title": "Restore the astrolabe",
+        "file": "06-observatory/08-astrolabe.webp",
+        "box": {
+          "x": 86,
+          "y": 85,
+          "w": 15,
+          "h": 23
+        },
+        "layer": 27
+      },
+      {
+        "puzzle": 59,
+        "title": "Light the night lantern",
+        "file": "06-observatory/09-blue-lantern.webp",
+        "box": {
+          "x": 9,
+          "y": 88,
+          "w": 11,
+          "h": 24
+        },
+        "layer": 28
+      },
+      {
+        "puzzle": 60,
+        "title": "Awaken the Observatory",
+        "file": "06-observatory/10-star-medallion.webp",
+        "box": {
+          "x": 51,
+          "y": 30,
+          "w": 17,
+          "h": 21
+        },
+        "layer": 29
+      }
+    ]
+  }
+]
