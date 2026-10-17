@@ -145,7 +145,9 @@ import {
   campaignTileScaleLimit,
   campaignWheelLetterMaxRadiusFactor,
   campaignWheelLetterScale,
+  campaignGroup,
   campaignLevel,
+  campaignPuzzleInGroup,
   createCampaignSeed,
   freshCampaignProgress,
   loadCampaignProgress,
@@ -2415,7 +2417,7 @@ export class Game {
                 this.campaignProgress.currentLevel === 1 &&
                 !this.campaignProgress.completedLevels.includes(1)
                   ? "Start"
-                  : `Continue Level ${this.campaignProgress.currentLevel}`,
+                  : `Continue L${campaignGroup(this.campaignProgress.currentLevel)} · P${campaignPuzzleInGroup(this.campaignProgress.currentLevel)}`,
               rect: this.mainMenuButtons[0]
             },
             { label: "Levels", rect: this.mainMenuButtons[1] },
@@ -2424,7 +2426,7 @@ export class Game {
       this.drawMenuPanel(ctx, "Word Journey", buttons);
       drawCenteredText(
         ctx,
-        `Campaign ${this.campaignProgress.campaignNumber} · ${this.campaignProgress.completedLevels.length} of ${CAMPAIGN_LEVELS.length} complete`,
+        `Campaign ${this.campaignProgress.campaignNumber} · ${this.campaignProgress.completedLevels.length} of ${CAMPAIGN_LEVELS.length} puzzles complete`,
         {
           x: this.layoutWidth / 2,
           y: this.mainMenuButtons[0].y - 24
@@ -2454,6 +2456,7 @@ export class Game {
   private renderCampaignSelect(ctx: CanvasRenderingContext2D) {
     const pageStart = this.campaignPage * 10 + 1;
     const pageEnd = Math.min(CAMPAIGN_LEVELS.length, pageStart + 9);
+    const groupNumber = campaignGroup(pageStart);
     const panel = {
       x: 35,
       y: 110,
@@ -2463,14 +2466,14 @@ export class Game {
     this.drawElevatedPanel(ctx, panel.x, panel.y, panel.width, panel.height, 18);
     drawCenteredText(
       ctx,
-      "Choose a Level",
+      "Choose a Puzzle",
       { x: this.layoutWidth / 2, y: 64 },
       { r: 255, g: 242, b: 213 },
       this.font(32, true)
     );
     drawCenteredText(
       ctx,
-      `Campaign ${this.campaignProgress.campaignNumber} · Levels ${pageStart}–${pageEnd}`,
+      `Campaign ${this.campaignProgress.campaignNumber} · Level ${groupNumber}`,
       { x: this.layoutWidth / 2, y: panel.y + 38 },
       UI_TEXT,
       this.font(18, true)
@@ -2488,7 +2491,13 @@ export class Game {
         : completed
           ? { r: 106, g: 139, b: 78, a: 255 }
           : this.currentTheme.menuButtonNormal;
-      this.drawButton(ctx, entry.rect, locked ? "Locked" : `Level ${entry.level}`, fill, UI_TEXT);
+      this.drawButton(
+        ctx,
+        entry.rect,
+        locked ? "Locked" : `Puzzle ${campaignPuzzleInGroup(entry.level)}`,
+        fill,
+        UI_TEXT
+      );
       if (!locked) {
         drawCenteredText(
           ctx,
@@ -2809,7 +2818,9 @@ export class Game {
         this.campaignEnabled && this.activeCampaignLevel === CAMPAIGN_LEVELS.length
           ? "Level Select"
           : this.campaignEnabled
-            ? "Next Level"
+            ? campaignPuzzleInGroup(this.activeCampaignLevel) === 10
+              ? "Next Level"
+              : "Next Puzzle"
             : "Continue",
         hover ? this.currentTheme.menuButtonHover : this.currentTheme.menuButtonNormal,
         UI_TEXT
@@ -2923,7 +2934,7 @@ export class Game {
       );
       drawCenteredText(
         ctx,
-        `Level ${this.activeCampaignLevel}`,
+        `L${campaignGroup(this.activeCampaignLevel)} · P${campaignPuzzleInGroup(this.activeCampaignLevel)}`,
         { x: zone.x + zone.width * 0.25, y: zone.y + zone.height / 2 },
         UI_TEXT,
         this.font(17, true)

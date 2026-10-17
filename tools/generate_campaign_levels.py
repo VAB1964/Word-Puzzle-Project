@@ -19,27 +19,31 @@ DICTIONARY = ROOT / "words_processed.csv"
 OUTPUT = ROOT / "web" / "src" / "data" / "campaign-levels.json"
 SEED = 20261016
 CAMPAIGN_COUNT = 8
+PUZZLES_PER_LEVEL = 10
+MAX_REQUIRED_WORDS = 9
+COMMON_WORD_MAX_RARITY = 2
+# Each tuple is (rack length, minimum answer length, maximum answer length).
+# Keeping this progression explicit makes the six-level campaign structure easy
+# to review and change without relying on difficulty formulas.
+LEVEL_RULES = (
+    (3, 3, 3),
+    (4, 3, 4),
+    (5, 3, 5),
+    (6, 3, 6),
+    (7, 3, 7),
+    (7, 4, 7),
+)
+# A fixed schedule keeps both game modes represented in every group of ten.
+CROSSWORD_PUZZLES = frozenset({5, 8, 10})
 # These connected word sets do not place completely with the app's
 # deterministic crossword-board generator, so they intentionally remain Casual.
-UNSUITABLE_CROSSWORDS = {(6, 58), (7, 45)}
+UNSUITABLE_CROSSWORDS: set[tuple[int, int]] = set()
 
 
 @dataclass(frozen=True)
 class Word:
     text: str
     rarity: int
-
-
-def stage_size(rack_length: int) -> int:
-    return 5 * (rack_length - 2) if rack_length < 7 else 20
-
-
-def stage_start(rack_length: int) -> int:
-    if rack_length == 3:
-        return 1
-    if rack_length == 7:
-        return 51
-    return 1 + sum(stage_size(length) for length in range(3, rack_length))
 
 
 def can_build(word: str, rack: str) -> bool:
@@ -88,36 +92,26 @@ def load_words() -> list[Word]:
 def choose_required_words(
     rack: Word,
     pool: list[Word],
+    minimum_length: int,
     maximum_length: int,
-    maximum_rarity: int,
-    target_count: int,
-    rng: random.Random,
 ) -> list[Word]:
     candidates = [
         word
         for word in pool
-        if len(word.text) <= maximum_length
-        and word.rarity <= maximum_rarity
+        if minimum_length <= len(word.text) <= maximum_length
+        and word.rarity <= COMMON_WORD_MAX_RARITY
         and can_build(word.text, rack.text)
     ]
-    if maximum_length == len(rack.text) and rack not in candidates:
+    if rack not in candidates:
         candidates.append(rack)
 
-    # Common words come first, with a deterministic shuffle inside each tier.
-    by_tier: dict[tuple[int, int], list[Word]] = {}
-    for word in candidates:
-        by_tier.setdefault((word.rarity, len(word.text)), []).append(word)
-    for values in by_tier.values():
-        rng.shuffle(values)
-
-    selected: list[Word] = []
-    for rarity in range(1, maximum_rarity + 1):
-        for length in range(maximum_length, 2, -1):
-            for word in by_tier.get((rarity, length), []):
-                if word not in selected:
-                    selected.append(word)
-                    if len(selected) == target_count:
-                        return selected
+    # Prefer common and longer answers. The lexical tie-breaker keeps generation
+    # stable, while reserving a slot guarantees that the rack word is playable.
+    candidates.sort(key=lambda word: (word.rarity, -len(word.text), word.text))
+    selected = candidates[:MAX_REQUIRED_WORDS]
+    if rack not in selected:
+        selected[-1] = rack
+        selected.sort(key=lambda word: (word.rarity, -len(word.text), word.text))
     return selected
 
 
@@ -132,28 +126,22 @@ def generate_campaign(
     used_letter_sets: set[str] = set()
     levels: list[dict] = []
 
-    for rack_length in range(3, 8):
-        count = stage_size(rack_length)
-        start = stage_start(rack_length)
-        for stage_index in range(count):
-            level_number = start + stage_index
-            progress = stage_index / max(1, count - 1)
-            maximum_length = min(
-                rack_length,
-                3 + int((rack_length - 2) * progress),
-            )
-            target_count = 1 + (rack_length - 3) + int(4 * progress + 0.999999)
-            maximum_rarity = min(4, 1 + int(3 * progress))
+    for group_index, (
+        rack_length,
+        minimum_length,
+        maximum_length,
+    ) in enumerate(LEVEL_RULES):
+        for puzzle_index in range(1, PUZZLES_PER_LEVEL + 1):
+            level_number = group_index * PUZZLES_PER_LEVEL + puzzle_index
             wants_crossword = (
-                level_number > 3
-                and level_number % 5 in (0, 3)
+                puzzle_index in CROSSWORD_PUZZLES
                 and (campaign_number, level_number) not in UNSUITABLE_CROSSWORDS
             )
 
             candidates = [
                 root
                 for root in roots_by_length[rack_length]
-                if root.rarity <= maximum_rarity
+                if root.rarity <= COMMON_WORD_MAX_RARITY
                 and canonical(root.text) not in used_letter_sets
             ]
             rng.shuffle(candidates)
@@ -164,13 +152,10 @@ def generate_campaign(
                 required = choose_required_words(
                     candidate,
                     words,
+                    minimum_length,
                     maximum_length,
-                    maximum_rarity,
-                    target_count,
-                    rng,
                 )
-                minimum_count = 1 if level_number == 1 else min(target_count, 2)
-                if len(required) < minimum_count:
+                if not required:
                     continue
                 if wants_crossword and not intersection_graph_is_connected(
                     [word.text for word in required]
@@ -194,8 +179,11 @@ def generate_campaign(
                     "rackWord": chosen_rack.text,
                     "requiredWords": [word.text for word in chosen_words],
                     "rackLength": rack_length,
+                    "minimumRequiredLength": minimum_length,
                     "maximumRequiredLength": maximum_length,
-                    "maximumRarity": maximum_rarity,
+                    "maximumRarity": max(
+                        word.rarity for word in chosen_words
+                    ),
                 }
             )
 
@@ -215,12 +203,11 @@ def generate() -> dict:
         for index in range(CAMPAIGN_COUNT)
     ]
     return {
-        "version": 1,
-        "formula": {
-            "stageSize": "5 * (rackLength - 2), with repeating 20-level chapters at 7",
-            "maximumRequiredLength": "3 + floor((rackLength - 2) * stageProgress)",
-            "targetWords": "1 + (rackLength - 3) + ceil(4 * stageProgress)",
-            "maximumRarity": "1 + floor(3 * stageProgress)",
+        "version": 2,
+        "structure": {
+            "levels": len(LEVEL_RULES),
+            "puzzlesPerLevel": PUZZLES_PER_LEVEL,
+            "maximumRequiredWords": MAX_REQUIRED_WORDS,
         },
         # Keep the original field for compatibility and as Campaign 1.
         "levels": campaigns[0]["levels"],

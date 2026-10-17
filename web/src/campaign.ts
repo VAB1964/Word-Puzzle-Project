@@ -7,6 +7,7 @@ export interface CampaignLevel {
   rackWord: string;
   requiredWords: string[];
   rackLength: number;
+  minimumRequiredLength: number;
   maximumRequiredLength: number;
   maximumRarity: number;
 }
@@ -41,6 +42,13 @@ const campaignVariants =
 export const CAMPAIGN_LEVELS = catalog.levels;
 export const CAMPAIGN_VERSION = catalog.version;
 export const CAMPAIGN_VARIANT_COUNT = campaignVariants.length;
+export const CAMPAIGN_PUZZLES_PER_LEVEL = 10;
+
+export const campaignGroup = (puzzleNumber: number) =>
+  Math.floor((Math.max(1, puzzleNumber) - 1) / CAMPAIGN_PUZZLES_PER_LEVEL) + 1;
+
+export const campaignPuzzleInGroup = (puzzleNumber: number) =>
+  ((Math.max(1, puzzleNumber) - 1) % CAMPAIGN_PUZZLES_PER_LEVEL) + 1;
 
 export const campaignTileScaleLimit = (rackLength: number, wordCount: number) => {
   const rackAdjustment = Math.max(0, rackLength - 3) * 0.1;

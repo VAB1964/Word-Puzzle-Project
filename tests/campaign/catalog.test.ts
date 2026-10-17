@@ -3,6 +3,8 @@ import {
   CAMPAIGN_LEVELS,
   CAMPAIGN_VARIANT_COUNT,
   campaignLevels,
+  campaignGroup,
+  campaignPuzzleInGroup,
   campaignTileScaleLimit,
   campaignWheelLetterMaxRadiusFactor,
   campaignWheelLetterScale,
@@ -66,16 +68,30 @@ describe("mobile campaign catalog", () => {
   it("contains sequential levels and the intended rack-length stages", () => {
     expect(CAMPAIGN_VARIANT_COUNT).toBeGreaterThan(1);
     for (const levels of allCampaigns) {
-      expect(levels).toHaveLength(70);
+      expect(levels).toHaveLength(60);
       expect(levels.map((level) => level.level)).toEqual(
-        Array.from({ length: 70 }, (_, index) => index + 1)
+        Array.from({ length: 60 }, (_, index) => index + 1)
       );
-      expect(levels.slice(0, 5).every((level) => level.rackLength === 3)).toBe(true);
-      expect(levels.slice(5, 15).every((level) => level.rackLength === 4)).toBe(true);
-      expect(levels.slice(15, 30).every((level) => level.rackLength === 5)).toBe(true);
-      expect(levels.slice(30, 50).every((level) => level.rackLength === 6)).toBe(true);
-      expect(levels.slice(50).every((level) => level.rackLength === 7)).toBe(true);
+      expect(levels.slice(0, 10).every((level) => level.rackLength === 3)).toBe(true);
+      expect(levels.slice(10, 20).every((level) => level.rackLength === 4)).toBe(true);
+      expect(levels.slice(20, 30).every((level) => level.rackLength === 5)).toBe(true);
+      expect(levels.slice(30, 40).every((level) => level.rackLength === 6)).toBe(true);
+      expect(levels.slice(40).every((level) => level.rackLength === 7)).toBe(true);
+      expect(levels.slice(0, 50).every((level) => level.minimumRequiredLength === 3)).toBe(true);
+      expect(levels.slice(50).every((level) => level.minimumRequiredLength === 4)).toBe(true);
+      expect(levels.every((level) => level.maximumRequiredLength === level.rackLength)).toBe(true);
     }
+  });
+
+  it("groups each ten puzzles into one displayed level", () => {
+    expect(campaignGroup(1)).toBe(1);
+    expect(campaignPuzzleInGroup(1)).toBe(1);
+    expect(campaignGroup(10)).toBe(1);
+    expect(campaignPuzzleInGroup(10)).toBe(10);
+    expect(campaignGroup(11)).toBe(2);
+    expect(campaignPuzzleInGroup(11)).toBe(1);
+    expect(campaignGroup(60)).toBe(6);
+    expect(campaignPuzzleInGroup(60)).toBe(10);
   });
 
   it("uses unique racks and constructible required words", () => {
@@ -86,9 +102,11 @@ describe("mobile campaign catalog", () => {
         expect(letterSets.has(letters)).toBe(false);
         letterSets.add(letters);
         expect(level.requiredWords.length).toBeGreaterThan(0);
+        expect(level.requiredWords.length).toBeLessThanOrEqual(9);
+        expect(level.requiredWords).toContain(level.rackWord);
         for (const word of level.requiredWords) {
           expect(canBuild(word, level.rackWord)).toBe(true);
-          expect(word.length).toBeGreaterThanOrEqual(3);
+          expect(word.length).toBeGreaterThanOrEqual(level.minimumRequiredLength);
           expect(word.length).toBeLessThanOrEqual(level.maximumRequiredLength);
         }
       }
