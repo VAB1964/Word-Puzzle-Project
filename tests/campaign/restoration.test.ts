@@ -1,7 +1,19 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { LIBRARY_RESTORATIONS, earnedRestorations, restorationForPuzzle } from "../../web/src/libraryRestoration";
 
 describe("library restoration rewards", () => {
+  it("ships nonempty, complete WebP files for every room and reward", () => {
+    for (const room of LIBRARY_RESTORATIONS) {
+      for (const file of [room.base, ...room.restorations.map(reward => reward.file)]) {
+        const bytes = readFileSync(new URL(`../../assets/living-library/rooms/${file}`, import.meta.url));
+        expect(bytes.length, file).toBeGreaterThan(12);
+        expect(bytes.toString("ascii", 0, 4), file).toBe("RIFF");
+        expect(bytes.toString("ascii", 8, 12), file).toBe("WEBP");
+        expect(bytes.readUInt32LE(4) + 8, file).toBe(bytes.length);
+      }
+    }
+  });
   it("assigns exactly one reward to each of the 60 puzzles", () => {
     expect(LIBRARY_RESTORATIONS).toHaveLength(6);
     const puzzles = LIBRARY_RESTORATIONS.flatMap(room => room.restorations.map(reward => reward.puzzle));
