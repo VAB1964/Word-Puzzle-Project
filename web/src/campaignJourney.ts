@@ -9,6 +9,16 @@ export const LIBRARY_ROOMS = [
   { name: "The Observatory", rule: "7 letters · find 4–7 letter words" }
 ] as const;
 
+export function nextRoomPuzzle(room: number, completed: readonly number[]) {
+  const firstPuzzle = room * 10 + 1;
+  return Array.from({ length: 10 }, (_, index) => firstPuzzle + index)
+    .find(puzzle => !completed.includes(puzzle)) ?? firstPuzzle;
+}
+
+export function roomPuzzleButtonLabel(room: number, completed: readonly number[]) {
+  return nextRoomPuzzle(room, completed) === room * 10 + 1 ? "First Puzzle" : "Next Puzzle";
+}
+
 // All rectangles use the game's existing design coordinate system.
 export function journeyLayout(width: number, height: number) {
   const portrait = height > width;
@@ -41,7 +51,7 @@ export function journeyLayout(width: number, height: number) {
     puzzlesTab: { x: panel.x + panelWidth / 2 + 6, y: panel.y + 117, width: (panelWidth - 72) / 2, height: 48 },
     roomArt: { x: panel.x + (panelWidth - artWidth) / 2, y: panel.y + 185, width: artWidth, height: artWidth * 2 / 3 },
     previous: { x: panel.x + 30, y: panel.y + panelHeight - 75, width: 130, height: 52 },
-    next: { x: panel.x + panelWidth - 160, y: panel.y + panelHeight - 75, width: 130, height: 52 },
+    next: { x: panel.x + panelWidth - 200, y: panel.y + panelHeight - 75, width: 170, height: 52 },
     close: { x: panel.x + panelWidth / 2 - 65, y: panel.y + panelHeight - 75, width: 130, height: 52 },
     back: { x: 25, y: height - 88, width: 135, height: 60 },
     newCampaign: { x: width - 235, y: height - 88, width: 210, height: 60 }

@@ -56,7 +56,7 @@ export const initializeAppEntry = (canvas: HTMLCanvasElement, startSinglePlayer:
           <p>Play a quiet solo session or compete together on a shared puzzle.</p>
           <div class="entry-choice-grid">
             <button class="entry-choice" data-entry-action="single">
-              <strong>Single Player</strong><span>Classic Casual and Crossword sessions</span>
+              <strong>Single Player</strong><span>Restore the Living Library across 60 puzzles</span>
             </button>
             <button class="entry-choice entry-choice-primary" data-entry-action="multiplayer">
               <strong>Multiplayer</strong><span>One to four humans and AI players</span>

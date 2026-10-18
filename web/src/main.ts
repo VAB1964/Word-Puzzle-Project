@@ -31,7 +31,7 @@ const resizeCanvas = () => {
 };
 
 initializeAppEntry(canvas, () => {
-  game ??= new Game(canvas, ctx);
+  game ??= new Game(canvas, ctx, { campaign: true });
   resizeCanvas();
 });
 

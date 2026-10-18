@@ -1,5 +1,10 @@
 import { LibraryRestorationArt, restorationForPuzzle, earnedRestorations } from "./libraryRestoration";
-import { LIBRARY_ROOMS, journeyLayout } from "./campaignJourney";
+import {
+  LIBRARY_ROOMS,
+  journeyLayout,
+  nextRoomPuzzle,
+  roomPuzzleButtonLabel
+} from "./campaignJourney";
 import { Assets } from "./assets";
 import {
   BONUS_POPUP_SCROLL_SPEED,
@@ -358,6 +363,8 @@ export class Game {
     this.campaignEnabled = options.campaign === true;
     this.campaignProgress = loadCampaignProgress();
     if (this.campaignEnabled) {
+      this.currentScreen = GameScreen.CampaignSelect;
+      this.campaignPage = Math.floor((this.campaignProgress.currentLevel - 1) / 10);
       this.hintPoints = this.campaignProgress.hintPoints;
       this.currentScore = this.campaignProgress.totalScore;
     }
@@ -710,6 +717,11 @@ export class Game {
     }
 
     if (this.currentScreen === GameScreen.GameOver) {
+      if (rectContains(this.returnToMenuButton, world)) {
+        this.playSound("click");
+        this.leaveGameScreen();
+        return;
+      }
       if (rectContains(this.continueButton, world)) {
         this.handleContinue();
       }
@@ -764,12 +776,7 @@ export class Game {
 
     if (rectContains(this.returnToMenuButton, world)) {
       this.playSound("click");
-      this.currentScreen = GameScreen.MainMenu;
-      this.canResumeGameFromMainMenu = true;
-      this.resumeScreenFromMainMenu = GameScreen.Playing;
-      this.updateMenuLayout();
-      this.clearDragState();
-      this.clearPendingLetterHintTarget();
+      this.leaveGameScreen();
       return;
     }
 
@@ -1269,11 +1276,11 @@ export class Game {
         this.requestExitConfirmation("newCampaign");
       } else if (rectContains(this.campaignBackButton, world)) {
         this.playSound("click");
-        this.currentScreen = GameScreen.MainMenu;
+        this.showRulesDialog = true;
       }
       return;
     }
-    if (rectContains(layout.close, world)) {
+    if (this.campaignRoomView === "puzzles" && rectContains(layout.close, world)) {
       this.playSound("click");
       this.campaignRoomOpen = false;
       return;
@@ -1282,6 +1289,23 @@ export class Game {
       this.campaignRoomView = rectContains(layout.roomTab, world) ? "room" : "puzzles";
       this.playSound("click");
       return;
+    }
+    if (this.campaignRoomView === "room") {
+      if (rectContains(layout.previous, world)) {
+        this.playSound("click");
+        this.campaignRoomOpen = false;
+        return;
+      }
+      if (rectContains(layout.next, world)) {
+        const puzzle = nextRoomPuzzle(this.campaignPage, this.campaignProgress.completedLevels);
+        if (puzzle > this.campaignProgress.highestUnlockedLevel) {
+          this.playSound("error");
+        } else {
+          this.playSound("click");
+          this.startCampaignLevel(puzzle);
+        }
+        return;
+      }
     }
     for (const entry of this.campaignRoomView === "puzzles" ? this.campaignLevelButtons : []) {
       if (!rectContains(entry.rect, world)) continue;
@@ -1293,14 +1317,14 @@ export class Game {
       this.startCampaignLevel(entry.level);
       return;
     }
-    if (rectContains(this.campaignPreviousButton, world) && this.campaignPage > 0) {
+    if (this.campaignRoomView === "puzzles" && rectContains(this.campaignPreviousButton, world) && this.campaignPage > 0) {
       this.playSound("click");
       this.campaignPage -= 1;
       this.updateCampaignSelectLayout();
       return;
     }
     const pageCount = Math.ceil(CAMPAIGN_LEVELS.length / 10);
-    if (rectContains(this.campaignNextButton, world) && this.campaignPage + 1 < pageCount) {
+    if (this.campaignRoomView === "puzzles" && rectContains(this.campaignNextButton, world) && this.campaignPage + 1 < pageCount) {
       this.playSound("click");
       this.campaignPage += 1;
       this.updateCampaignSelectLayout();
@@ -1325,6 +1349,24 @@ export class Game {
     this.canResumeGameFromMainMenu = false;
     this.rebuild();
     this.currentScreen = GameScreen.Playing;
+  }
+
+  private leaveGameScreen() {
+    if (this.campaignEnabled) {
+      this.currentScreen = GameScreen.CampaignSelect;
+      this.campaignPage = Math.floor((this.activeCampaignLevel - 1) / 10);
+      this.campaignRoomOpen = false;
+      this.canResumeGameFromMainMenu = false;
+      this.isInSession = false;
+      this.updateCampaignSelectLayout();
+    } else {
+      this.currentScreen = GameScreen.MainMenu;
+      this.canResumeGameFromMainMenu = true;
+      this.resumeScreenFromMainMenu = GameScreen.Playing;
+      this.updateMenuLayout();
+    }
+    this.clearDragState();
+    this.clearPendingLetterHintTarget();
   }
 
   private requestBrowserClose() {
@@ -2533,7 +2575,7 @@ export class Game {
     }
     drawCenteredText(ctx, `Campaign ${this.campaignProgress.campaignNumber} · ${completed.length}/60 puzzles`,
       { x: this.layoutWidth / 2, y: this.layoutHeight - 115 }, cream, this.font(16, true));
-    this.drawButton(ctx, layout.back, "Menu", this.currentTheme.menuButtonNormal);
+    this.drawButton(ctx, layout.back, "How to Play", this.currentTheme.menuButtonNormal);
     this.drawButton(ctx, layout.newCampaign, "New Campaign", this.currentTheme.menuButtonNormal);
     ctx.restore();
     if (!this.campaignRoomOpen) return;
@@ -2571,9 +2613,15 @@ export class Game {
       drawCenteredText(ctx, locked ? "Locked" : done ? "Complete · replay" : current ? "Play next" : "Available",
         { x: entry.rect.x + entry.rect.width / 2, y: entry.rect.y + entry.rect.height - 13 }, UI_TEXT, this.font(11));
     }
-    this.drawButton(ctx, layout.previous, "Previous", this.campaignPage > 0 ? this.currentTheme.menuButtonNormal : { r: 216, g: 209, b: 191 });
-    this.drawButton(ctx, layout.close, "Journey", this.currentTheme.menuButtonNormal);
-    this.drawButton(ctx, layout.next, "Next", this.campaignPage < 5 ? this.currentTheme.menuButtonNormal : { r: 216, g: 209, b: 191 });
+    if (this.campaignRoomView === "room") {
+      this.drawButton(ctx, layout.previous, "Journey", this.currentTheme.menuButtonNormal);
+      this.drawButton(ctx, layout.next, roomPuzzleButtonLabel(this.campaignPage, completed),
+        lockedRoom ? { r: 216, g: 209, b: 191 } : this.currentTheme.menuButtonNormal);
+    } else {
+      this.drawButton(ctx, layout.previous, "Previous", this.campaignPage > 0 ? this.currentTheme.menuButtonNormal : { r: 216, g: 209, b: 191 });
+      this.drawButton(ctx, layout.close, "Journey", this.currentTheme.menuButtonNormal);
+      this.drawButton(ctx, layout.next, "Next", this.campaignPage < 5 ? this.currentTheme.menuButtonNormal : { r: 216, g: 209, b: 191 });
+    }
     ctx.restore();
   }
 
