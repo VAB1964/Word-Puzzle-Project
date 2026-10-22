@@ -105,23 +105,23 @@ export class LachlanGame {
           <p class="lachlan-progress">Word <strong>${this.index + 1}</strong> of ${LACHLAN_WORDS.length}</p>
         </header>
 
-        <section class="lachlan-board">
-          <div class="lachlan-target-frame" aria-label="The framed row is your spelling word">
-            <span class="lachlan-target-label">Spelling Word</span>
-            <div class="lachlan-target-tiles">
-              ${current.word
-                .split("")
-                .map(
-                  (_, tileIndex) => `
-                    <span class="lachlan-target-tile">
-                      <img src="${Assets.lachlan.pumpkin}" alt="" aria-hidden="true">
-                      <b>${this.sentenceOpen ? current.word[tileIndex].toUpperCase() : ""}</b>
-                    </span>`
-                )
-                .join("")}
-            </div>
+        <div class="lachlan-target-frame" aria-label="The framed row is your spelling word">
+          <span class="lachlan-target-label">Spelling Word</span>
+          <div class="lachlan-target-tiles">
+            ${current.word
+              .split("")
+              .map(
+                (_, tileIndex) => `
+                  <span class="lachlan-target-tile">
+                    <img src="${Assets.lachlan.pumpkin}" alt="" aria-hidden="true">
+                    <b>${this.sentenceOpen ? current.word[tileIndex].toUpperCase() : ""}</b>
+                  </span>`
+              )
+              .join("")}
           </div>
+        </div>
 
+        <section class="lachlan-board">
           <div class="lachlan-play-area">
             <div class="lachlan-guess" aria-live="polite">${this.currentGuess || "&nbsp;"}</div>
             <div class="lachlan-wheel" role="group" aria-label="Letter wheel">
