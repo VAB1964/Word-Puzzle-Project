@@ -1,0 +1,507 @@
+:root {
+  color-scheme: dark;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.lachlan-page {
+  min-height: 100%;
+  overflow: auto;
+  color: #fff7dc;
+  background:
+    linear-gradient(rgba(20, 7, 29, 0.24), rgba(8, 5, 12, 0.62)),
+    url("../../../assets/halloween/background.svg") center / cover fixed;
+}
+
+#lachlanApp {
+  min-height: 100dvh;
+}
+
+.lachlan-loading {
+  margin: 0;
+  padding-top: 45vh;
+  text-align: center;
+  font-size: 1.25rem;
+}
+
+.lachlan-game {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding: clamp(0.8rem, 2vw, 1.5rem);
+  background: linear-gradient(180deg, rgba(18, 7, 28, 0.12), rgba(6, 4, 9, 0.38));
+}
+
+.lachlan-header {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) auto minmax(9rem, 1fr);
+  align-items: center;
+  gap: 1rem;
+  max-width: 82rem;
+  margin: 0 auto 1rem;
+  text-align: center;
+}
+
+.lachlan-header h1,
+.lachlan-complete h1 {
+  margin: 0.1rem 0;
+  color: #ffc34d;
+  font-family: Georgia, serif;
+  font-size: clamp(1.65rem, 4vw, 3rem);
+  text-shadow: 0 0.15rem 0 #6f250b, 0 0 1rem rgba(255, 126, 21, 0.7);
+}
+
+.lachlan-eyebrow {
+  margin: 0;
+  color: #d7b4ed;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.lachlan-home,
+.lachlan-complete a {
+  justify-self: start;
+  color: #fff7dc;
+  font-weight: 800;
+  text-underline-offset: 0.2rem;
+}
+
+.lachlan-progress {
+  justify-self: end;
+  margin: 0;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid #db8325;
+  border-radius: 999px;
+  background: rgba(33, 13, 45, 0.86);
+}
+
+.lachlan-board {
+  display: grid;
+  grid-template-columns: minmax(15rem, 1fr) minmax(20rem, 1.25fr) minmax(14rem, 0.85fr);
+  align-items: center;
+  gap: clamp(0.8rem, 2vw, 1.5rem);
+  width: min(82rem, 100%);
+  min-height: min(69vh, 43rem);
+  margin: auto;
+}
+
+.lachlan-target-frame,
+.lachlan-bonus-panel {
+  box-sizing: border-box;
+  border: 0.2rem solid #f18a1b;
+  border-radius: 1.25rem;
+  background: rgba(35, 14, 48, 0.9);
+  box-shadow: 0 0 0 0.25rem rgba(255, 194, 71, 0.15), 0 1rem 2.5rem rgba(0, 0, 0, 0.45);
+}
+
+.lachlan-target-frame {
+  position: relative;
+  padding: clamp(2rem, 4vw, 3rem) clamp(0.8rem, 2vw, 1.5rem) 1.5rem;
+}
+
+.lachlan-target-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  padding: 0.45rem 1rem;
+  border-radius: 0 0 0.7rem 0.7rem;
+  color: #291233;
+  background: #ffc34d;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.lachlan-target-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(0.25rem, 0.7vw, 0.55rem);
+}
+
+.lachlan-target-tile {
+  position: relative;
+  display: grid;
+  width: clamp(2.1rem, 4.2vw, 3.65rem);
+  aspect-ratio: 0.84;
+  place-items: end center;
+  border: 0.15rem solid #ffd375;
+  border-radius: 0.55rem;
+  background: linear-gradient(#5f2b66, #2b1539);
+  box-shadow: inset 0 0 0.8rem rgba(255, 174, 47, 0.22);
+}
+
+.lachlan-target-tile img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  opacity: 0.46;
+  transform: translate(-50%, -50%);
+}
+
+.lachlan-target-tile b {
+  z-index: 1;
+  width: 100%;
+  color: #fff9de;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 0.12rem 0.2rem #321127;
+}
+
+.lachlan-play-area {
+  text-align: center;
+}
+
+.lachlan-guess {
+  min-height: 2.7rem;
+  margin-bottom: 0.4rem;
+  color: #ffd375;
+  font-size: clamp(1.7rem, 4vw, 2.7rem);
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-shadow: 0 0.15rem 0.35rem #000;
+}
+
+.lachlan-wheel {
+  position: relative;
+  width: min(23rem, 72vw);
+  aspect-ratio: 1;
+  margin: auto;
+  border: 0.35rem solid #e87818;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(95, 43, 102, 0.92), rgba(30, 12, 42, 0.96) 70%);
+  box-shadow: inset 0 0 2rem rgba(255, 137, 28, 0.25), 0 1rem 2rem rgba(0, 0, 0, 0.4);
+  touch-action: none;
+  user-select: none;
+}
+
+.lachlan-letter {
+  position: absolute;
+  z-index: 2;
+  top: calc(50% - 1.75rem);
+  left: calc(50% - 1.75rem);
+  display: grid;
+  width: 3.5rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 0.15rem solid #ffd375;
+  border-radius: 50%;
+  color: #32123e;
+  background: #fff2c4;
+  box-shadow: 0 0.4rem 0 #a7430b, 0 0.65rem 1rem rgba(0, 0, 0, 0.38);
+  font-size: 1.75rem;
+  font-weight: 900;
+  transform:
+    rotate(calc((360deg / var(--letter-count)) * var(--letter-index)))
+    translateY(clamp(-9rem, -29vw, -6rem))
+    rotate(calc((-360deg / var(--letter-count)) * var(--letter-index)));
+}
+
+.lachlan-letter.selected {
+  color: #fff8dc;
+  background: #ed7818;
+  transform:
+    rotate(calc((360deg / var(--letter-count)) * var(--letter-index)))
+    translateY(clamp(-9rem, -29vw, -6rem))
+    rotate(calc((-360deg / var(--letter-count)) * var(--letter-index)))
+    scale(1.1);
+}
+
+.lachlan-shuffle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4.2rem;
+  aspect-ratio: 1;
+  border: 0.12rem solid #a77bb8;
+  border-radius: 50%;
+  color: #fff3cc;
+  background: #3b194a;
+  font-size: 2.3rem;
+  transform: translate(-50%, -50%);
+}
+
+.lachlan-path {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.lachlan-path polyline {
+  fill: none;
+  stroke: rgba(255, 199, 78, 0.78);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.lachlan-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.lachlan-game button {
+  min-height: 2.8rem;
+  padding: 0.65rem 1.15rem;
+  border: 0.12rem solid #ca7423;
+  border-radius: 0.7rem;
+  color: #fff5d4;
+  background: #4a2257;
+  font-weight: 900;
+}
+
+.lachlan-game button:hover,
+.lachlan-game button:focus-visible {
+  filter: brightness(1.15);
+  outline: 0.18rem solid #ffe09a;
+  outline-offset: 0.12rem;
+}
+
+.lachlan-game button.primary {
+  color: #2d1335;
+  background: linear-gradient(#ffd068, #f18a1b);
+}
+
+.lachlan-bonus-panel {
+  min-height: 15rem;
+  padding: 1.1rem;
+}
+
+.lachlan-bonus-panel h2 {
+  margin: 0 0 0.35rem;
+  color: #ffc34d;
+  font-family: Georgia, serif;
+}
+
+.lachlan-bonus-panel p {
+  margin-top: 0;
+  color: #d9c5df;
+}
+
+.lachlan-bonus-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.lachlan-bonus-list span {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #be7fd0;
+  border-radius: 0.4rem;
+  color: #fff3cf;
+  background: #5a2867;
+  font-weight: 800;
+}
+
+.lachlan-bonus-list em {
+  color: #bca8c4;
+}
+
+.lachlan-feedback {
+  min-height: 1.5rem;
+  margin: 0.6rem auto 0;
+  color: #eedcf4;
+  text-align: center;
+  font-weight: 800;
+}
+
+.lachlan-feedback[data-kind="good"] {
+  color: #ffc34d;
+}
+
+.lachlan-feedback[data-kind="error"] {
+  color: #ffb5a1;
+}
+
+.lachlan-modal-layer {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 45vh 1rem 1.4rem;
+  background: rgba(8, 4, 12, 0.38);
+}
+
+.lachlan-sentence-popup {
+  position: relative;
+  width: min(42rem, 100%);
+  padding: 1.2rem 1.5rem 1.4rem;
+  border: 0.22rem solid #f18a1b;
+  border-radius: 1.2rem;
+  color: #32143c;
+  background: linear-gradient(#fff6d5, #ffdca0);
+  box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.lachlan-sentence-popup img {
+  position: absolute;
+  top: -2.2rem;
+  left: 1rem;
+  width: 5rem;
+  transform: rotate(-8deg);
+}
+
+.lachlan-sentence-popup p {
+  margin: 0;
+  color: #7d3c12;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lachlan-sentence-popup > strong {
+  display: block;
+  margin: 0.25rem 0;
+  color: #762111;
+  font: 900 clamp(1.7rem, 5vw, 2.7rem) Georgia, serif;
+  letter-spacing: 0.08em;
+}
+
+.lachlan-sentence-popup blockquote {
+  margin: 0.65rem 0 1rem;
+  font-size: clamp(1.2rem, 3vw, 1.65rem);
+  font-weight: 800;
+}
+
+.lachlan-complete {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.lachlan-complete section {
+  width: min(38rem, calc(100% - 2rem));
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 0.22rem solid #f18a1b;
+  border-radius: 1.25rem;
+  background: rgba(35, 14, 48, 0.94);
+  box-shadow: 0 1rem 3rem #000;
+}
+
+.lachlan-complete img {
+  width: min(10rem, 35vw);
+}
+
+.lachlan-complete p:not(.lachlan-eyebrow) {
+  font-size: 1.25rem;
+}
+
+.lachlan-complete a {
+  display: block;
+  width: fit-content;
+  margin: 1.2rem auto 0;
+}
+
+@media (max-width: 900px) {
+  .lachlan-header {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lachlan-header > div {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .lachlan-home {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .lachlan-progress {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .lachlan-board {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lachlan-play-area {
+    grid-row: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .lachlan-game {
+    padding: 0.65rem;
+  }
+
+  .lachlan-header {
+    margin-bottom: 0.65rem;
+  }
+
+  .lachlan-home {
+    font-size: 0.8rem;
+  }
+
+  .lachlan-progress {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.85rem;
+  }
+
+  .lachlan-board {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .lachlan-target-frame {
+    width: 100%;
+    padding-top: 2.65rem;
+  }
+
+  .lachlan-play-area {
+    width: 100%;
+  }
+
+  .lachlan-wheel {
+    width: min(18.5rem, 76vw);
+  }
+
+  .lachlan-letter {
+    top: calc(50% - 1.45rem);
+    left: calc(50% - 1.45rem);
+    width: 2.9rem;
+    font-size: 1.4rem;
+    transform:
+      rotate(calc((360deg / var(--letter-count)) * var(--letter-index)))
+      translateY(clamp(-7.1rem, -28vw, -5.4rem))
+      rotate(calc((-360deg / var(--letter-count)) * var(--letter-index)));
+  }
+
+  .lachlan-letter.selected {
+    transform:
+      rotate(calc((360deg / var(--letter-count)) * var(--letter-index)))
+      translateY(clamp(-7.1rem, -28vw, -5.4rem))
+      rotate(calc((-360deg / var(--letter-count)) * var(--letter-index)))
+      scale(1.08);
+  }
+
+  .lachlan-bonus-panel {
+    width: 100%;
+    min-height: 0;
+  }
+
+  .lachlan-modal-layer {
+    padding-top: 52vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lachlan-game *,
+  .lachlan-game *::before,
+  .lachlan-game *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

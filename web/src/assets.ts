@@ -1,4 +1,8 @@
 export const Assets = {
+  lachlan: {
+    background: new URL("../../assets/halloween/background.svg", import.meta.url).toString(),
+    pumpkin: new URL("../../assets/halloween/pumpkin.svg", import.meta.url).toString()
+  },
   livingLibrary: {
     libraryLadder: new URL("../../assets/living-library/ladder-background.webp", import.meta.url).toString(),
     libraryBackground: new URL("../../assets/living-library/gameplay-background.webp", import.meta.url).toString(),

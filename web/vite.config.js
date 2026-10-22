@@ -8,7 +8,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        wordpuzzle: fileURLToPath(new URL("./wordpuzzle/index.html", import.meta.url))
+        wordpuzzle: fileURLToPath(new URL("./wordpuzzle/index.html", import.meta.url)),
+        lachlan: fileURLToPath(new URL("./lachlan/index.html", import.meta.url))
       }
     }
   },

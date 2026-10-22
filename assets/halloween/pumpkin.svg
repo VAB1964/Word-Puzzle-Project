@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Pumpkin">
+  <defs>
+    <linearGradient id="pumpkin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffad21"/>
+      <stop offset="1" stop-color="#d94c0b"/>
+    </linearGradient>
+  </defs>
+  <path d="M58 28c-4-10 1-20 9-24 3 7 2 14-2 21 7-5 15-6 22-3-3 7-10 12-20 13z" fill="#4c7d2c"/>
+  <path d="M63 30c-28-14-53 6-53 42 0 31 24 48 53 48s55-17 55-48c0-36-27-56-55-42z" fill="url(#pumpkin)" stroke="#7b2608" stroke-width="5"/>
+  <path d="M45 31c-13 9-17 57-4 83M82 32c13 10 17 56 4 81M63 29v89" fill="none" stroke="#b63a09" stroke-width="5" stroke-linecap="round" opacity=".72"/>
+  <path d="m31 68 16-10 10 16zm66 0L81 58 71 74zM45 91c12 10 28 10 40 0-6 18-34 18-40 0z" fill="#3a153f" stroke="#5d1b0c" stroke-width="2" stroke-linejoin="round"/>
+</svg>
